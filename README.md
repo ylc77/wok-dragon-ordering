@@ -1,19 +1,123 @@
 # Wok Dragon Express Restaurant App
 
-React + Vite + Supabase implementation for a restaurant website, QR table ordering MVP, Wolt-derived menu seed data, and Chinese admin panel.
+React + Vite + Supabase implementation for Wok Dragon Express:
+
+- Restaurant website
+- Public menu
+- QR table ordering MVP
+- Shared table cart with Supabase Realtime
+- Chinese admin panel
+- Wolt-derived menu seed data
+
+## Links
+
+- Production: https://wok-dragon-ordering.vercel.app/
+- GitHub: https://github.com/ylc77/wok-dragon-ordering.git
+
+## Supabase Environment Variables
+
+The frontend uses only public Supabase client credentials:
+
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-or-anon-key
+```
+
+Do not expose or commit the Supabase `service_role` key.
+
+For local development, copy `.env.example` to `.env.local` and fill in the two variables above.
+For Vercel, add the same two variables in Project Settings -> Environment Variables for Production and Preview.
 
 ## Setup
 
-1. Create a Supabase project and enable Anonymous Sign-Ins in Auth settings.
-2. Run `supabase/schema.sql` in Supabase SQL Editor.
-3. Run `supabase/seed.sql` to load restaurant info and Wolt-derived menu data.
-4. Create the first admin email user in Supabase Auth, then insert one row into `public.profiles` with `role = 'admin'`.
-5. Copy `.env.example` to `.env.local` and fill in the public Supabase URL and publishable/anon key. Never put a service role key in the frontend.
-6. Install dependencies and start the app:
+1. Create a Supabase project.
+2. Enable Anonymous Sign-Ins in Supabase Auth settings.
+3. Run `supabase/schema.sql` in the Supabase SQL Editor.
+4. Run `supabase/seed.sql` to load restaurant information, demo tables, and Wolt-derived menu data.
+5. Create the first admin email user in Supabase Auth.
+6. Manually insert one `public.profiles` row for that user with `role = 'admin'`.
+7. Install dependencies and start the app:
 
 ```bash
 pnpm install
 pnpm dev
+```
+
+## Admin Login
+
+Admin users log in at:
+
+```text
+/admin
+```
+
+The backend UI is Chinese only. Admin/staff permissions are controlled by `public.profiles.role`, not by user metadata.
+
+Anonymous table-ordering customers sign in anonymously through Supabase Auth. They are `authenticated` users, but they do not need `profiles` rows.
+
+## Table QR Code Rules
+
+Customer table links use QR tokens, not table numbers:
+
+```text
+/table/:qrToken
+```
+
+The production QR URL format is:
+
+```text
+https://wok-dragon-ordering.vercel.app/table/:qrToken
+```
+
+The admin table page can:
+
+- Create tables such as `Table 1`, `Table 2`, `Table 3`
+- Show each table's QR code
+- Download a QR image with the table label
+- Close the current table session
+- Regenerate a table QR token when necessary
+
+## Clear Table vs Regenerate QR
+
+`Clear Table` / `清桌` is the normal daily operation.
+
+- It closes only the current `table_session`.
+- It does not change `restaurant_tables.qr_token`.
+- The printed QR code on the table remains valid.
+- The next guests scanning the same QR code will create a new active session.
+
+`Regenerate QR` / `重生成二维码` is a rare maintenance operation.
+
+- It changes `restaurant_tables.qr_token`.
+- The old QR link immediately becomes invalid.
+- Any already printed QR code must be printed and replaced again.
+- The admin UI shows a strong confirmation prompt before this action.
+
+## Ordering Flow
+
+- Each table can have only one active `table_session`.
+- Multiple devices scanning the same table QR join the same session.
+- The shared cart syncs through Supabase Realtime.
+- Cart writes go through RPC functions, so the frontend cannot set `unit_price`.
+- `submit_order(session_id, client_request_id)` creates an order snapshot and clears the current cart.
+- Submitting an order does not close the table session, so guests can continue adding dishes.
+- Historical `orders` and `order_items` are preserved after dishes are edited or marked unavailable.
+
+## Deployment Notes
+
+The project is a React + Vite SPA. Vercel fallback is configured in `vercel.json`, so direct visits to these routes work:
+
+```text
+/
+/menu
+/table/:qrToken
+/admin
+```
+
+Run before pushing deployment changes:
+
+```bash
+pnpm build
 ```
 
 ## Important Notes
@@ -22,9 +126,4 @@ pnpm dev
 - Fixed frontend UI copy is managed by i18n.
 - Backend UI is Chinese only.
 - Wolt menu prices in `supabase/seed.sql` come from a public delivery platform and may differ from dine-in prices.
-- Customer QR links use `/table/:qrToken`, not table numbers.
-- Anonymous QR customers are Supabase `authenticated` users without `profiles` rows.
-- `join_table_session`, cart mutations, `submit_order`, and `close_table_session` are Supabase RPC functions.
-- Submitting an order creates an order snapshot and clears the current cart, but keeps the table session active for adding more dishes.
-- Staff should use "清桌" to close the active table session before the next guests sit down.
-- Vercel SPA fallback is configured in `vercel.json` so direct `/table/:qrToken` and `/admin` visits load the React app.
+- First-stage MVP intentionally does not include online payment, membership, inventory, printer integration, delivery fulfillment, or complex coupons.
