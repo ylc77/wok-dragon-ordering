@@ -8,6 +8,7 @@ React + Vite + Supabase implementation for Wok Dragon Express:
 - Shared table cart with Supabase Realtime
 - Chinese admin panel
 - Wolt-derived menu seed data
+- Dish image URLs managed from Supabase menu data
 
 ## Links
 
@@ -103,6 +104,16 @@ The admin table page can:
 - Submitting an order does not close the table session, so guests can continue adding dishes.
 - Historical `orders` and `order_items` are preserved after dishes are edited or marked unavailable.
 
+## Menu Images And Delivery Links
+
+- Dish images are read from `menu_items.image_url`; React components do not hardcode menu images.
+- If a dish has no image URL, or the remote image cannot load, the frontend falls back to a neutral placeholder.
+- Admin users can edit each dish's `image_url` from the Chinese menu management page.
+- The homepage reads `restaurant_settings.wolt_url`, `restaurant_settings.efood_url`, and `restaurant_settings.box_url`.
+- Delivery platform buttons are shown only when the matching URL is configured, and open in a new browser tab.
+- `supabase/patches/2026-06-delivery-links.sql` can update an existing Supabase project with the currently found public delivery links.
+- For long-term production use, upload restaurant-owned dish photos to Supabase Storage or another authorized image host, then paste those URLs into `menu_items.image_url`.
+
 ## Deployment Notes
 
 The project is a React + Vite SPA. Vercel fallback is configured in `vercel.json`, so direct visits to these routes work:
@@ -126,4 +137,5 @@ pnpm build
 - Fixed frontend UI copy is managed by i18n.
 - Backend UI is Chinese only.
 - Wolt menu prices in `supabase/seed.sql` come from a public delivery platform and may differ from dine-in prices.
+- Some seed image URLs come from public delivery platform pages as temporary references; confirm authorization or replace them with restaurant-owned photos before formal commercial use.
 - First-stage MVP intentionally does not include online payment, membership, inventory, printer integration, delivery fulfillment, or complex coupons.

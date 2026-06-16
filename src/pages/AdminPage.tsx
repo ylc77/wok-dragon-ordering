@@ -254,9 +254,9 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
         <TextField label="中文营业时间" value={settings.opening_hours_zh} onChange={(v) => setSettings({ ...settings, opening_hours_zh: v })} />
         <TextField label="英文营业时间" value={settings.opening_hours_en} onChange={(v) => setSettings({ ...settings, opening_hours_en: v })} />
         <TextField label="希腊语营业时间" value={settings.opening_hours_el} onChange={(v) => setSettings({ ...settings, opening_hours_el: v })} />
-        <TextField label="Wolt 链接" value={settings.wolt_url} onChange={(v) => setSettings({ ...settings, wolt_url: v })} />
-        <TextField label="efood 链接" value={settings.efood_url} onChange={(v) => setSettings({ ...settings, efood_url: v })} />
-        <TextField label="Box 链接" value={settings.box_url} onChange={(v) => setSettings({ ...settings, box_url: v })} />
+        <TextField label="Wolt 外卖链接" value={settings.wolt_url} onChange={(v) => setSettings({ ...settings, wolt_url: v })} />
+        <TextField label="efood 外卖链接" value={settings.efood_url} onChange={(v) => setSettings({ ...settings, efood_url: v })} />
+        <TextField label="Box 外卖链接" value={settings.box_url} onChange={(v) => setSettings({ ...settings, box_url: v })} />
       </div>
       <button className="primary-button" type="button" onClick={save}>
         <Save size={16} />

@@ -91,7 +91,7 @@ export function MenuCard({
 
   return (
     <article className="menu-card">
-      {item.image_url ? <img src={item.image_url} alt="" loading="lazy" /> : <div className="menu-card-fallback" />}
+      <DishImage item={item} alt={name} />
       <div>
         <div className="menu-card-title">
           <h3>{name}</h3>
@@ -102,4 +102,14 @@ export function MenuCard({
       </div>
     </article>
   );
+}
+
+function DishImage({ item, alt }: { item: MenuItem; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!item.image_url || failed) {
+    return <div className="menu-card-fallback" aria-hidden="true" />;
+  }
+
+  return <img src={item.image_url} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
 }

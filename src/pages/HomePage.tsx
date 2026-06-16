@@ -42,6 +42,11 @@ export function HomePage() {
         el: settings.opening_hours_el,
       })
     : '12:00-23:00';
+  const deliveryLinks = [
+    { label: t('platforms.wolt'), url: settings?.wolt_url },
+    { label: t('platforms.efood'), url: settings?.efood_url },
+    { label: t('platforms.box'), url: settings?.box_url },
+  ].filter((link) => Boolean(link.url?.trim()));
 
   return (
     <main>
@@ -100,9 +105,9 @@ export function HomePage() {
         <div className="platforms">
           <span>{t('common.delivery')}</span>
           <div>
-            <PlatformButton label={t('platforms.wolt')} url={settings?.wolt_url} />
-            <PlatformButton label={t('platforms.efood')} url={settings?.efood_url} />
-            <PlatformButton label={t('platforms.box')} url={settings?.box_url} />
+            {deliveryLinks.map((link) => (
+              <PlatformButton label={link.label} url={link.url} key={link.label} />
+            ))}
           </div>
         </div>
       </section>
@@ -111,16 +116,8 @@ export function HomePage() {
 }
 
 function PlatformButton({ label, url }: { label: string; url?: string | null }) {
-  if (!url) {
-    return (
-      <button className="outline-button" type="button" disabled>
-        {label}
-      </button>
-    );
-  }
-
   return (
-    <a className="outline-button" href={url} target="_blank" rel="noreferrer">
+    <a className="outline-button" href={url ?? '#'} target="_blank" rel="noopener noreferrer">
       {label}
       <ExternalLink size={14} />
     </a>

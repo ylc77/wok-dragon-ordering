@@ -38,9 +38,9 @@ insert into public.restaurant_settings (
   '12:00-23:00',
   '12:00-23:00',
   '12:00-23:00',
-  null,
-  null,
-  null
+  'https://wolt.com/en/grc/athens/restaurant/wok-dragon-express',
+  'https://www.e-food.gr/delivery/athina/wok-dragon-express',
+  'https://box.gr/delivery/syntagma/wok-dragon-express-syntagma'
 );
 
 -- Demo dine-in tables. Regenerate QR tokens in the admin panel before production.
