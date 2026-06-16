@@ -1,0 +1,116 @@
+export type Language = 'el' | 'en';
+
+export type RestaurantSettings = {
+  id: string;
+  name_zh: string | null;
+  name_en: string | null;
+  name_el: string | null;
+  phone: string | null;
+  address_zh: string | null;
+  address_en: string | null;
+  address_el: string | null;
+  map_url: string | null;
+  opening_hours_zh: string | null;
+  opening_hours_en: string | null;
+  opening_hours_el: string | null;
+  wolt_url: string | null;
+  efood_url: string | null;
+  box_url: string | null;
+};
+
+export type MenuCategory = {
+  id: string;
+  name_zh: string;
+  name_en: string | null;
+  name_el: string | null;
+  sort_order: number;
+  is_active: boolean;
+};
+
+export type MenuItem = {
+  id: string;
+  category_id: string | null;
+  name_zh: string;
+  name_en: string | null;
+  name_el: string | null;
+  description_zh: string | null;
+  description_en: string | null;
+  description_el: string | null;
+  price: number;
+  image_url: string | null;
+  is_available: boolean;
+  sort_order: number;
+};
+
+export type MenuGroup = MenuCategory & {
+  items: MenuItem[];
+};
+
+export type TableJoinResult = {
+  session_id: string;
+  table_id: string;
+  table_number: number;
+};
+
+export type RestaurantTable = {
+  id: string;
+  table_number: number;
+  label: string | null;
+  qr_token: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type TableSession = {
+  id: string;
+  table_id: string;
+  status: 'active' | 'closed';
+  opened_at: string;
+  closed_at: string | null;
+  cart_version: number;
+  cart_updated_at: string;
+};
+
+export type CartItem = {
+  id: string;
+  session_id: string;
+  menu_item_id: string;
+  added_by: string | null;
+  quantity: number;
+  note: string | null;
+  unit_price: number;
+  created_at: string;
+  updated_at: string;
+  menu_items?: MenuItem | null;
+};
+
+export type OrderStatus = 'pending' | 'preparing' | 'served' | 'paid' | 'cancelled';
+
+export type OrderItem = {
+  id: string;
+  order_id: string;
+  menu_item_id: string | null;
+  item_name_zh: string;
+  item_name_en: string | null;
+  item_name_el: string | null;
+  quantity: number;
+  note: string | null;
+  unit_price: number;
+  line_total: number;
+};
+
+export type Order = {
+  id: string;
+  order_number: number;
+  session_id: string;
+  table_id: string;
+  submitted_by: string | null;
+  client_request_id: string;
+  status: OrderStatus;
+  total_price: number;
+  created_at: string;
+  updated_at: string;
+  restaurant_tables?: Pick<RestaurantTable, 'table_number' | 'label'> | null;
+  order_items?: OrderItem[];
+};
