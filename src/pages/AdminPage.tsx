@@ -1,8 +1,8 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Ban, CheckCircle2, ChefHat, Clock3, ClipboardList, LogOut, Plus, RefreshCw, RotateCcw, Save, WalletCards } from 'lucide-react';
+import { Ban, CheckCircle2, ChefHat, Clock3, ClipboardList, Download, LogOut, Plus, RefreshCw, RotateCcw, Save, WalletCards } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
@@ -66,6 +66,8 @@ const emptyItem: Partial<MenuItem> = {
   is_available: true,
   sort_order: 0,
 };
+
+const publicSiteUrl = 'https://wok-dragon-ordering.vercel.app';
 
 const statusLabels: Record<OrderStatus, string> = {
   pending: '待处理',
@@ -557,7 +559,7 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
 
   async function addTable() {
     try {
-      await createRestaurantTable(newNumber, newLabel);
+      await createRestaurantTable(newNumber, newLabel || `Table ${newNumber}`);
       onMessage('桌台已创建');
       setNewNumber(newNumber + 1);
       setNewLabel('');
@@ -579,7 +581,7 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
 
   async function regenerate(tableId: string) {
     const confirmed = window.confirm(
-      '重生成后，旧二维码将作废，已打印的二维码需要重新更换。确定继续吗？',
+      '重生成后，旧二维码将立即作废，已打印贴在桌上的二维码需要重新打印和更换。确定继续吗？',
     );
     if (!confirmed) return;
 
@@ -659,15 +661,60 @@ function TableCard({
   onClose: (sessionId: string) => void;
 }) {
   const [value, setValue] = useState<RestaurantTable>(table);
-  const qrUrl = `${window.location.origin}/table/${table.qr_token}`;
+  const qrRef = useRef<HTMLDivElement | null>(null);
+  const tableLabel = table.label || `Table ${table.table_number}`;
+  const qrUrl = `${publicSiteUrl}/table/${table.qr_token}`;
 
   useEffect(() => {
     setValue(table);
   }, [table]);
 
+  async function downloadQrImage() {
+    const svg = qrRef.current?.querySelector('svg');
+    if (!svg) return;
+
+    const serializer = new XMLSerializer();
+    const svgText = serializer.serializeToString(svg);
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    const image = new Image();
+
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      const width = 900;
+      const height = 1080;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = '#171717';
+      ctx.textAlign = 'center';
+      ctx.font = '700 72px Arial, sans-serif';
+      ctx.fillText(tableLabel, width / 2, 120);
+      ctx.font = '400 28px Arial, sans-serif';
+      ctx.fillText('Wok Dragon Express', width / 2, 170);
+      ctx.drawImage(image, 150, 230, 600, 600);
+      ctx.fillStyle = '#555555';
+      ctx.font = '400 24px Arial, sans-serif';
+      wrapCanvasText(ctx, qrUrl, width / 2, 900, 760, 32);
+
+      const link = document.createElement('a');
+      link.download = `wok-dragon-${tableLabel.toLowerCase().replace(/\s+/g, '-')}-qr.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      URL.revokeObjectURL(svgUrl);
+    };
+
+    image.src = svgUrl;
+  }
+
   return (
     <article className="table-card">
-      <div className="qr-box">
+      <div className="qr-box" ref={qrRef}>
+        <strong>{tableLabel}</strong>
         <QRCodeSVG value={qrUrl} size={128} />
       </div>
       <div className="table-card-body">
@@ -695,6 +742,10 @@ function TableCard({
           </button>
         </div>
         <div className="table-maintenance-actions">
+          <button className="maintenance-button" type="button" onClick={downloadQrImage}>
+            <Download size={13} />
+            下载二维码
+          </button>
           <button className="maintenance-button" type="button" onClick={() => onSave(value)}>
             保存桌台资料
           </button>
@@ -709,6 +760,32 @@ function TableCard({
       </div>
     </article>
   );
+}
+
+function wrapCanvasText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+) {
+  const words = text.split('');
+  let line = '';
+  let currentY = y;
+
+  for (const word of words) {
+    const testLine = line + word;
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      ctx.fillText(line, x, currentY);
+      line = word;
+      currentY += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+
+  if (line) ctx.fillText(line, x, currentY);
 }
 
 function ImportGuide() {
