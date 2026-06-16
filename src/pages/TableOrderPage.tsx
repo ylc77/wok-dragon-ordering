@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, requireAnonymousSession } from '../lib/menuApi';
@@ -76,6 +76,10 @@ export function TableOrderPage() {
 
   const total = useMemo(
     () => cart.reduce((sum, line) => sum + Number(line.unit_price) * line.quantity, 0),
+    [cart],
+  );
+  const totalQuantity = useMemo(
+    () => cart.reduce((sum, line) => sum + line.quantity, 0),
     [cart],
   );
 
@@ -187,7 +191,7 @@ export function TableOrderPage() {
         )}
       </section>
 
-      <aside className="cart-panel">
+      <aside className="cart-panel" id="shared-cart">
         <h2>{t('order.sharedCart')}</h2>
         <p className="muted">{t('order.liveCart')}</p>
         {cart.length === 0 ? <p className="muted">{t('order.cartEmpty')}</p> : null}
@@ -234,6 +238,16 @@ export function TableOrderPage() {
           {t('order.submit')}
         </button>
       </aside>
+
+      <a className="mobile-cart-bar" href="#shared-cart">
+        <span>
+          <ShoppingBag size={18} />
+          {t('order.sharedCart')}
+        </span>
+        <strong>
+          {totalQuantity} · {formatPrice(total)}
+        </strong>
+      </a>
     </main>
   );
 }

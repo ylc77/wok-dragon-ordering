@@ -383,15 +383,41 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
 function OrderManager({ onMessage }: { onMessage: (value: string | null) => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [tableFilter, setTableFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<'today' | 'all'>('today');
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const soundEnabledRef = useRef(false);
 
   useEffect(() => {
-    load();
-    return subscribeToAdminOrders(load);
+    load({ initial: true });
+    return subscribeToAdminOrders(() => load());
   }, []);
 
-  async function load() {
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  async function load(options?: { initial?: boolean }) {
     try {
-      setOrders(await fetchAdminOrders());
+      const nextOrders = await fetchAdminOrders();
+      const previousIds = knownOrderIdsRef.current;
+      const insertedPendingOrders = options?.initial
+        ? []
+        : nextOrders.filter((order) => !previousIds.has(order.id) && order.status === 'pending');
+
+      knownOrderIdsRef.current = new Set(nextOrders.map((order) => order.id));
+      setOrders(nextOrders);
+
+      if (insertedPendingOrders.length > 0) {
+        setNewOrderIds((current) => {
+          const next = new Set(current);
+          insertedPendingOrders.forEach((order) => next.add(order.id));
+          return next;
+        });
+        if (soundEnabledRef.current) playOrderNotification();
+      }
     } catch (err) {
       onMessage(err instanceof Error ? err.message : String(err));
     }
@@ -407,6 +433,16 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
     }
   }
 
+  const scopedOrders = useMemo(
+    () =>
+      orders.filter((order) => {
+        const tableMatches = tableFilter === 'all' || order.restaurant_tables?.table_number === Number(tableFilter);
+        const dateMatches = dateFilter === 'all' || isToday(order.created_at);
+        return tableMatches && dateMatches;
+      }),
+    [orders, tableFilter, dateFilter],
+  );
+
   const statusCounts = useMemo(() => {
     const counts: Record<OrderStatus, number> = {
       pending: 0,
@@ -415,24 +451,64 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
       paid: 0,
       cancelled: 0,
     };
-    for (const order of orders) {
+    for (const order of scopedOrders) {
       counts[order.status] += 1;
     }
     return counts;
-  }, [orders]);
+  }, [scopedOrders]);
 
   const filteredOrders = useMemo(
-    () => orders.filter((order) => statusFilter === 'all' || order.status === statusFilter),
-    [orders, statusFilter],
+    () => scopedOrders.filter((order) => statusFilter === 'all' || order.status === statusFilter),
+    [scopedOrders, statusFilter],
   );
 
+  const tableOptions = useMemo(() => {
+    const values = new Set<number>();
+    orders.forEach((order) => {
+      if (order.restaurant_tables?.table_number) values.add(order.restaurant_tables.table_number);
+    });
+    return Array.from(values).sort((a, b) => a - b);
+  }, [orders]);
+
   const activeOrders = statusCounts.pending + statusCounts.preparing + statusCounts.served;
-  const paidTotal = orders
+  const paidTotal = scopedOrders
     .filter((order) => order.status === 'paid')
     .reduce((sum, order) => sum + Number(order.total_price), 0);
 
   return (
     <AdminSection title="订单管理" onRefresh={load}>
+      <div className="order-tools-row">
+        <button
+          className={soundEnabled ? 'sound-toggle enabled' : 'sound-toggle'}
+          type="button"
+          onClick={() => {
+            setSoundEnabled(true);
+            playOrderNotification();
+            onMessage('声音提醒已启用');
+          }}
+        >
+          {soundEnabled ? '声音提醒已启用' : '启用声音提醒'}
+        </button>
+        <label>
+          日期
+          <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value as 'today' | 'all')}>
+            <option value="today">今日订单</option>
+            <option value="all">全部日期</option>
+          </select>
+        </label>
+        <label>
+          桌号筛选
+          <select value={tableFilter} onChange={(event) => setTableFilter(event.target.value)}>
+            <option value="all">全部桌号</option>
+            {tableOptions.map((tableNumber) => (
+              <option value={tableNumber} key={tableNumber}>
+                {tableNumber} 号桌
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <div className="order-summary-grid">
         <div className="summary-tile urgent">
           <span>待处理</span>
@@ -479,13 +555,14 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
           </div>
         ) : null}
         {filteredOrders.map((order) => (
-          <article className={`admin-order status-${order.status}`} key={order.id}>
+          <article className={`admin-order status-${order.status} ${newOrderIds.has(order.id) ? 'is-new' : ''}`} key={order.id}>
             <div className="admin-order-head">
               <div>
                 <span className="order-status-badge">
                   {statusIcons[order.status]}
                   {statusLabels[order.status]}
                 </span>
+                {newOrderIds.has(order.id) ? <span className="new-order-badge">新订单</span> : null}
                 <h3>
                   {order.restaurant_tables?.table_number
                     ? `${order.restaurant_tables.table_number} 号桌`
@@ -528,6 +605,42 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
       </div>
     </AdminSection>
   );
+}
+
+function isToday(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+function playOrderNotification() {
+  const AudioContextClass =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextClass) return;
+  const audioContext = new AudioContextClass();
+  const gain = audioContext.createGain();
+  gain.gain.setValueAtTime(0.001, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.25, audioContext.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.32);
+  gain.connect(audioContext.destination);
+
+  const playTone = (frequency: number, start: number, duration: number) => {
+    const oscillator = audioContext.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime + start);
+    oscillator.connect(gain);
+    oscillator.start(audioContext.currentTime + start);
+    oscillator.stop(audioContext.currentTime + start + duration);
+  };
+
+  playTone(880, 0, 0.12);
+  playTone(1175, 0.16, 0.16);
+  window.setTimeout(() => audioContext.close(), 650);
 }
 
 function TableManager({ onMessage }: { onMessage: (value: string | null) => void }) {
