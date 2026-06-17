@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Ban, BarChart3, CheckCircle2, ChefHat, Clock3, ClipboardList, Download, LogOut, Plus, RefreshCw, RotateCcw, Save, Search, Upload, WalletCards } from 'lucide-react';
+import { Ban, BarChart3, CheckCircle2, ChefHat, Clock3, ClipboardList, Download, LogOut, Plus, RefreshCw, RotateCcw, Save, Search, Trash2, Upload, WalletCards } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
@@ -135,17 +135,17 @@ export function AdminPage() {
         <AdminNavButton active={tab === 'orders'} onClick={() => setTab('orders')}>
           订单管理
         </AdminNavButton>
+        <AdminNavButton active={tab === 'items'} onClick={() => setTab('items')}>
+          菜品管理
+        </AdminNavButton>
+        <AdminNavButton active={tab === 'categories'} onClick={() => setTab('categories')}>
+          菜品分类
+        </AdminNavButton>
         <AdminNavButton active={tab === 'tables'} onClick={() => setTab('tables')}>
           桌台二维码
         </AdminNavButton>
         <AdminNavButton active={tab === 'settings'} onClick={() => setTab('settings')}>
-          餐馆信息
-        </AdminNavButton>
-        <AdminNavButton active={tab === 'categories'} onClick={() => setTab('categories')}>
-          菜单分类
-        </AdminNavButton>
-        <AdminNavButton active={tab === 'items'} onClick={() => setTab('items')}>
-          菜品管理
+          餐馆信息设置
         </AdminNavButton>
         <AdminNavButton active={tab === 'import'} onClick={() => setTab('import')}>
           CSV 导入
@@ -382,7 +382,11 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
 
   async function load() {
     if (!supabase) return;
-    const { data, error } = await supabase.from('menu_categories').select('*').order('sort_order');
+    const { data, error } = await supabase
+      .from('menu_categories')
+      .select('*')
+      .is('deleted_at', null)
+      .order('sort_order');
     if (error) onMessage(error.message);
     setCategories((data ?? []) as MenuCategory[]);
   }
@@ -406,11 +410,37 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
     }
   }
 
+  async function deleteCategory(category: MenuCategory) {
+    if (!supabase) return;
+    if (!window.confirm(`确定删除分类“${category.name_zh || category.name_en || category.name_el}”吗？删除后前台不会再显示。`)) return;
+
+    const { count, error: countError } = await supabase
+      .from('menu_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('category_id', category.id)
+      .is('deleted_at', null);
+    if (countError) {
+      onMessage(countError.message);
+      return;
+    }
+    if ((count ?? 0) > 0) {
+      onMessage(`该分类下还有 ${count} 个菜品，请先移动或删除菜品后再删除分类。`);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('menu_categories')
+      .update({ deleted_at: new Date().toISOString(), is_active: false })
+      .eq('id', category.id);
+    onMessage(error ? error.message : '分类已删除');
+    if (!error) load();
+  }
+
   return (
     <AdminSection title="菜单分类" onRefresh={load}>
       <div className="admin-table">
         {categories.map((category) => (
-          <CategoryRow category={category} onSave={saveCategory} key={category.id} />
+          <CategoryRow category={category} onSave={saveCategory} onDelete={deleteCategory} key={category.id} />
         ))}
       </div>
       <h3>新增分类</h3>
@@ -620,8 +650,8 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   async function load() {
     if (!supabase) return;
     const [catResult, itemResult] = await Promise.all([
-      supabase.from('menu_categories').select('*').order('sort_order'),
-      supabase.from('menu_items').select('*').order('sort_order'),
+      supabase.from('menu_categories').select('*').is('deleted_at', null).order('sort_order'),
+      supabase.from('menu_items').select('*').is('deleted_at', null).order('sort_order'),
     ]);
     if (catResult.error) onMessage(catResult.error.message);
     if (itemResult.error) onMessage(itemResult.error.message);
@@ -671,6 +701,24 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     if (!supabase || selectedIds.size === 0) return;
     const { error } = await supabase.from('menu_items').update({ is_available: isAvailable }).in('id', Array.from(selectedIds));
     onMessage(error ? error.message : `已批量${isAvailable ? '上架' : '下架'} ${selectedIds.size} 个菜品`);
+    if (!error) {
+      setSelectedIds(new Set());
+      load();
+    }
+  }
+
+  async function deleteItems(ids: string[], label: string) {
+    if (!supabase || ids.length === 0) return;
+    const confirmed = window.confirm(
+      `${label}将从前台菜单隐藏，并保留历史订单快照。确定继续吗？`,
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from('menu_items')
+      .update({ deleted_at: new Date().toISOString(), is_available: false })
+      .in('id', ids);
+    onMessage(error ? error.message : `已删除 ${ids.length} 个菜品`);
     if (!error) {
       setSelectedIds(new Set());
       load();
@@ -891,6 +939,10 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>
           批量下架
         </button>
+        <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => deleteItems(Array.from(selectedIds), `批量删除 ${selectedIds.size} 个菜品`)}>
+          <Trash2 size={15} />
+          批量删除
+        </button>
       </div>
 
       <div className="csv-import-panel">
@@ -937,6 +989,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
             onSelect={(checked) => toggleSelect(item.id, checked)}
             onMessage={onMessage}
             onSave={saveItem}
+            onDelete={(target) => deleteItems([target.id], `删除菜品“${target.name_zh || target.name_en || target.name_el}”`)}
             key={item.id}
           />
         ))}
@@ -962,6 +1015,7 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   const [customDate, setCustomDate] = useState(dateToKey(new Date().toISOString()));
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const soundEnabledRef = useRef(false);
 
@@ -1005,6 +1059,41 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
       load();
     } catch (err) {
       onMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function toggleOrderSelection(orderId: string, checked: boolean) {
+    setSelectedOrderIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(orderId);
+      else next.delete(orderId);
+      return next;
+    });
+  }
+
+  function toggleVisibleOrders(checked: boolean) {
+    setSelectedOrderIds((current) => {
+      const next = new Set(current);
+      filteredOrders.forEach((order) => {
+        if (checked) next.add(order.id);
+        else next.delete(order.id);
+      });
+      return next;
+    });
+  }
+
+  async function deleteOrders(ids: string[], label: string) {
+    if (!supabase || ids.length === 0) return;
+    const confirmed = window.confirm(`${label}会从后台订单列表隐藏，订单明细历史快照仍会保留。确定继续吗？`);
+    if (!confirmed) return;
+    const { error } = await supabase
+      .from('orders')
+      .update({ deleted_at: new Date().toISOString(), status: 'cancelled' })
+      .in('id', ids);
+    onMessage(error ? error.message : `已删除 ${ids.length} 张订单`);
+    if (!error) {
+      setSelectedOrderIds(new Set());
+      load();
     }
   }
 
@@ -1131,6 +1220,27 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
         ))}
       </div>
 
+      <div className="bulk-action-bar">
+        <label className="checkbox-label">
+          <input
+            checked={filteredOrders.length > 0 && filteredOrders.every((order) => selectedOrderIds.has(order.id))}
+            type="checkbox"
+            onChange={(event) => toggleVisibleOrders(event.target.checked)}
+          />
+          选择当前筛选订单
+        </label>
+        <strong>已选择 {selectedOrderIds.size} 张订单</strong>
+        <button
+          className="danger-inline"
+          type="button"
+          disabled={selectedOrderIds.size === 0}
+          onClick={() => deleteOrders(Array.from(selectedOrderIds), `批量删除 ${selectedOrderIds.size} 张订单`)}
+        >
+          <Trash2 size={15} />
+          批量删除订单
+        </button>
+      </div>
+
       <div className="order-admin-list">
         {filteredOrders.length === 0 ? (
           <div className="admin-empty-state">
@@ -1143,6 +1253,14 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
           <article className={`admin-order status-${order.status} ${newOrderIds.has(order.id) ? 'is-new' : ''}`} key={order.id}>
             <div className="admin-order-head">
               <div>
+                <label className="checkbox-label order-select">
+                  <input
+                    checked={selectedOrderIds.has(order.id)}
+                    type="checkbox"
+                    onChange={(event) => toggleOrderSelection(order.id, event.target.checked)}
+                  />
+                  选择订单
+                </label>
                 <span className="order-status-badge">
                   {statusIcons[order.status]}
                   {statusLabels[order.status]}
@@ -1184,6 +1302,10 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
                   {statusLabels[status]}
                 </button>
               ))}
+              <button className="danger-inline" type="button" onClick={() => deleteOrders([order.id], `删除订单 #${order.order_number}`)}>
+                <Trash2 size={15} />
+                删除订单
+              </button>
             </footer>
           </article>
         ))}
@@ -1552,17 +1674,25 @@ function TextField({
 function CategoryRow({
   category,
   onSave,
+  onDelete,
 }: {
   category: MenuCategory;
   onSave: (category: Partial<MenuCategory>) => void;
+  onDelete: (category: MenuCategory) => void;
 }) {
   const [value, setValue] = useState<Partial<MenuCategory>>(category);
   return (
     <div className="admin-row">
       <CategoryForm value={value} onChange={setValue} />
-      <button className="small-primary" type="button" onClick={() => onSave(value)}>
-        保存
-      </button>
+      <div className="admin-row-actions">
+        <button className="small-primary" type="button" onClick={() => onSave(value)}>
+          保存
+        </button>
+        <button className="danger-inline" type="button" onClick={() => onDelete(category)}>
+          <Trash2 size={15} />
+          删除分类
+        </button>
+      </div>
     </div>
   );
 }
@@ -1599,6 +1729,7 @@ function ItemRow({
   onSelect,
   onMessage,
   onSave,
+  onDelete,
 }: {
   item: MenuItem;
   categories: MenuCategory[];
@@ -1606,6 +1737,7 @@ function ItemRow({
   onSelect: (checked: boolean) => void;
   onMessage: (value: string | null) => void;
   onSave: (item: Partial<MenuItem>) => void;
+  onDelete: (item: MenuItem) => void;
 }) {
   const [value, setValue] = useState<Partial<MenuItem>>(item);
   const [translating, setTranslating] = useState(false);
@@ -1634,6 +1766,10 @@ function ItemRow({
       </button>
       <button className="small-primary" type="button" onClick={() => onSave(value)}>
         保存
+      </button>
+      <button className="danger-inline" type="button" onClick={() => onDelete(item)}>
+        <Trash2 size={15} />
+        删除
       </button>
     </div>
   );

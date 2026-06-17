@@ -4,20 +4,24 @@ import { ExternalLink, MapPin, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, getRestaurantSettings } from '../lib/menuApi';
-import { pickLocalized } from '../lib/localized';
-import type { Language, MenuItem, RestaurantSettings } from '../lib/types';
+import { getLocalizedField, pickLocalized } from '../lib/localized';
+import type { Language, MenuGroup, MenuItem, RestaurantSettings } from '../lib/types';
 
 export function HomePage() {
   const { t, i18n } = useTranslation();
   const lang = (i18n.language === 'en' ? 'en' : 'el') as Language;
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+  const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getRestaurantSettings().then(setSettings).catch((err) => setError(err.message));
     getPublicMenu()
-      .then((groups) => setFeaturedItems(groups.flatMap((group) => group.items).slice(0, 6)))
+      .then((menuGroups) => {
+        setGroups(menuGroups.filter((group) => group.items.length > 0).slice(0, 8));
+        setFeaturedItems(menuGroups.flatMap((group) => group.items).slice(0, 4));
+      })
       .catch((err) => setError(err.message));
   }, []);
 
@@ -76,10 +80,27 @@ export function HomePage() {
         </div>
       </section>
 
+      <section className="home-intro">
+        <div>
+          <h2>{t('home.introTitle')}</h2>
+          <p>{t('home.introText')}</p>
+        </div>
+        <div className="home-info-cards">
+          <div>
+            <span>{t('common.address')}</span>
+            <strong>{address}</strong>
+          </div>
+          <div>
+            <span>{t('common.openingHours')}</span>
+            <strong>{hours}</strong>
+          </div>
+        </div>
+      </section>
+
       <section className="home-menu-preview">
         <div className="section-title-row">
           <div>
-            <h2>{t('nav.menu')}</h2>
+            <h2>{t('home.featuredTitle')}</h2>
             <p>{t('common.priceNote')}</p>
           </div>
           <Link className="secondary-button" to="/menu">
@@ -89,6 +110,29 @@ export function HomePage() {
         <div className="home-menu-list">
           {featuredItems.map((item) => (
             <MenuCard item={item} lang={lang} key={item.id} />
+          ))}
+        </div>
+      </section>
+
+      <section className="home-category-preview">
+        <div className="section-title-row">
+          <div>
+            <h2>{t('home.categoriesTitle')}</h2>
+            <p>{t('home.orderHint')}</p>
+          </div>
+        </div>
+        <div className="home-category-grid">
+          {groups.map((group) => (
+            <Link className="category-entry" to={`/menu#category-${group.id}`} key={group.id}>
+              <strong>
+                {getLocalizedField(lang, {
+                  zh: group.name_zh,
+                  en: group.name_en,
+                  el: group.name_el,
+                })}
+              </strong>
+              <span>{group.items.length}</span>
+            </Link>
           ))}
         </div>
       </section>
@@ -105,9 +149,11 @@ export function HomePage() {
         <div className="platforms">
           <span>{t('common.delivery')}</span>
           <div>
-            {deliveryLinks.map((link) => (
-              <PlatformButton label={link.label} url={link.url} key={link.label} />
-            ))}
+            {deliveryLinks.length ? (
+              deliveryLinks.map((link) => <PlatformButton label={link.label} url={link.url} key={link.label} />)
+            ) : (
+              <span className="delivery-placeholder">{t('home.deliveryUnavailable')}</span>
+            )}
           </div>
         </div>
       </section>

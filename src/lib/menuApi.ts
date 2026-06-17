@@ -22,11 +22,13 @@ export async function getPublicMenu(): Promise<MenuGroup[]> {
       supabase
         .from('menu_categories')
         .select('*')
+        .is('deleted_at', null)
         .eq('is_active', true)
         .order('sort_order', { ascending: true }),
       supabase
         .from('menu_items')
         .select('*')
+        .is('deleted_at', null)
         .eq('is_available', true)
         .order('sort_order', { ascending: true }),
     ]);

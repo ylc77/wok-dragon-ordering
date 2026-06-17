@@ -40,6 +40,7 @@ create table if not exists public.menu_categories (
   name_el text,
   sort_order int not null default 0,
   is_active boolean not null default true,
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -57,6 +58,7 @@ create table if not exists public.menu_items (
   image_url text,
   is_available boolean not null default true,
   sort_order int not null default 0,
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -64,8 +66,14 @@ create table if not exists public.menu_items (
 create index if not exists idx_menu_categories_active_sort
   on public.menu_categories (is_active, sort_order);
 
+create index if not exists idx_menu_categories_deleted_sort
+  on public.menu_categories (deleted_at, sort_order);
+
 create index if not exists idx_menu_items_category_available_sort
   on public.menu_items (category_id, is_available, sort_order);
+
+create index if not exists idx_menu_items_deleted_category_sort
+  on public.menu_items (deleted_at, category_id, sort_order);
 
 create table if not exists public.restaurant_tables (
   id uuid primary key default gen_random_uuid(),
@@ -116,6 +124,7 @@ create table if not exists public.orders (
   client_request_id uuid not null unique,
   status text not null default 'pending' check (status in ('pending', 'preparing', 'served', 'paid', 'cancelled')),
   total_price numeric(10, 2) not null check (total_price >= 0),
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -154,6 +163,9 @@ create index if not exists idx_orders_session
 
 create index if not exists idx_orders_table_created
   on public.orders (table_id, created_at desc);
+
+create index if not exists idx_orders_deleted_created
+  on public.orders (deleted_at, created_at desc);
 
 create index if not exists idx_order_items_order
   on public.order_items (order_id);
@@ -276,7 +288,7 @@ on public.menu_categories
 for select
 to anon, authenticated
 using (
-  is_active = true
+  (deleted_at is null and is_active = true)
   or (select private.is_staff())
 );
 
@@ -298,7 +310,7 @@ on public.menu_items
 for select
 to anon, authenticated
 using (
-  is_available = true
+  (deleted_at is null and is_available = true)
   or (select private.is_staff())
 );
 
@@ -429,11 +441,14 @@ for select
 to authenticated
 using (
   (select private.is_staff())
-  or exists (
-    select 1
-    from public.table_session_participants p
-    where p.session_id = orders.session_id
-      and p.user_id = (select auth.uid())
+  or (
+    deleted_at is null
+    and exists (
+      select 1
+      from public.table_session_participants p
+      where p.session_id = orders.session_id
+        and p.user_id = (select auth.uid())
+    )
   )
 );
 
@@ -457,6 +472,7 @@ using (
     from public.orders o
     join public.table_session_participants p on p.session_id = o.session_id
     where o.id = order_items.order_id
+      and o.deleted_at is null
       and p.user_id = (select auth.uid())
   )
 );

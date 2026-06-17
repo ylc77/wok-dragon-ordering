@@ -194,7 +194,10 @@ export function TableOrderPage() {
       </section>
 
       <aside className="cart-panel" id="shared-cart">
-        <h2>{t('order.sharedCart')}</h2>
+        <div className="cart-panel-head">
+          <h2>{t('order.sharedCart')}</h2>
+          <a href="#" aria-label="Close cart">×</a>
+        </div>
         <p className="muted">{t('order.liveCart')}</p>
         {cart.length === 0 ? <p className="muted">{t('order.cartEmpty')}</p> : null}
         {cart.map((line) => {

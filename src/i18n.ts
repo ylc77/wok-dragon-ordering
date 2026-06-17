@@ -26,6 +26,11 @@ const resources = {
         subtitle: 'Κινέζικη κουζίνα στο κέντρο της Αθήνας.',
         menuCta: 'Δείτε το μενού',
         orderHint: 'Σαρώστε το QR στο τραπέζι για παραγγελία.',
+        introTitle: 'Γρήγορο wok, ζεστή φιλοξενία',
+        introText: 'Στο Μοναστηράκι σερβίρουμε αγαπημένες ασιατικές γεύσεις για φαγητό στο κατάστημα, take away και delivery.',
+        featuredTitle: 'Προτεινόμενα πιάτα',
+        categoriesTitle: 'Κατηγορίες μενού',
+        deliveryUnavailable: 'Δεν έχει ρυθμιστεί ακόμα',
       },
       order: {
         table: 'Τραπέζι',
@@ -70,6 +75,11 @@ const resources = {
         subtitle: 'Chinese food in the heart of Athens.',
         menuCta: 'View menu',
         orderHint: 'Scan the table QR code to order.',
+        introTitle: 'Fast wok cooking, warm hospitality',
+        introText: 'In Monastiraki, we serve familiar Asian flavors for dine-in, take away, and delivery.',
+        featuredTitle: 'Recommended dishes',
+        categoriesTitle: 'Menu categories',
+        deliveryUnavailable: 'Not configured yet',
       },
       order: {
         table: 'Table',

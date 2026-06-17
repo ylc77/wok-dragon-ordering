@@ -97,6 +97,7 @@ export async function fetchAdminOrders(): Promise<Order[]> {
   const { data, error } = await client
     .from('orders')
     .select('*, restaurant_tables(table_number,label), order_items(*)')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(500);
   if (error) throw error;

@@ -25,6 +25,7 @@ export type MenuCategory = {
   name_el: string | null;
   sort_order: number;
   is_active: boolean;
+  deleted_at?: string | null;
 };
 
 export type MenuItem = {
@@ -40,6 +41,7 @@ export type MenuItem = {
   image_url: string | null;
   is_available: boolean;
   sort_order: number;
+  deleted_at?: string | null;
 };
 
 export type MenuGroup = MenuCategory & {
@@ -111,6 +113,7 @@ export type Order = {
   total_price: number;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
   restaurant_tables?: Pick<RestaurantTable, 'table_number' | 'label'> | null;
   order_items?: OrderItem[];
 };
