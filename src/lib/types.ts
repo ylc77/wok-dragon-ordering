@@ -114,6 +114,22 @@ export type Order = {
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
+  kitchen_printed_at?: string | null;
   restaurant_tables?: Pick<RestaurantTable, 'table_number' | 'label'> | null;
   order_items?: OrderItem[];
+};
+
+export type BillPaymentMethod = 'card' | 'cash';
+
+export type BillRequest = {
+  id: string;
+  session_id: string;
+  table_id: string;
+  table_number: number;
+  requested_by: string | null;
+  payment_method: BillPaymentMethod;
+  status: 'pending' | 'handled';
+  requested_at: string;
+  handled_at: string | null;
+  restaurant_tables?: Pick<RestaurantTable, 'table_number' | 'label'> | null;
 };

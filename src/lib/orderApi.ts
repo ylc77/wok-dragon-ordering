@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { CartItem, Order, OrderStatus, RestaurantTable, TableJoinResult, TableSession } from './types';
+import type { BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RestaurantTable, TableJoinResult, TableSession } from './types';
 
 function requireClient() {
   if (!supabase) throw new Error('Supabase is not configured.');
@@ -75,6 +75,16 @@ export async function submitOrder(sessionId: string, clientRequestId: string) {
   return row as { order_id: string; order_number: number };
 }
 
+export async function requestBill(sessionId: string, paymentMethod: BillPaymentMethod) {
+  const client = requireClient();
+  const { data, error } = await client.rpc('request_bill', {
+    p_session_id: sessionId,
+    p_payment_method: paymentMethod,
+  });
+  if (error) throw error;
+  return (Array.isArray(data) ? data[0] : data) as { request_id: string; request_status: 'pending' };
+}
+
 export function subscribeToTableCart(sessionId: string, onChange: () => void) {
   const client = requireClient();
   const channel = client
@@ -128,11 +138,38 @@ export function subscribeToAdminOrders(onChange: () => void) {
     .channel('admin-orders')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_requests' }, onChange)
     .subscribe();
 
   return () => {
     client.removeChannel(channel);
   };
+}
+
+export async function fetchPendingBillRequests(): Promise<BillRequest[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('bill_requests')
+    .select('*')
+    .eq('status', 'pending')
+    .order('requested_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as BillRequest[];
+}
+
+export async function handleBillRequest(requestId: string) {
+  const client = requireClient();
+  const { error } = await client.rpc('handle_bill_request', { p_request_id: requestId });
+  if (error) throw error;
+}
+
+export async function markOrderKitchenPrinted(orderId: string) {
+  const client = requireClient();
+  const { data, error } = await client.rpc('mark_order_kitchen_printed', { p_order_id: orderId });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('打印状态未返回。');
+  return row as { is_reprint: boolean; printed_at: string };
 }
 
 export async function fetchRestaurantTables(): Promise<RestaurantTable[]> {

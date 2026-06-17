@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Ban, BarChart3, CheckCircle2, ChefHat, Clock3, ClipboardList, Download, LogOut, Plus, RefreshCw, RotateCcw, Save, Search, Trash2, Upload, WalletCards } from 'lucide-react';
+import { Ban, Banknote, BarChart3, CheckCircle2, ChefHat, Clock3, ClipboardList, CreditCard, Download, LogOut, Plus, Printer, RefreshCw, RotateCcw, Save, Search, Trash2, Upload, WalletCards } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
@@ -10,13 +10,17 @@ import {
   createRestaurantTable,
   fetchActiveSessions,
   fetchAdminOrders,
+  fetchPendingBillRequests,
   fetchRestaurantTables,
+  handleBillRequest,
+  markOrderKitchenPrinted,
   regenerateTableQrToken,
   saveRestaurantTable,
   subscribeToAdminOrders,
   updateOrderStatus,
 } from '../lib/orderApi';
 import type {
+  BillRequest,
   MenuCategory,
   MenuItem,
   Order,
@@ -1009,6 +1013,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
 
 function OrderManager({ onMessage }: { onMessage: (value: string | null) => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [tableFilter, setTableFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today');
@@ -1017,6 +1022,7 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const knownBillRequestIdsRef = useRef<Set<string>>(new Set());
   const soundEnabledRef = useRef(false);
 
   useEffect(() => {
@@ -1030,16 +1036,23 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
 
   async function load(options?: { initial?: boolean }) {
     try {
-      const nextOrders = await fetchAdminOrders();
+      const [nextOrders, nextBillRequests] = await Promise.all([
+        fetchAdminOrders(),
+        fetchPendingBillRequests(),
+      ]);
       const previousIds = knownOrderIdsRef.current;
+      const previousBillIds = knownBillRequestIdsRef.current;
       const insertedPendingOrders = options?.initial
         ? []
         : nextOrders.filter((order) => !previousIds.has(order.id) && order.status === 'pending');
 
       knownOrderIdsRef.current = new Set(nextOrders.map((order) => order.id));
+      knownBillRequestIdsRef.current = new Set(nextBillRequests.map((request) => request.id));
       setOrders(nextOrders);
+      setBillRequests(nextBillRequests);
 
-      if (insertedPendingOrders.length > 0) {
+      const hasNewBillRequest = !options?.initial && nextBillRequests.some((request) => !previousBillIds.has(request.id));
+      if (insertedPendingOrders.length > 0 || hasNewBillRequest) {
         setNewOrderIds((current) => {
           const next = new Set(current);
           insertedPendingOrders.forEach((order) => next.add(order.id));
@@ -1059,6 +1072,39 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
       load();
     } catch (err) {
       onMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function markBillHandled(requestId: string) {
+    try {
+      await handleBillRequest(requestId);
+      onMessage('结账请求已标记为处理完成，桌台会话仍保持开启');
+      load();
+    } catch (err) {
+      onMessage(formatUnknownError(err));
+    }
+  }
+
+  async function printKitchenTicket(order: Order) {
+    const printWindow = window.open('', '_blank', 'width=420,height=720');
+    if (!printWindow) {
+      onMessage('浏览器阻止了打印窗口，请允许此网站打开弹窗后重试');
+      return;
+    }
+
+    printWindow.document.write('<p style="font-family:sans-serif;padding:20px">正在准备厨房小票...</p>');
+    try {
+      const result = await markOrderKitchenPrinted(order.id);
+      printWindow.document.open();
+      printWindow.document.write(buildKitchenTicket(order, result.is_reprint, result.printed_at));
+      printWindow.document.close();
+      printWindow.focus();
+      window.setTimeout(() => printWindow.print(), 180);
+      onMessage(result.is_reprint ? `订单 #${order.order_number} 已打开重打小票` : `订单 #${order.order_number} 已打开厨房小票`);
+      load();
+    } catch (err) {
+      printWindow.close();
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -1144,6 +1190,32 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
 
   return (
     <AdminSection title="订单管理" onRefresh={load}>
+      {billRequests.length ? (
+        <section className="bill-request-alerts" aria-label="待处理结账请求">
+          <div className="bill-request-alerts-head">
+            <strong>待处理结账请求</strong>
+            <span>{billRequests.length} 桌</span>
+          </div>
+          <div className="bill-request-list">
+            {billRequests.map((request) => (
+              <article key={request.id}>
+                <div>
+                  {request.payment_method === 'card' ? <CreditCard size={20} /> : <Banknote size={20} />}
+                  <span>
+                    <strong>{request.table_number} 号桌</strong>
+                    <small>{request.payment_method === 'card' ? 'POS 机支付' : '现金支付'} · {new Date(request.requested_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</small>
+                  </span>
+                </div>
+                <button className="primary-button" type="button" onClick={() => markBillHandled(request.id)}>
+                  <CheckCircle2 size={16} />
+                  标记已处理
+                </button>
+              </article>
+            ))}
+          </div>
+          <p>处理结账请求不会清桌；完成收款后仍需单独执行“清桌”。</p>
+        </section>
+      ) : null}
       <div className="order-tools-row">
         <button
           className={soundEnabled ? 'sound-toggle enabled' : 'sound-toggle'}
@@ -1290,6 +1362,10 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
               ))}
             </div>
             <footer className="order-action-row">
+              <button type="button" onClick={() => printKitchenTicket(order)}>
+                <Printer size={15} />
+                {order.kitchen_printed_at ? '重新打印厨房小票' : '打印厨房小票'}
+              </button>
               {(Object.keys(statusLabels) as OrderStatus[]).map((status) => (
                 <button
                   className={order.status === status ? 'selected' : ''}
@@ -1312,6 +1388,63 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
       </div>
     </AdminSection>
   );
+}
+
+function escapeTicketText(value: string | number | null | undefined) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function formatUnknownError(value: unknown) {
+  if (value instanceof Error) return value.message;
+  if (value && typeof value === 'object' && 'message' in value) return String(value.message);
+  return String(value);
+}
+
+function buildKitchenTicket(order: Order, isReprint: boolean, printedAt: string) {
+  const tableNumber = order.restaurant_tables?.table_number ?? '?';
+  const itemRows = (order.order_items ?? [])
+    .map(
+      (item) => `
+        <div class="item">
+          <strong>${escapeTicketText(item.quantity)} × ${escapeTicketText(item.item_name_zh || item.item_name_en || item.item_name_el)}</strong>
+          ${item.note ? `<small>备注：${escapeTicketText(item.note)}</small>` : ''}
+        </div>`,
+    )
+    .join('');
+
+  return `<!doctype html>
+    <html lang="zh-CN">
+      <head>
+        <meta charset="utf-8" />
+        <title>厨房小票 #${escapeTicketText(order.order_number)}</title>
+        <style>
+          @page { size: 80mm auto; margin: 5mm; }
+          body { color: #000; font-family: Arial, "Microsoft YaHei", sans-serif; margin: 0; width: 70mm; }
+          h1 { border-bottom: 2px dashed #000; font-size: 24px; margin: 0 0 8px; padding-bottom: 8px; text-align: center; }
+          .reprint { border: 3px solid #000; font-size: 20px; font-weight: 900; margin-bottom: 8px; padding: 5px; text-align: center; }
+          .meta { border-bottom: 1px dashed #000; display: grid; gap: 4px; padding-bottom: 8px; }
+          .item { border-bottom: 1px dashed #777; display: grid; font-size: 18px; gap: 4px; padding: 10px 0; }
+          .item small { font-size: 15px; }
+          footer { font-size: 11px; margin-top: 12px; text-align: center; }
+        </style>
+      </head>
+      <body>
+        ${isReprint ? '<div class="reprint">重打 REPRINT</div>' : ''}
+        <h1>${escapeTicketText(tableNumber)} 号桌</h1>
+        <div class="meta">
+          <strong>订单 #${escapeTicketText(order.order_number)}</strong>
+          <span>下单：${escapeTicketText(new Date(order.created_at).toLocaleString('zh-CN'))}</span>
+          <span>打印：${escapeTicketText(new Date(printedAt).toLocaleString('zh-CN'))}</span>
+        </div>
+        ${itemRows}
+        <footer>厨房点菜单 · 非正式税务收据</footer>
+      </body>
+    </html>`;
 }
 
 function isToday(value: string) {

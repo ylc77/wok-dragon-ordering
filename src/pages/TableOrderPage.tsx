@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Globe2, Menu, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Banknote, CreditCard, Globe2, Menu, Minus, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, requireAnonymousSession } from '../lib/menuApi';
@@ -11,12 +11,12 @@ import {
   fetchCart,
   joinTableSession,
   removeCartItem,
+  requestBill,
   submitOrder,
   subscribeToTableCart,
-  updateCartItemNote,
   updateCartItemQuantity,
 } from '../lib/orderApi';
-import type { CartItem, Language, MenuGroup, MenuItem, TableJoinResult } from '../lib/types';
+import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, TableJoinResult } from '../lib/types';
 
 export function TableOrderPage() {
   const { qrToken = '' } = useParams();
@@ -25,11 +25,12 @@ export function TableOrderPage() {
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [sessionInfo, setSessionInfo] = useState<TableJoinResult | null>(null);
-  const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [billOpen, setBillOpen] = useState(false);
+  const [requestingBill, setRequestingBill] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,16 +118,6 @@ export function TableOrderPage() {
     }
   }
 
-  async function saveNote(line: CartItem, note: string) {
-    if (!sessionInfo) return;
-    try {
-      await updateCartItemNote(line.id, note);
-      setCart(await fetchCart(sessionInfo.session_id));
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : String(err));
-    }
-  }
-
   async function submitCurrentOrder() {
     if (!sessionInfo || !cart.length) return;
     try {
@@ -139,6 +130,20 @@ export function TableOrderPage() {
       setMessage(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function sendBillRequest(paymentMethod: BillPaymentMethod) {
+    if (!sessionInfo) return;
+    try {
+      setRequestingBill(true);
+      await requestBill(sessionInfo.session_id, paymentMethod);
+      setBillOpen(false);
+      setMessage(t('order.billRequestSent'));
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRequestingBill(false);
     }
   }
 
@@ -155,6 +160,16 @@ export function TableOrderPage() {
           </span>
         </div>
         <div className="order-top-actions">
+          <button
+            className="bill-request-button"
+            type="button"
+            aria-label={t('order.requestBill')}
+            onClick={() => setBillOpen(true)}
+            disabled={!sessionInfo}
+          >
+            <ReceiptText size={17} />
+            <span>{t('order.requestBill')}</span>
+          </button>
           <button className="icon-text-button" type="button" onClick={() => i18n.changeLanguage(nextLang)}>
             <Globe2 size={17} />
             {nextLang.toUpperCase()}
@@ -260,15 +275,6 @@ export function TableOrderPage() {
                   <Trash2 size={15} />
                 </button>
               </div>
-              <label className="cart-note-field">
-                {t('order.note')}
-                <input
-                  value={draftNotes[line.id] ?? line.note ?? ''}
-                  placeholder={t('order.note')}
-                  onChange={(event) => setDraftNotes((current) => ({ ...current, [line.id]: event.target.value }))}
-                  onBlur={(event) => saveNote(line, event.target.value)}
-                />
-              </label>
             </div>
           );
         })}
@@ -285,6 +291,36 @@ export function TableOrderPage() {
           {t('order.submit')}
         </button>
       </aside>
+
+      {billOpen ? (
+        <div className="bill-dialog-backdrop" role="presentation" onClick={() => setBillOpen(false)}>
+          <section
+            className="bill-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bill-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="cart-panel-head">
+              <h2 id="bill-dialog-title">{t('order.requestBill')}</h2>
+              <button type="button" aria-label={t('order.close')} onClick={() => setBillOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <p>{t('order.choosePayment')}</p>
+            <div className="bill-payment-options">
+              <button type="button" disabled={requestingBill} onClick={() => sendBillRequest('card')}>
+                <CreditCard size={24} />
+                <strong>{t('order.cardPayment')}</strong>
+              </button>
+              <button type="button" disabled={requestingBill} onClick={() => sendBillRequest('cash')}>
+                <Banknote size={24} />
+                <strong>{t('order.cashPayment')}</strong>
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <button className={`mobile-cart-bar ${cart.length ? '' : 'is-empty'}`} type="button" onClick={() => setCartOpen(true)}>
         <span>
