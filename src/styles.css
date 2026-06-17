@@ -689,6 +689,149 @@ button:disabled {
   padding: 12px;
 }
 
+.dashboard-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  margin-bottom: 16px;
+}
+
+.admin-panel-card {
+  background: white;
+  border: 1px solid #deded8;
+  border-radius: var(--radius);
+  padding: 18px;
+}
+
+.section-title-row.compact {
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title-row.compact h2 {
+  font-size: 24px;
+}
+
+.hot-item-list {
+  display: grid;
+  gap: 8px;
+}
+
+.hot-item-list div {
+  align-items: center;
+  border-bottom: 1px solid #eeeeea;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 34px minmax(180px, 1fr) 80px auto;
+  padding: 10px 0;
+}
+
+.hot-item-list span {
+  align-items: center;
+  background: #fff1f0;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  display: inline-flex;
+  font-weight: 900;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.hot-item-list em {
+  color: #6a6a62;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.menu-management-tools,
+.bulk-action-bar,
+.csv-import-panel {
+  align-items: end;
+  background: white;
+  border: 1px solid #deded8;
+  border-radius: var(--radius);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.menu-management-tools label,
+.csv-import-panel label {
+  color: #4a4a4a;
+  display: grid;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.menu-management-tools select,
+.menu-management-tools input,
+.bulk-action-bar input,
+.csv-import-panel input,
+.order-tools-row input {
+  background: white;
+  border: 1px solid #d7d7d0;
+  border-radius: 7px;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.search-input-wrap {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.search-input-wrap input {
+  min-width: 260px;
+}
+
+.bulk-action-bar strong,
+.csv-import-panel span,
+.csv-import-panel strong {
+  align-self: center;
+}
+
+.row-select {
+  border-bottom: 1px solid #eeeeea;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+}
+
+.csv-preview-table,
+.csv-error-box {
+  background: white;
+  border: 1px solid #deded8;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.csv-preview-table {
+  display: grid;
+  gap: 8px;
+}
+
+.csv-preview-table div {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.8fr) auto;
+}
+
+.csv-error-box {
+  border-color: #f2b7b3;
+  color: #9b1c18;
+}
+
+.csv-error-box p {
+  margin: 4px 0;
+}
+
 .admin-login {
   align-items: center;
   background: #f5f5f3;
@@ -1085,7 +1228,8 @@ button:disabled {
   .admin-shell,
   .menu-layout,
   .home-menu-list,
-  .order-summary-grid {
+  .order-summary-grid,
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1183,7 +1327,9 @@ button:disabled {
 
   .admin-order-head,
   .admin-order footer,
-  .admin-order-items div {
+  .admin-order-items div,
+  .hot-item-list div,
+  .csv-preview-table div {
     align-items: flex-start;
     flex-direction: column;
   }

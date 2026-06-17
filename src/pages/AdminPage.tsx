@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Ban, CheckCircle2, ChefHat, Clock3, ClipboardList, Download, LogOut, Plus, RefreshCw, RotateCcw, Save, WalletCards } from 'lucide-react';
+import { Ban, BarChart3, CheckCircle2, ChefHat, Clock3, ClipboardList, Download, LogOut, Plus, RefreshCw, RotateCcw, Save, Search, Upload, WalletCards } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
@@ -26,7 +26,7 @@ import type {
   TableSession,
 } from '../lib/types';
 
-type AdminTab = 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'import';
+type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'import';
 
 const emptySettings: Partial<RestaurantSettings> = {
   name_zh: '',
@@ -88,7 +88,7 @@ const statusIcons: Record<OrderStatus, ReactNode> = {
 export function AdminPage() {
   const [sessionReady, setSessionReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
-  const [tab, setTab] = useState<AdminTab>('orders');
+  const [tab, setTab] = useState<AdminTab>('dashboard');
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -129,6 +129,9 @@ export function AdminPage() {
           龙城酒楼
           <small>Wok Dragon Express</small>
         </Link>
+        <AdminNavButton active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>
+          经营概览
+        </AdminNavButton>
         <AdminNavButton active={tab === 'orders'} onClick={() => setTab('orders')}>
           订单管理
         </AdminNavButton>
@@ -157,6 +160,7 @@ export function AdminPage() {
       </aside>
       <section className="admin-content">
         {message ? <p className="admin-message">{message}</p> : null}
+        {tab === 'dashboard' ? <Dashboard onMessage={setMessage} onOpenOrders={() => setTab('orders')} /> : null}
         {tab === 'orders' ? <OrderManager onMessage={setMessage} /> : null}
         {tab === 'tables' ? <TableManager onMessage={setMessage} /> : null}
         {tab === 'settings' ? <SettingsEditor onMessage={setMessage} /> : null}
@@ -213,6 +217,108 @@ function AdminLogin({ onMessage, message }: { onMessage: (value: string | null) 
         </button>
       </form>
     </main>
+  );
+}
+
+function Dashboard({
+  onMessage,
+  onOpenOrders,
+}: {
+  onMessage: (value: string | null) => void;
+  onOpenOrders: () => void;
+}) {
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    load();
+    return subscribeToAdminOrders(load);
+  }, []);
+
+  async function load() {
+    try {
+      setOrders(await fetchAdminOrders());
+    } catch (err) {
+      onMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const todayOrders = useMemo(() => orders.filter((order) => isToday(order.created_at)), [orders]);
+  const todayRevenue = todayOrders
+    .filter((order) => order.status === 'paid')
+    .reduce((sum, order) => sum + Number(order.total_price), 0);
+  const pendingCount = orders.filter((order) => order.status === 'pending').length;
+  const preparingCount = orders.filter((order) => order.status === 'preparing').length;
+
+  const hotItems = useMemo(() => {
+    const rows = new Map<string, { name: string; quantity: number; total: number }>();
+    todayOrders
+      .filter((order) => order.status !== 'cancelled')
+      .forEach((order) => {
+        (order.order_items ?? []).forEach((item) => {
+          const name = item.item_name_zh || item.item_name_en || item.item_name_el || '未命名菜品';
+          const current = rows.get(name) ?? { name, quantity: 0, total: 0 };
+          current.quantity += Number(item.quantity);
+          current.total += Number(item.line_total);
+          rows.set(name, current);
+        });
+      });
+    return Array.from(rows.values())
+      .sort((a, b) => b.quantity - a.quantity || b.total - a.total)
+      .slice(0, 8);
+  }, [todayOrders]);
+
+  return (
+    <AdminSection title="经营概览" onRefresh={load}>
+      <div className="dashboard-grid">
+        <div className="summary-tile urgent">
+          <span>今日订单数量</span>
+          <strong>{todayOrders.length}</strong>
+        </div>
+        <div className="summary-tile">
+          <span>今日营业额（已付款）</span>
+          <strong>{formatPrice(todayRevenue)}</strong>
+        </div>
+        <div className="summary-tile">
+          <span>待处理订单</span>
+          <strong>{pendingCount}</strong>
+        </div>
+        <div className="summary-tile">
+          <span>制作中订单</span>
+          <strong>{preparingCount}</strong>
+        </div>
+      </div>
+
+      <div className="admin-panel-card">
+        <div className="section-title-row compact">
+          <div>
+            <h2>今日热销菜品</h2>
+            <p>不统计已取消订单，按销量排序。</p>
+          </div>
+          <button className="secondary-button" type="button" onClick={onOpenOrders}>
+            <ClipboardList size={16} />
+            查看全部历史订单
+          </button>
+        </div>
+        {hotItems.length === 0 ? (
+          <div className="admin-empty-state">
+            <BarChart3 size={28} />
+            <strong>今天还没有可统计的菜品</strong>
+            <span>收到订单后这里会自动更新。</span>
+          </div>
+        ) : (
+          <div className="hot-item-list">
+            {hotItems.map((item, index) => (
+              <div key={item.name}>
+                <span>{index + 1}</span>
+                <strong>{item.name}</strong>
+                <em>{item.quantity} 份</em>
+                <b>{formatPrice(item.total)}</b>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </AdminSection>
   );
 }
 
@@ -317,10 +423,148 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
   );
 }
 
+const menuCsvHeaders = [
+  'category_zh',
+  'category_en',
+  'category_el',
+  'name_zh',
+  'name_en',
+  'name_el',
+  'description_zh',
+  'description_en',
+  'description_el',
+  'price',
+  'image_url',
+  'is_available',
+  'sort_order',
+] as const;
+
+type MenuCsvHeader = (typeof menuCsvHeaders)[number];
+type MenuCsvRow = Record<MenuCsvHeader, string>;
+type CsvImportResult = { success: number; failed: number; errors: string[] };
+
+function buildMenuCsv(items: MenuItem[], categories: MenuCategory[]) {
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const rows = items.map((item) => {
+    const category = item.category_id ? categoryById.get(item.category_id) : null;
+    return {
+      category_zh: category?.name_zh ?? '',
+      category_en: category?.name_en ?? '',
+      category_el: category?.name_el ?? '',
+      name_zh: item.name_zh ?? '',
+      name_en: item.name_en ?? '',
+      name_el: item.name_el ?? '',
+      description_zh: item.description_zh ?? '',
+      description_en: item.description_en ?? '',
+      description_el: item.description_el ?? '',
+      price: String(item.price ?? ''),
+      image_url: item.image_url ?? '',
+      is_available: String(Boolean(item.is_available)),
+      sort_order: String(item.sort_order ?? 0),
+    } satisfies MenuCsvRow;
+  });
+  return [menuCsvHeaders.join(','), ...rows.map((row) => menuCsvHeaders.map((header) => escapeCsv(row[header])).join(','))].join('\n');
+}
+
+function parseMenuCsv(csvText: string): MenuCsvRow[] {
+  const rows = parseCsvRows(csvText.replace(/^\uFEFF/, ''));
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((header) => header.trim());
+  const missing = menuCsvHeaders.filter((header) => !headers.includes(header));
+  if (missing.length > 0) throw new Error(`CSV 缺少字段：${missing.join(', ')}`);
+  return rows
+    .slice(1)
+    .filter((row) => row.some((cell) => cell.trim()))
+    .map((row) => {
+      const next = Object.fromEntries(menuCsvHeaders.map((header) => [header, ''])) as MenuCsvRow;
+      headers.forEach((header, index) => {
+        if (menuCsvHeaders.includes(header as MenuCsvHeader)) next[header as MenuCsvHeader] = row[index]?.trim() ?? '';
+      });
+      return next;
+    });
+}
+
+function parseCsvRows(input: string) {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    const next = input[index + 1];
+    if (char === '"' && quoted && next === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      row.push(cell);
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !quoted) {
+      if (char === '\r' && next === '\n') index += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+
+  row.push(cell);
+  rows.push(row);
+  return rows;
+}
+
+function escapeCsv(value: string) {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function parseBoolean(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return !['false', '0', 'no', 'n', '下架', '否'].includes(normalized);
+}
+
+function normalized(value?: string | null) {
+  return (value ?? '').trim().toLowerCase();
+}
+
+function findMatchingCategory(categories: MenuCategory[], row: MenuCsvRow) {
+  return categories.find(
+    (category) =>
+      sameNonEmpty(category.name_zh, row.category_zh) ||
+      sameNonEmpty(category.name_en, row.category_en) ||
+      sameNonEmpty(category.name_el, row.category_el),
+  );
+}
+
+function findMatchingItem(items: MenuItem[], row: MenuCsvRow, categoryId: string) {
+  return items.find(
+    (item) =>
+      item.category_id === categoryId &&
+      (sameNonEmpty(item.name_zh, row.name_zh) ||
+        sameNonEmpty(item.name_en, row.name_en) ||
+        sameNonEmpty(item.name_el, row.name_el)),
+  );
+}
+
+function sameNonEmpty(left?: string | null, right?: string | null) {
+  const a = normalized(left);
+  const b = normalized(right);
+  return Boolean(a && b && a === b);
+}
+
 function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }) {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [draft, setDraft] = useState<Partial<MenuItem>>(emptyItem);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPrice, setBulkPrice] = useState('');
+  const [csvPreview, setCsvPreview] = useState<MenuCsvRow[]>([]);
+  const [csvResult, setCsvResult] = useState<CsvImportResult | null>(null);
 
   useEffect(() => {
     load();
@@ -336,6 +580,159 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     if (itemResult.error) onMessage(itemResult.error.message);
     setCategories((catResult.data ?? []) as MenuCategory[]);
     setItems((itemResult.data ?? []) as MenuItem[]);
+  }
+
+  const filteredItems = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    return items.filter((item) => {
+      const categoryMatches = categoryFilter === 'all' || item.category_id === categoryFilter;
+      const keywordMatches =
+        !keyword ||
+        [item.name_zh, item.name_en, item.name_el]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keyword));
+      return categoryMatches && keywordMatches;
+    });
+  }, [items, categoryFilter, searchTerm]);
+
+  const selectedItems = useMemo(
+    () => items.filter((item) => selectedIds.has(item.id)),
+    [items, selectedIds],
+  );
+
+  function toggleSelect(itemId: string, checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
+  }
+
+  function toggleSelectVisible(checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      filteredItems.forEach((item) => {
+        if (checked) next.add(item.id);
+        else next.delete(item.id);
+      });
+      return next;
+    });
+  }
+
+  async function bulkUpdateAvailability(isAvailable: boolean) {
+    if (!supabase || selectedIds.size === 0) return;
+    const { error } = await supabase.from('menu_items').update({ is_available: isAvailable }).in('id', Array.from(selectedIds));
+    onMessage(error ? error.message : `已批量${isAvailable ? '上架' : '下架'} ${selectedIds.size} 个菜品`);
+    if (!error) {
+      setSelectedIds(new Set());
+      load();
+    }
+  }
+
+  async function bulkUpdatePrice() {
+    if (!supabase || selectedIds.size === 0) return;
+    const nextPrice = Number(bulkPrice);
+    if (!Number.isFinite(nextPrice) || nextPrice < 0) {
+      onMessage('请输入正确的价格');
+      return;
+    }
+    const { error } = await supabase.from('menu_items').update({ price: nextPrice }).in('id', Array.from(selectedIds));
+    onMessage(error ? error.message : `已批量修改 ${selectedIds.size} 个菜品价格`);
+    if (!error) {
+      setBulkPrice('');
+      setSelectedIds(new Set());
+      load();
+    }
+  }
+
+  function exportCsv() {
+    const csv = buildMenuCsv(items, categories);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `wok-dragon-menu-${dateToKey(new Date().toISOString())}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function previewCsv(file: File | null) {
+    setCsvResult(null);
+    if (!file) return;
+    try {
+      setCsvPreview(parseMenuCsv(await file.text()));
+    } catch (err) {
+      setCsvPreview([]);
+      onMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function importCsv() {
+    if (!supabase || csvPreview.length === 0) return;
+    const result: CsvImportResult = { success: 0, failed: 0, errors: [] };
+    const categoryRows = [...categories];
+    const itemRows = [...items];
+
+    for (const [index, row] of csvPreview.entries()) {
+      try {
+        const price = Number(row.price);
+        if (!row.name_zh && !row.name_en && !row.name_el) throw new Error('菜品名称不能为空');
+        if (!row.category_zh && !row.category_en && !row.category_el) throw new Error('分类名称不能为空');
+        if (!Number.isFinite(price) || price < 0) throw new Error('价格不正确');
+
+        let category = findMatchingCategory(categoryRows, row);
+        if (!category) {
+          const { data, error } = await supabase
+            .from('menu_categories')
+            .insert({
+              name_zh: row.category_zh,
+              name_en: row.category_en || null,
+              name_el: row.category_el || null,
+              sort_order: categoryRows.length + 1,
+              is_active: true,
+            })
+            .select('*')
+            .single();
+          if (error) throw error;
+          category = data as MenuCategory;
+          categoryRows.push(category);
+        }
+
+        const payload = {
+          category_id: category.id,
+          name_zh: row.name_zh,
+          name_en: row.name_en || null,
+          name_el: row.name_el || null,
+          description_zh: row.description_zh || null,
+          description_en: row.description_en || null,
+          description_el: row.description_el || null,
+          price,
+          image_url: row.image_url || null,
+          is_available: parseBoolean(row.is_available),
+          sort_order: Number(row.sort_order || 0),
+        };
+        const existing = findMatchingItem(itemRows, row, category.id);
+        const { data, error } = existing
+          ? await supabase.from('menu_items').update(payload).eq('id', existing.id).select('*').single()
+          : await supabase.from('menu_items').insert(payload).select('*').single();
+        if (error) throw error;
+        if (data) {
+          const nextItem = data as MenuItem;
+          const position = itemRows.findIndex((item) => item.id === nextItem.id);
+          if (position >= 0) itemRows[position] = nextItem;
+          else itemRows.push(nextItem);
+        }
+        result.success += 1;
+      } catch (err) {
+        result.failed += 1;
+        result.errors.push(`第 ${index + 2} 行：${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    setCsvResult(result);
+    onMessage(`导入完成：成功 ${result.success} 条，失败 ${result.failed} 条`);
+    load();
   }
 
   async function saveItem(item: Partial<MenuItem>) {
@@ -365,9 +762,94 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
 
   return (
     <AdminSection title="菜品管理" onRefresh={load}>
+      <div className="menu-management-tools">
+        <label>
+          按分类筛选
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="all">全部分类</option>
+            {categories.map((category) => (
+              <option value={category.id} key={category.id}>
+                {category.name_zh || category.name_en || category.name_el}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          搜索菜名
+          <span className="search-input-wrap">
+            <Search size={16} />
+            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="中文 / English / Ελληνικά" />
+          </span>
+        </label>
+        <button className="secondary-button" type="button" onClick={exportCsv}>
+          <Download size={16} />
+          导出 CSV
+        </button>
+      </div>
+
+      <div className="bulk-action-bar">
+        <label className="checkbox-label">
+          <input
+            checked={filteredItems.length > 0 && filteredItems.every((item) => selectedIds.has(item.id))}
+            type="checkbox"
+            onChange={(event) => toggleSelectVisible(event.target.checked)}
+          />
+          选择当前筛选结果
+        </label>
+        <strong>已选择 {selectedItems.length} 个菜品</strong>
+        <input value={bulkPrice} type="number" min="0" step="0.01" placeholder="新价格" onChange={(event) => setBulkPrice(event.target.value)} />
+        <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={bulkUpdatePrice}>
+          批量改价
+        </button>
+        <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(true)}>
+          批量上架
+        </button>
+        <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>
+          批量下架
+        </button>
+      </div>
+
+      <div className="csv-import-panel">
+        <label>
+          CSV 导入预览
+          <input accept=".csv,text/csv" type="file" onChange={(event) => previewCsv(event.target.files?.[0] ?? null)} />
+        </label>
+        <button className="secondary-button" type="button" disabled={csvPreview.length === 0} onClick={importCsv}>
+          <Upload size={16} />
+          确认导入
+        </button>
+        <span>预览 {csvPreview.length} 条</span>
+        {csvResult ? <strong>成功 {csvResult.success} 条，失败 {csvResult.failed} 条</strong> : null}
+      </div>
+      {csvResult?.errors.length ? (
+        <div className="csv-error-box">
+          {csvResult.errors.slice(0, 8).map((error) => (
+            <p key={error}>{error}</p>
+          ))}
+        </div>
+      ) : null}
+      {csvPreview.length > 0 ? (
+        <div className="csv-preview-table">
+          {csvPreview.slice(0, 8).map((row, index) => (
+            <div key={`${row.name_zh}-${index}`}>
+              <strong>{row.name_zh || row.name_en || row.name_el}</strong>
+              <span>{row.category_zh || row.category_en || row.category_el}</span>
+              <b>{row.price}</b>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="admin-table item-table">
-        {items.map((item) => (
-          <ItemRow item={item} categories={categories} onSave={saveItem} key={item.id} />
+        {filteredItems.map((item) => (
+          <ItemRow
+            item={item}
+            categories={categories}
+            selected={selectedIds.has(item.id)}
+            onSelect={(checked) => toggleSelect(item.id, checked)}
+            onSave={saveItem}
+            key={item.id}
+          />
         ))}
       </div>
       <h3>新增菜品</h3>
@@ -384,7 +866,8 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   const [orders, setOrders] = useState<Order[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [tableFilter, setTableFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<'today' | 'all'>('today');
+  const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today');
+  const [customDate, setCustomDate] = useState(dateToKey(new Date().toISOString()));
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
@@ -437,10 +920,13 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
     () =>
       orders.filter((order) => {
         const tableMatches = tableFilter === 'all' || order.restaurant_tables?.table_number === Number(tableFilter);
-        const dateMatches = dateFilter === 'all' || isToday(order.created_at);
+        const dateMatches =
+          dateFilter === 'all' ||
+          (dateFilter === 'today' && isToday(order.created_at)) ||
+          (dateFilter === 'custom' && dateToKey(order.created_at) === customDate);
         return tableMatches && dateMatches;
       }),
-    [orders, tableFilter, dateFilter],
+    [orders, tableFilter, dateFilter, customDate],
   );
 
   const statusCounts = useMemo(() => {
@@ -491,11 +977,18 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
         </button>
         <label>
           日期
-          <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value as 'today' | 'all')}>
+          <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value as 'today' | 'all' | 'custom')}>
             <option value="today">今日订单</option>
             <option value="all">全部日期</option>
+            <option value="custom">指定日期</option>
           </select>
         </label>
+        {dateFilter === 'custom' ? (
+          <label>
+            选择日期
+            <input value={customDate} type="date" onChange={(event) => setCustomDate(event.target.value)} />
+          </label>
+        ) : null}
         <label>
           桌号筛选
           <select value={tableFilter} onChange={(event) => setTableFilter(event.target.value)}>
@@ -615,6 +1108,14 @@ function isToday(value: string) {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate()
   );
+}
+
+function dateToKey(value: string) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function playOrderNotification() {
@@ -1002,15 +1503,23 @@ function CategoryForm({
 function ItemRow({
   item,
   categories,
+  selected,
+  onSelect,
   onSave,
 }: {
   item: MenuItem;
   categories: MenuCategory[];
+  selected: boolean;
+  onSelect: (checked: boolean) => void;
   onSave: (item: Partial<MenuItem>) => void;
 }) {
   const [value, setValue] = useState<Partial<MenuItem>>(item);
   return (
     <div className="admin-row">
+      <label className="checkbox-label row-select">
+        <input checked={selected} type="checkbox" onChange={(event) => onSelect(event.target.checked)} />
+        选择
+      </label>
       <ItemForm value={value} categories={categories} onChange={setValue} />
       <button className="small-primary" type="button" onClick={() => onSave(value)}>
         保存

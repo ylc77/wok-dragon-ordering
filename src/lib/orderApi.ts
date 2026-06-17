@@ -98,7 +98,7 @@ export async function fetchAdminOrders(): Promise<Order[]> {
     .from('orders')
     .select('*, restaurant_tables(table_number,label), order_items(*)')
     .order('created_at', { ascending: false })
-    .limit(80);
+    .limit(500);
   if (error) throw error;
   return (data ?? []) as Order[];
 }
