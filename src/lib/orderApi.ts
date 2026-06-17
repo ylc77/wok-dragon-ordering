@@ -54,6 +54,15 @@ export async function removeCartItem(cartItemId: string) {
   if (error) throw error;
 }
 
+export async function updateCartItemNote(cartItemId: string, note: string) {
+  const client = requireClient();
+  const { error } = await client.rpc('update_cart_item_note', {
+    p_cart_item_id: cartItemId,
+    p_note: note,
+  });
+  if (error) throw error;
+}
+
 export async function submitOrder(sessionId: string, clientRequestId: string) {
   const client = requireClient();
   const { data, error } = await client.rpc('submit_order', {

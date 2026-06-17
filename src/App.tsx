@@ -10,9 +10,19 @@ function PublicShell() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  const isTableOrder = location.pathname.startsWith('/table/');
 
   if (isAdmin) {
     return <AdminPage />;
+  }
+
+  if (isTableOrder) {
+    return (
+      <Routes>
+        <Route path="/table/:qrToken" element={<TableOrderPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
   }
 
   const nextLang = i18n.language === 'el' ? 'en' : 'el';

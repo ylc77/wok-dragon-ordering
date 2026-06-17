@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { Globe2, Menu, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, requireAnonymousSession } from '../lib/menuApi';
@@ -13,6 +13,7 @@ import {
   removeCartItem,
   submitOrder,
   subscribeToTableCart,
+  updateCartItemNote,
   updateCartItemQuantity,
 } from '../lib/orderApi';
 import type { CartItem, Language, MenuGroup, MenuItem, TableJoinResult } from '../lib/types';
@@ -24,10 +25,11 @@ export function TableOrderPage() {
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [sessionInfo, setSessionInfo] = useState<TableJoinResult | null>(null);
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,12 +84,19 @@ export function TableOrderPage() {
     () => cart.reduce((sum, line) => sum + line.quantity, 0),
     [cart],
   );
+  const cartByMenuItemId = useMemo(() => {
+    const rows = new Map<string, CartItem>();
+    cart.forEach((line) => {
+      rows.set(line.menu_item_id, line);
+    });
+    return rows;
+  }, [cart]);
+  const nextLang = lang === 'el' ? 'en' : 'el';
 
   async function addItem(item: MenuItem) {
     if (!sessionInfo) return;
     try {
-      await addCartItem(sessionInfo.session_id, item.id, 1, notes[item.id] ?? '');
-      setNotes((current) => ({ ...current, [item.id]: '' }));
+      await addCartItem(sessionInfo.session_id, item.id, 1, '');
       setCart(await fetchCart(sessionInfo.session_id));
     } catch (err) {
       setMessage(err instanceof Error ? err.message : String(err));
@@ -108,6 +117,16 @@ export function TableOrderPage() {
     }
   }
 
+  async function saveNote(line: CartItem, note: string) {
+    if (!sessionInfo) return;
+    try {
+      await updateCartItemNote(line.id, note);
+      setCart(await fetchCart(sessionInfo.session_id));
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function submitCurrentOrder() {
     if (!sessionInfo || !cart.length) return;
     try {
@@ -115,6 +134,7 @@ export function TableOrderPage() {
       const result = await submitOrder(sessionInfo.session_id, crypto.randomUUID());
       setMessage(`${t('order.submitSuccess')} ${t('order.orderNumber')}: ${result.order_number}`);
       setCart(await fetchCart(sessionInfo.session_id));
+      setCartOpen(false);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : String(err));
     } finally {
@@ -124,6 +144,26 @@ export function TableOrderPage() {
 
   return (
     <main className="order-shell">
+      <header className="order-topbar">
+        <div className="order-brand">
+          <span className="brand-mark">龙</span>
+          <span>
+            <strong>Wok Dragon Express</strong>
+            <small>
+              {t('order.table')} {sessionInfo?.table_number ?? (loading ? '' : qrToken)}
+            </small>
+          </span>
+        </div>
+        <div className="order-top-actions">
+          <button className="icon-text-button" type="button" onClick={() => i18n.changeLanguage(nextLang)}>
+            <Globe2 size={17} />
+            {nextLang.toUpperCase()}
+          </button>
+          <a className="icon-button" href="#order-categories" aria-label={t('nav.menu')}>
+            <Menu size={18} />
+          </a>
+        </div>
+      </header>
       <section className="order-menu">
         <div className="order-table-banner">
           <div>
@@ -133,7 +173,7 @@ export function TableOrderPage() {
           <p>{t('order.liveCart')}</p>
         </div>
         {message ? <p className="admin-message">{message}</p> : null}
-        <nav className="order-category-tabs" aria-label={t('nav.menu')}>
+        <nav className="order-category-tabs" id="order-categories" aria-label={t('nav.menu')}>
           {groups
             .filter((group) => group.items.length)
             .map((group) => (
@@ -164,25 +204,14 @@ export function TableOrderPage() {
                       lang={lang}
                       key={item.id}
                       action={
-                        <div className="item-action">
-                          <input
-                            aria-label={t('order.note')}
-                            placeholder={t('order.note')}
-                            value={notes[item.id] ?? ''}
-                            onChange={(event) =>
-                              setNotes((current) => ({ ...current, [item.id]: event.target.value }))
-                            }
-                          />
-                          <button
-                            className="small-primary"
-                            type="button"
-                            onClick={() => addItem(item)}
-                            disabled={!sessionInfo}
-                          >
-                            <Plus size={16} />
-                            {t('order.add')}
-                          </button>
-                        </div>
+                        <DishQuantityControl
+                          item={item}
+                          line={cartByMenuItemId.get(item.id)}
+                          disabled={!sessionInfo}
+                          onAdd={() => addItem(item)}
+                          onChange={updateQuantity}
+                          addLabel={t('order.add')}
+                        />
                       }
                     />
                   ))}
@@ -193,10 +222,14 @@ export function TableOrderPage() {
         </div>
       </section>
 
-      <aside className="cart-panel" id="shared-cart">
+      {cartOpen ? <button className="cart-backdrop" type="button" aria-label="Close cart" onClick={() => setCartOpen(false)} /> : null}
+
+      <aside className={`cart-panel ${cartOpen ? 'open' : ''}`} id="shared-cart" aria-hidden={!cartOpen}>
         <div className="cart-panel-head">
           <h2>{t('order.sharedCart')}</h2>
-          <a href="#" aria-label="Close cart">×</a>
+          <button type="button" aria-label="Close cart" onClick={() => setCartOpen(false)}>
+            <X size={18} />
+          </button>
         </div>
         <p className="muted">{t('order.liveCart')}</p>
         {cart.length === 0 ? <p className="muted">{t('order.cartEmpty')}</p> : null}
@@ -213,8 +246,8 @@ export function TableOrderPage() {
                     })
                   : line.menu_item_id}
               </strong>
-              {line.note ? <small>{line.note}</small> : null}
-              <span>{formatPrice(Number(line.unit_price) * line.quantity)}</span>
+              <span>{formatPrice(Number(line.unit_price))}</span>
+              <strong className="cart-line-subtotal">{formatPrice(Number(line.unit_price) * line.quantity)}</strong>
               <div className="cart-controls">
                 <button type="button" onClick={() => updateQuantity(line, line.quantity - 1)}>
                   <Minus size={15} />
@@ -227,11 +260,20 @@ export function TableOrderPage() {
                   <Trash2 size={15} />
                 </button>
               </div>
+              <label className="cart-note-field">
+                {t('order.note')}
+                <input
+                  value={draftNotes[line.id] ?? line.note ?? ''}
+                  placeholder={t('order.note')}
+                  onChange={(event) => setDraftNotes((current) => ({ ...current, [line.id]: event.target.value }))}
+                  onBlur={(event) => saveNote(line, event.target.value)}
+                />
+              </label>
             </div>
           );
         })}
         <div className="cart-total">
-          <span>{t('common.total')}</span>
+          <span>{t('order.selectedCount', { count: totalQuantity })}</span>
           <strong>{formatPrice(total)}</strong>
         </div>
         <button
@@ -244,15 +286,53 @@ export function TableOrderPage() {
         </button>
       </aside>
 
-      <a className="mobile-cart-bar" href="#shared-cart">
+      <button className={`mobile-cart-bar ${cart.length ? '' : 'is-empty'}`} type="button" onClick={() => setCartOpen(true)}>
         <span>
           <ShoppingBag size={18} />
-          {t('order.sharedCart')}
+          {t('order.viewCart')}
         </span>
         <strong>
-          {totalQuantity} · {formatPrice(total)}
+          {t('order.selectedCount', { count: totalQuantity })} · {formatPrice(total)}
         </strong>
-      </a>
+        <em>{t('order.checkout')}</em>
+      </button>
     </main>
+  );
+}
+
+function DishQuantityControl({
+  item,
+  line,
+  disabled,
+  onAdd,
+  onChange,
+  addLabel,
+}: {
+  item: MenuItem;
+  line?: CartItem;
+  disabled: boolean;
+  onAdd: () => void;
+  onChange: (line: CartItem, nextQuantity: number) => void;
+  addLabel: string;
+}) {
+  if (!line) {
+    return (
+      <button className="dish-add-button" type="button" onClick={onAdd} disabled={disabled}>
+        <Plus size={17} />
+        <span>{addLabel}</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="dish-quantity-control" aria-label={item.name_en ?? item.name_el ?? item.name_zh}>
+      <button type="button" onClick={() => onChange(line, line.quantity - 1)}>
+        <Minus size={15} />
+      </button>
+      <strong>{line.quantity}</strong>
+      <button type="button" onClick={() => onChange(line, line.quantity + 1)}>
+        <Plus size={15} />
+      </button>
+    </div>
   );
 }
