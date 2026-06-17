@@ -469,6 +469,10 @@ button:disabled {
   flex: 0 0 auto;
 }
 
+.order-menu-groups {
+  min-width: 0;
+}
+
 .order-list .menu-card {
   grid-template-columns: 96px 1fr;
   min-height: 116px;
@@ -1280,6 +1284,80 @@ button:disabled {
 }
 
 @media (max-width: 560px) {
+  .order-shell {
+    background: #f7f2eb;
+    display: block;
+    padding: 0 0 92px;
+  }
+
+  .order-menu {
+    align-items: start;
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+
+  .order-table-banner,
+  .order-menu > .admin-message {
+    border-left: 0;
+    border-radius: 0;
+    border-right: 0;
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  .order-table-banner {
+    padding: 12px 14px;
+  }
+
+  .order-table-banner strong {
+    font-size: 22px;
+  }
+
+  .order-table-banner p {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .order-category-tabs {
+    align-self: start;
+    background: #f1ebe3;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    grid-column: 1;
+    height: calc(100vh - 72px);
+    margin: 0;
+    overflow-y: auto;
+    padding: 8px 6px 92px;
+    position: sticky;
+    top: 0;
+    z-index: 8;
+  }
+
+  .order-category-tabs a {
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    color: #594f46;
+    font-size: 12px;
+    line-height: 1.25;
+    padding: 10px 6px;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .order-category-tabs a:hover {
+    background: white;
+  }
+
+  .order-menu-groups {
+    grid-column: 2;
+    min-width: 0;
+    padding: 8px 8px 0;
+  }
+
   .menu-card {
     grid-template-columns: 92px 1fr;
   }
@@ -1301,18 +1379,77 @@ button:disabled {
     flex-direction: column;
   }
 
+  .order-menu-groups .menu-group {
+    margin-bottom: 20px;
+    scroll-margin-top: 8px;
+  }
+
+  .order-menu-groups .menu-group h2 {
+    font-size: 18px;
+    margin: 8px 0 8px;
+  }
+
   .order-list .menu-card {
-    grid-template-columns: 82px 1fr;
+    border-radius: 7px;
+    gap: 9px;
+    grid-template-columns: 76px minmax(0, 1fr);
+    min-height: 98px;
+    padding: 8px;
   }
 
   .order-list .menu-card img,
   .order-list .menu-card-fallback {
-    height: 82px;
-    width: 82px;
+    height: 76px;
+    width: 76px;
   }
 
-  .order-category-tabs {
-    top: 126px;
+  .order-list .menu-card h3 {
+    font-size: 14px;
+  }
+
+  .order-list .menu-card p {
+    font-size: 12px;
+    line-height: 1.35;
+    margin-top: 6px;
+  }
+
+  .order-list .menu-card-title {
+    gap: 6px;
+  }
+
+  .order-list .menu-card-title strong {
+    font-size: 13px;
+  }
+
+  .order-list .item-action {
+    grid-template-columns: minmax(0, 1fr) 42px;
+    margin-top: 8px;
+  }
+
+  .order-list .item-action input {
+    font-size: 12px;
+    min-height: 32px;
+  }
+
+  .order-list .item-action .small-primary {
+    min-height: 32px;
+    padding: 6px;
+  }
+
+  .order-list .item-action .small-primary svg {
+    margin: 0;
+  }
+
+  .order-list .item-action .small-primary {
+    font-size: 0;
+  }
+
+  .cart-panel {
+    border-left: 0;
+    border-radius: 0;
+    border-right: 0;
+    margin-top: 0;
+    padding-bottom: 92px;
   }
 
   .cart-panel h2 {

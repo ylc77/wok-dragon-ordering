@@ -441,7 +441,11 @@ const menuCsvHeaders = [
 
 type MenuCsvHeader = (typeof menuCsvHeaders)[number];
 type MenuCsvRow = Record<MenuCsvHeader, string>;
-type CsvImportResult = { success: number; failed: number; errors: string[] };
+type CsvImportResult = { success: number; failed: number; translationFailed: number; errors: string[] };
+type MenuTranslationFields = Pick<
+  Partial<MenuItem>,
+  'name_zh' | 'description_zh' | 'name_en' | 'description_en' | 'name_el' | 'description_el'
+>;
 
 function buildMenuCsv(items: MenuItem[], categories: MenuCategory[]) {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
@@ -555,6 +559,48 @@ function sameNonEmpty(left?: string | null, right?: string | null) {
   return Boolean(a && b && a === b);
 }
 
+function needsMenuTranslation(value: MenuTranslationFields) {
+  return Boolean(
+    (value.name_zh || value.description_zh) &&
+      (!value.name_en || !value.description_en || !value.name_el || !value.description_el),
+  );
+}
+
+function mergeMissingTranslations<T extends MenuTranslationFields>(value: T, translation: MenuTranslationFields): T {
+  return {
+    ...value,
+    name_en: value.name_en || translation.name_en || '',
+    description_en: value.description_en || translation.description_en || '',
+    name_el: value.name_el || translation.name_el || '',
+    description_el: value.description_el || translation.description_el || '',
+  };
+}
+
+async function requestMenuTranslations(items: MenuTranslationFields[]) {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('请先登录后台');
+
+  const response = await fetch('/api/admin/translate-menu-item', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ items }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || '自动翻译失败');
+  return (payload.translations ?? []) as MenuTranslationFields[];
+}
+
+async function translateSingleMenuValue<T extends MenuTranslationFields>(value: T) {
+  if (!needsMenuTranslation(value)) return value;
+  const [translation] = await requestMenuTranslations([value]);
+  return mergeMissingTranslations(value, translation ?? {});
+}
+
 function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }) {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -565,6 +611,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   const [bulkPrice, setBulkPrice] = useState('');
   const [csvPreview, setCsvPreview] = useState<MenuCsvRow[]>([]);
   const [csvResult, setCsvResult] = useState<CsvImportResult | null>(null);
+  const [translatingDraft, setTranslatingDraft] = useState(false);
 
   useEffect(() => {
     load();
@@ -668,13 +715,38 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     }
   }
 
+  async function translateCsvRows(rows: MenuCsvRow[], result: CsvImportResult) {
+    const translatedRows = [...rows];
+    const targets = rows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => needsMenuTranslation(row));
+
+    for (let start = 0; start < targets.length; start += 4) {
+      const chunk = targets.slice(start, start + 4);
+      try {
+        const translations = await requestMenuTranslations(chunk.map(({ row }) => row));
+        chunk.forEach(({ row, index }, chunkIndex) => {
+          translatedRows[index] = mergeMissingTranslations(row, translations[chunkIndex] ?? {});
+        });
+      } catch (err) {
+        result.translationFailed += chunk.length;
+        chunk.forEach(({ index }) => {
+          result.errors.push(`第 ${index + 2} 行翻译失败：${err instanceof Error ? err.message : String(err)}`);
+        });
+      }
+    }
+
+    return translatedRows;
+  }
+
   async function importCsv() {
     if (!supabase || csvPreview.length === 0) return;
-    const result: CsvImportResult = { success: 0, failed: 0, errors: [] };
+    const result: CsvImportResult = { success: 0, failed: 0, translationFailed: 0, errors: [] };
     const categoryRows = [...categories];
     const itemRows = [...items];
+    const rowsToImport = await translateCsvRows(csvPreview, result);
 
-    for (const [index, row] of csvPreview.entries()) {
+    for (const [index, row] of rowsToImport.entries()) {
       try {
         const price = Number(row.price);
         if (!row.name_zh && !row.name_en && !row.name_el) throw new Error('菜品名称不能为空');
@@ -731,7 +803,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     }
 
     setCsvResult(result);
-    onMessage(`导入完成：成功 ${result.success} 条，失败 ${result.failed} 条`);
+    onMessage(`导入完成：成功 ${result.success} 条，失败 ${result.failed} 条，翻译失败 ${result.translationFailed} 条`);
     load();
   }
 
@@ -757,6 +829,18 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     if (!error) {
       setDraft(emptyItem);
       load();
+    }
+  }
+
+  async function autoTranslateDraft() {
+    try {
+      setTranslatingDraft(true);
+      setDraft(await translateSingleMenuValue(draft));
+      onMessage('自动翻译已补全缺失字段');
+    } catch (err) {
+      onMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTranslatingDraft(false);
     }
   }
 
@@ -819,7 +903,11 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
           确认导入
         </button>
         <span>预览 {csvPreview.length} 条</span>
-        {csvResult ? <strong>成功 {csvResult.success} 条，失败 {csvResult.failed} 条</strong> : null}
+        {csvResult ? (
+          <strong>
+            成功 {csvResult.success} 条，失败 {csvResult.failed} 条，翻译失败 {csvResult.translationFailed} 条
+          </strong>
+        ) : null}
       </div>
       {csvResult?.errors.length ? (
         <div className="csv-error-box">
@@ -847,6 +935,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
             categories={categories}
             selected={selectedIds.has(item.id)}
             onSelect={(checked) => toggleSelect(item.id, checked)}
+            onMessage={onMessage}
             onSave={saveItem}
             key={item.id}
           />
@@ -854,6 +943,9 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       </div>
       <h3>新增菜品</h3>
       <ItemForm value={draft} categories={categories} onChange={setDraft} />
+      <button className="secondary-button" type="button" disabled={translatingDraft} onClick={autoTranslateDraft}>
+        {translatingDraft ? '正在翻译...' : '自动翻译'}
+      </button>
       <button className="primary-button" type="button" onClick={() => saveItem(draft)}>
         <Plus size={16} />
         新增菜品
@@ -1505,15 +1597,31 @@ function ItemRow({
   categories,
   selected,
   onSelect,
+  onMessage,
   onSave,
 }: {
   item: MenuItem;
   categories: MenuCategory[];
   selected: boolean;
   onSelect: (checked: boolean) => void;
+  onMessage: (value: string | null) => void;
   onSave: (item: Partial<MenuItem>) => void;
 }) {
   const [value, setValue] = useState<Partial<MenuItem>>(item);
+  const [translating, setTranslating] = useState(false);
+
+  async function autoTranslate() {
+    try {
+      setTranslating(true);
+      setValue(await translateSingleMenuValue(value));
+      onMessage('自动翻译已补全缺失字段');
+    } catch (err) {
+      onMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTranslating(false);
+    }
+  }
+
   return (
     <div className="admin-row">
       <label className="checkbox-label row-select">
@@ -1521,6 +1629,9 @@ function ItemRow({
         选择
       </label>
       <ItemForm value={value} categories={categories} onChange={setValue} />
+      <button className="secondary-button" type="button" disabled={translating} onClick={autoTranslate}>
+        {translating ? '正在翻译...' : '自动翻译'}
+      </button>
       <button className="small-primary" type="button" onClick={() => onSave(value)}>
         保存
       </button>

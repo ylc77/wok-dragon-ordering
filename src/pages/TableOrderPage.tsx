@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, requireAnonymousSession } from '../lib/menuApi';
 import { hasSupabaseConfig } from '../lib/supabase';
-import { formatPrice, pickLocalized } from '../lib/localized';
+import { formatPrice, getLocalizedField } from '../lib/localized';
 import {
   addCartItem,
   fetchCart,
@@ -138,7 +138,7 @@ export function TableOrderPage() {
             .filter((group) => group.items.length)
             .map((group) => (
               <a href={`#order-category-${group.id}`} key={group.id}>
-                {pickLocalized(lang, {
+                {getLocalizedField(lang, {
                   zh: group.name_zh,
                   en: group.name_en,
                   el: group.name_el,
@@ -146,49 +146,51 @@ export function TableOrderPage() {
               </a>
             ))}
         </nav>
-        {groups.map((group) =>
-          group.items.length ? (
-            <section className="menu-group" id={`order-category-${group.id}`} key={group.id}>
-              <h2>
-                {pickLocalized(lang, {
-                  zh: group.name_zh,
-                  en: group.name_en,
-                  el: group.name_el,
-                })}
-              </h2>
-              <div className="menu-list order-list">
-                {group.items.map((item) => (
-                  <MenuCard
-                    item={item}
-                    lang={lang}
-                    key={item.id}
-                    action={
-                      <div className="item-action">
-                        <input
-                          aria-label={t('order.note')}
-                          placeholder={t('order.note')}
-                          value={notes[item.id] ?? ''}
-                          onChange={(event) =>
-                            setNotes((current) => ({ ...current, [item.id]: event.target.value }))
-                          }
-                        />
-                        <button
-                          className="small-primary"
-                          type="button"
-                          onClick={() => addItem(item)}
-                          disabled={!sessionInfo}
-                        >
-                          <Plus size={16} />
-                          {t('order.add')}
-                        </button>
-                      </div>
-                    }
-                  />
-                ))}
-              </div>
-            </section>
-          ) : null,
-        )}
+        <div className="order-menu-groups">
+          {groups.map((group) =>
+            group.items.length ? (
+              <section className="menu-group" id={`order-category-${group.id}`} key={group.id}>
+                <h2>
+                  {getLocalizedField(lang, {
+                    zh: group.name_zh,
+                    en: group.name_en,
+                    el: group.name_el,
+                  })}
+                </h2>
+                <div className="menu-list order-list">
+                  {group.items.map((item) => (
+                    <MenuCard
+                      item={item}
+                      lang={lang}
+                      key={item.id}
+                      action={
+                        <div className="item-action">
+                          <input
+                            aria-label={t('order.note')}
+                            placeholder={t('order.note')}
+                            value={notes[item.id] ?? ''}
+                            onChange={(event) =>
+                              setNotes((current) => ({ ...current, [item.id]: event.target.value }))
+                            }
+                          />
+                          <button
+                            className="small-primary"
+                            type="button"
+                            onClick={() => addItem(item)}
+                            disabled={!sessionInfo}
+                          >
+                            <Plus size={16} />
+                            {t('order.add')}
+                          </button>
+                        </div>
+                      }
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null,
+          )}
+        </div>
       </section>
 
       <aside className="cart-panel" id="shared-cart">
@@ -201,7 +203,7 @@ export function TableOrderPage() {
             <div className="cart-line" key={line.id}>
               <strong>
                 {item
-                  ? pickLocalized(lang, {
+                  ? getLocalizedField(lang, {
                       zh: item.name_zh,
                       en: item.name_en,
                       el: item.name_el,

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getPublicMenu } from '../lib/menuApi';
-import { formatPrice, pickLocalized } from '../lib/localized';
+import { formatPrice, getLocalizedField } from '../lib/localized';
 import type { Language, MenuGroup, MenuItem } from '../lib/types';
 
 export function MenuPage() {
@@ -36,7 +36,7 @@ export function MenuPage() {
             .filter((group) => group.items.length)
             .map((group) => (
               <a href={`#category-${group.id}`} key={group.id}>
-                {pickLocalized(lang, {
+                {getLocalizedField(lang, {
                   zh: group.name_zh,
                   en: group.name_en,
                   el: group.name_el,
@@ -49,7 +49,7 @@ export function MenuPage() {
             group.items.length ? (
               <section className="menu-group" id={`category-${group.id}`} key={group.id}>
                 <h2>
-                  {pickLocalized(lang, {
+                  {getLocalizedField(lang, {
                     zh: group.name_zh,
                     en: group.name_en,
                     el: group.name_el,
@@ -78,12 +78,12 @@ export function MenuCard({
   lang: Language;
   action?: ReactNode;
 }) {
-  const name = pickLocalized(lang, {
+  const name = getLocalizedField(lang, {
     zh: item.name_zh,
     en: item.name_en,
     el: item.name_el,
   });
-  const description = pickLocalized(lang, {
+  const description = getLocalizedField(lang, {
     zh: item.description_zh,
     en: item.description_en,
     el: item.description_el,
