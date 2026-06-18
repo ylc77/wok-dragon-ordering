@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RestaurantTable, TableJoinResult, TableSession } from './types';
+import type { BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RestaurantTable, TableJoinResult, TableSession, TableSessionState } from './types';
 
 function requireClient() {
   if (!supabase) throw new Error('Supabase is not configured.');
@@ -13,6 +13,30 @@ export async function joinTableSession(qrToken: string): Promise<TableJoinResult
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) throw new Error('Table session was not returned.');
   return row as TableJoinResult;
+}
+
+export async function resumeTableSession(sessionId: string, qrToken: string): Promise<TableSessionState> {
+  const client = requireClient();
+  const { data, error } = await client.rpc('resume_table_session', {
+    p_session_id: sessionId,
+    p_qr_token: qrToken,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('Saved table session was not returned.');
+  return row as TableSessionState;
+}
+
+export async function hasSubmittedOrders(sessionId: string) {
+  const client = requireClient();
+  const { count, error } = await client
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .neq('status', 'cancelled')
+    .is('deleted_at', null);
+  if (error) throw error;
+  return (count ?? 0) > 0;
 }
 
 export async function fetchCart(sessionId: string): Promise<CartItem[]> {
@@ -82,7 +106,7 @@ export async function requestBill(sessionId: string, paymentMethod: BillPaymentM
     p_payment_method: paymentMethod,
   });
   if (error) throw error;
-  return (Array.isArray(data) ? data[0] : data) as { request_id: string; request_status: 'pending' };
+  return (Array.isArray(data) ? data[0] : data) as { request_id: string; request_status: 'requested' };
 }
 
 export function subscribeToTableCart(sessionId: string, onChange: () => void) {
@@ -161,6 +185,17 @@ export async function handleBillRequest(requestId: string) {
   const client = requireClient();
   const { error } = await client.rpc('handle_bill_request', { p_request_id: requestId });
   if (error) throw error;
+}
+
+export async function confirmBillAndCloseSession(sessionId: string) {
+  const client = requireClient();
+  const { data, error } = await client.rpc('confirm_bill_and_close_session', { p_session_id: sessionId });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row ?? { paid_order_count: 0, deleted_cart_count: 0 }) as {
+    paid_order_count: number;
+    deleted_cart_count: number;
+  };
 }
 
 export async function markOrderKitchenPrinted(orderId: string) {

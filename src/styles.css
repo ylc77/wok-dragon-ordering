@@ -755,6 +755,59 @@ button:disabled {
   padding: 8px 10px;
 }
 
+.bill-request-button:disabled {
+  background: #f3f0ed;
+  border-color: #ddd6d0;
+  color: #8d8782;
+}
+
+.bill-request-status {
+  align-items: flex-start;
+  background: #fff7df;
+  border: 1px solid #e9c96f;
+  border-radius: var(--radius);
+  color: #59491d;
+  display: flex;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 12px 14px;
+}
+
+.bill-request-status p {
+  margin: 3px 0 0;
+}
+
+.session-ended-shell {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.session-ended-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-width: 520px;
+  padding: 34px;
+  text-align: center;
+}
+
+.session-ended-card > svg {
+  color: var(--accent);
+}
+
+.session-ended-card h1 {
+  margin: 14px 0 8px;
+}
+
+.session-ended-card p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
 .bill-dialog-backdrop {
   align-items: center;
   background: rgba(29, 24, 20, 0.5);
@@ -1294,6 +1347,48 @@ button:disabled {
 
 .sound-toggle.enabled {
   background: #176b3a;
+}
+
+.bill-request-list article .primary-button {
+  flex: 0 0 auto;
+}
+
+.auto-print-toggle {
+  align-items: center !important;
+  background: #fff8f0;
+  border: 1px solid #e5d3bd;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex !important;
+  flex-direction: row;
+  gap: 10px !important;
+  min-width: min(100%, 330px) !important;
+  padding: 9px 12px;
+}
+
+.auto-print-toggle.enabled {
+  background: #edf8f0;
+  border-color: #9bc8a7;
+}
+
+.auto-print-toggle input {
+  accent-color: #176b3a;
+  flex: 0 0 auto;
+  height: 18px;
+  width: 18px;
+}
+
+.auto-print-toggle span,
+.auto-print-toggle strong,
+.auto-print-toggle small {
+  display: block;
+}
+
+.auto-print-toggle small {
+  color: #6b6f69;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 3px;
 }
 
 .order-summary-grid {
