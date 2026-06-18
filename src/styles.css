@@ -836,6 +836,10 @@ button:disabled {
   line-height: 1.65;
 }
 
+.session-ended-card .primary-button {
+  margin: 18px 0 12px;
+}
+
 .bill-dialog-backdrop {
   align-items: center;
   background: rgba(29, 24, 20, 0.5);
@@ -914,6 +918,104 @@ button:disabled {
 
 .bill-dialog-actions button {
   min-width: 110px;
+}
+
+.bill-review-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: min(760px, calc(100dvh - 36px));
+  max-width: 520px;
+}
+
+.bill-review-intro {
+  margin: 4px 0 14px;
+}
+
+.bill-order-list {
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  min-height: 90px;
+  overflow-y: auto;
+}
+
+.bill-empty {
+  margin: 0;
+  padding: 28px 12px;
+  text-align: center;
+}
+
+.bill-order-batch {
+  padding: 14px 2px;
+}
+
+.bill-order-batch + .bill-order-batch {
+  border-top: 1px dashed var(--line);
+}
+
+.bill-order-batch header,
+.bill-order-line,
+.bill-grand-total,
+.payment-total {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.bill-order-batch header {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.bill-order-batch header strong {
+  color: var(--text);
+}
+
+.bill-order-line {
+  gap: 18px;
+  padding: 5px 0;
+}
+
+.bill-order-line > span {
+  min-width: 0;
+}
+
+.bill-order-line small {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  margin: 3px 0 0 22px;
+}
+
+.bill-order-line > strong {
+  white-space: nowrap;
+}
+
+.bill-grand-total,
+.payment-total {
+  background: #fff4ef;
+  border: 1px solid #efc9bd;
+  border-radius: 10px;
+  margin-top: 16px;
+  padding: 14px 16px;
+}
+
+.bill-grand-total strong,
+.payment-total strong {
+  color: var(--accent-dark);
+  font-size: 24px;
+}
+
+.payment-total {
+  margin-bottom: 14px;
+}
+
+.bill-checkout-button {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 .bill-request-alerts {

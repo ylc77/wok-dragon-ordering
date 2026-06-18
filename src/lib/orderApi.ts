@@ -39,6 +39,19 @@ export async function hasSubmittedOrders(sessionId: string) {
   return (count ?? 0) > 0;
 }
 
+export async function fetchSessionOrders(sessionId: string): Promise<Order[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('session_id', sessionId)
+    .neq('status', 'cancelled')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Order[];
+}
+
 export async function fetchCart(sessionId: string): Promise<CartItem[]> {
   const client = requireClient();
   const { data, error } = await client

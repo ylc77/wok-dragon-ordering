@@ -9,7 +9,7 @@ import { getLocalizedField } from '../lib/localized';
 import {
   addCartItem,
   fetchCart,
-  hasSubmittedOrders,
+  fetchSessionOrders,
   joinTableSession,
   removeCartItem,
   requestBill,
@@ -18,7 +18,7 @@ import {
   subscribeToTableCart,
   updateCartItemQuantity,
 } from '../lib/orderApi';
-import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, TableSessionState } from '../lib/types';
+import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, TableSessionState } from '../lib/types';
 import { LanguageSwitch } from '../components/LanguageSwitch';
 
 export function TableOrderPage() {
@@ -33,10 +33,12 @@ export function TableOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [billOpen, setBillOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<BillPaymentMethod | null>(null);
   const [requestingBill, setRequestingBill] = useState(false);
-  const [hasOrders, setHasOrders] = useState(false);
+  const [billOrders, setBillOrders] = useState<Order[]>([]);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [startingNewSession, setStartingNewSession] = useState(false);
   const cartRefreshSequence = useRef(0);
   const categoryNavRef = useRef<HTMLElement>(null);
   const menuGroupsRef = useRef<HTMLDivElement>(null);
@@ -51,22 +53,28 @@ export function TableOrderPage() {
     return rows;
   }, []);
 
+  const refreshOrders = useCallback(async (sessionId: string) => {
+    const rows = await fetchSessionOrders(sessionId);
+    setBillOrders(rows);
+    return rows;
+  }, []);
+
   const refreshSession = useCallback(async (sessionId: string, includeCart = true) => {
-    const [nextSession, orderExists] = await Promise.all([
+    const [nextSession] = await Promise.all([
       resumeTableSession(sessionId, qrToken),
-      hasSubmittedOrders(sessionId),
+      refreshOrders(sessionId),
     ]);
     setSessionInfo(nextSession);
     setSessionEnded(nextSession.session_status === 'closed');
-    setHasOrders(orderExists);
     if (nextSession.session_status === 'closed') {
       setCart([]);
       setBillOpen(false);
+      setPaymentOpen(false);
     } else if (includeCart) {
       await refreshCart(sessionId);
     }
     return nextSession;
-  }, [qrToken, refreshCart]);
+  }, [qrToken, refreshCart, refreshOrders]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,14 +105,13 @@ export function TableOrderPage() {
         if (cancelled) return;
         setSessionInfo(restored);
         setSessionEnded(restored.session_status === 'closed');
-        const [menuGroups, orderExists] = await Promise.all([
+        const [menuGroups] = await Promise.all([
           menuPromise,
-          hasSubmittedOrders(sessionId),
+          refreshOrders(sessionId),
           restored.session_status === 'active' ? refreshCart(sessionId) : Promise.resolve([]),
         ]);
         if (cancelled) return;
         setGroups(menuGroups);
-        setHasOrders(orderExists);
       } catch (err) {
         if (!cancelled) setMessage(err instanceof Error ? err.message : String(err));
       } finally {
@@ -116,7 +123,7 @@ export function TableOrderPage() {
     return () => {
       cancelled = true;
     };
-  }, [qrToken, refreshCart]);
+  }, [qrToken, refreshCart, refreshOrders]);
 
   useEffect(() => {
     if (!sessionInfo) return;
@@ -127,6 +134,8 @@ export function TableOrderPage() {
   }, [refreshCart, refreshSession, sessionInfo?.session_id]);
 
   const cartSummary = useMemo(() => getCartSummary(cart), [cart]);
+  const billSummary = useMemo(() => getBillSummary(billOrders), [billOrders]);
+  const hasOrders = billOrders.length > 0;
   const orderingLocked = sessionInfo?.bill_request_status === 'requested';
   const cartByMenuItemId = useMemo(() => {
     const rows = new Map<string, CartItem>();
@@ -215,7 +224,7 @@ export function TableOrderPage() {
       setSubmitting(true);
       const result = await submitOrder(sessionInfo.session_id, crypto.randomUUID());
       setMessage(`${t('order.submitSuccess')} ${t('order.orderNumber')}: ${result.order_number}`);
-      await refreshCart(sessionInfo.session_id);
+      await Promise.all([refreshCart(sessionInfo.session_id), refreshOrders(sessionInfo.session_id)]);
       setCartOpen(false);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : String(err));
@@ -230,10 +239,15 @@ export function TableOrderPage() {
       setMessage(t('order.requestBillRequiresOrder'));
       return;
     }
+    if (!cartSummary.isEmpty) {
+      setMessage(t('order.billCartPending'));
+      return;
+    }
     try {
       setRequestingBill(true);
       await requestBill(sessionInfo.session_id, paymentMethod);
       setBillOpen(false);
+      setPaymentOpen(false);
       setSelectedPayment(null);
       setMessage(null);
       setSessionInfo((current) => current ? {
@@ -248,6 +262,31 @@ export function TableOrderPage() {
     }
   }
 
+  async function startNewTableSession() {
+    try {
+      setStartingNewSession(true);
+      setMessage(null);
+      const joined = await joinTableSession(qrToken);
+      saveTableSession(qrToken, joined);
+      const restored = await resumeTableSession(joined.session_id, qrToken);
+      const [nextCart, nextOrders] = await Promise.all([
+        fetchCart(joined.session_id),
+        fetchSessionOrders(joined.session_id),
+      ]);
+      setSessionInfo(restored);
+      setCart(nextCart);
+      setBillOrders(nextOrders);
+      setSessionEnded(false);
+      setBillOpen(false);
+      setPaymentOpen(false);
+      setSelectedPayment(null);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setStartingNewSession(false);
+    }
+  }
+
   if (sessionEnded && sessionInfo) {
     return (
       <main className="order-shell session-ended-shell">
@@ -255,6 +294,10 @@ export function TableOrderPage() {
           <ReceiptText size={34} />
           <h1>{t('order.sessionEndedTitle')}</h1>
           <p>{t('order.sessionEnded')}</p>
+          {message ? <p className="bill-dialog-warning" role="alert">{message}</p> : null}
+          <button className="primary-button stretch" type="button" disabled={startingNewSession} onClick={startNewTableSession}>
+            {startingNewSession ? t('order.startingNewOrder') : t('order.startNewOrder')}
+          </button>
           <LanguageSwitch />
         </section>
       </main>
@@ -288,7 +331,6 @@ export function TableOrderPage() {
               }
             }}
             disabled={!sessionInfo || billRequested}
-            title={!hasOrders ? t('order.requestBillRequiresOrder') : undefined}
           >
             <ReceiptText size={17} />
             <span className="bill-label-full">{t('order.requestBill')}</span>
@@ -427,26 +469,88 @@ export function TableOrderPage() {
       </aside>
 
       {billOpen ? (
-        <div className="bill-dialog-backdrop" role="presentation" onClick={() => { setBillOpen(false); setSelectedPayment(null); }}>
+        <div className="bill-dialog-backdrop" role="presentation" onClick={() => setBillOpen(false)}>
           <section
-            className="bill-dialog"
+            className="bill-dialog bill-review-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="bill-dialog-title"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="cart-panel-head">
-              <h2 id="bill-dialog-title">{t('order.requestBill')}</h2>
-              <button type="button" aria-label={t('order.close')} onClick={() => { setBillOpen(false); setSelectedPayment(null); }}>
+              <h2 id="bill-dialog-title">{t('order.myBill')}</h2>
+              <button type="button" aria-label={t('order.close')} onClick={() => setBillOpen(false)}>
                 <X size={18} />
               </button>
             </div>
+            <p className="bill-review-intro">{t('order.billReviewIntro')}</p>
+            <div className="bill-order-list">
+              {billOrders.length === 0 ? <p className="bill-empty">{t('order.billEmpty')}</p> : null}
+              {billOrders.map((order) => (
+                <section className="bill-order-batch" key={order.id}>
+                  <header>
+                    <strong>{t('order.orderNumber')} #{order.order_number}</strong>
+                    <span>{formatOrderTime(order.created_at, lang)}</span>
+                  </header>
+                  {(order.order_items ?? []).map((item) => (
+                    <div className="bill-order-line" key={item.id}>
+                      <span>
+                        <b>{item.quantity}×</b>{' '}
+                        {getLocalizedField(lang, {
+                          zh: item.item_name_zh,
+                          en: item.item_name_en,
+                          el: item.item_name_el,
+                        })}
+                        {item.note ? <small>{item.note}</small> : null}
+                      </span>
+                      <strong>{formatCartPrice(Number(item.line_total))}</strong>
+                    </div>
+                  ))}
+                </section>
+              ))}
+            </div>
+            <div className="bill-grand-total">
+              <span>{t('order.amountDue')}</span>
+              <strong>{formatCartPrice(billSummary.totalPrice)}</strong>
+            </div>
+            {!cartSummary.isEmpty ? <p className="bill-dialog-warning" role="alert">{t('order.billCartPending')}</p> : null}
+            <button
+              className="primary-button stretch bill-checkout-button"
+              type="button"
+              disabled={!hasOrders || !cartSummary.isEmpty || billSummary.totalPrice <= 0}
+              onClick={() => {
+                setBillOpen(false);
+                setSelectedPayment(null);
+                setPaymentOpen(true);
+              }}
+            >
+              <CreditCard size={18} />
+              {t('order.continueToPayment')}
+            </button>
+          </section>
+        </div>
+      ) : null}
+
+      {paymentOpen ? (
+        <div className="bill-dialog-backdrop" role="presentation" onClick={() => { setPaymentOpen(false); setSelectedPayment(null); }}>
+          <section
+            className="bill-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="cart-panel-head">
+              <h2 id="payment-dialog-title">{t('order.requestBill')}</h2>
+              <button type="button" aria-label={t('order.close')} onClick={() => { setPaymentOpen(false); setSelectedPayment(null); }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="payment-total">
+              <span>{t('order.amountDue')}</span>
+              <strong>{formatCartPrice(billSummary.totalPrice)}</strong>
+            </div>
             <p>{t('order.choosePayment')}</p>
-            {!hasOrders ? (
-              <p className="bill-dialog-warning" role="alert">
-                {t('order.requestBillRequiresOrder')}
-              </p>
-            ) : null}
             <div className="bill-payment-options">
               <button
                 type="button"
@@ -470,10 +574,10 @@ export function TableOrderPage() {
               </button>
             </div>
             <div className="bill-dialog-actions">
-              <button type="button" className="secondary-button" disabled={requestingBill} onClick={() => { setBillOpen(false); setSelectedPayment(null); }}>
+              <button type="button" className="secondary-button" disabled={requestingBill} onClick={() => { setPaymentOpen(false); setSelectedPayment(null); setBillOpen(true); }}>
                 {t('order.cancel')}
               </button>
-              <button type="button" className="primary-button" disabled={!hasOrders || !selectedPayment || requestingBill} onClick={() => selectedPayment && sendBillRequest(selectedPayment)}>
+              <button type="button" className="primary-button" disabled={!hasOrders || !selectedPayment || requestingBill || !cartSummary.isEmpty} onClick={() => selectedPayment && sendBillRequest(selectedPayment)}>
                 {t('order.confirm')}
               </button>
             </div>
@@ -516,6 +620,23 @@ export function getCartSummary(cartItems: CartItem[]) {
   );
 
   return { ...summary, isEmpty: summary.totalQuantity === 0 };
+}
+
+export function getBillSummary(orders: Order[]) {
+  return orders.reduce(
+    (summary, order) => ({
+      orderCount: summary.orderCount + 1,
+      totalPrice: summary.totalPrice + (Number(order.total_price) || 0),
+    }),
+    { orderCount: 0, totalPrice: 0 },
+  );
+}
+
+function formatOrderTime(value: string, lang: Language) {
+  return new Intl.DateTimeFormat(lang === 'el' ? 'el-GR' : 'en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
 }
 
 function formatCartPrice(price: number) {
