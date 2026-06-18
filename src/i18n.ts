@@ -38,6 +38,10 @@ const resources = {
         joining: 'Σύνδεση στο τραπέζι...',
         submitSuccess: 'Η παραγγελία στάλθηκε.',
         orderNumber: 'Αριθμός παραγγελίας',
+        selectedCount_one: '{{count}} είδος',
+        selectedCount_other: '{{count}} είδη',
+        cartBarSummary_one: 'Καλάθι · {{count}} είδος · {{total}}',
+        cartBarSummary_other: 'Καλάθι · {{count}} είδη · {{total}}',
       },
       platforms: {
         wolt: 'Wolt',
@@ -82,6 +86,10 @@ const resources = {
         joining: 'Joining table...',
         submitSuccess: 'Order sent.',
         orderNumber: 'Order number',
+        selectedCount_one: '{{count}} item',
+        selectedCount_other: '{{count}} items',
+        cartBarSummary_one: 'Cart · {{count}} item · {{total}}',
+        cartBarSummary_other: 'Cart · {{count}} items · {{total}}',
       },
       platforms: {
         wolt: 'Wolt',

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +28,16 @@ export function TableOrderPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const cartRefreshSequence = useRef(0);
+
+  const refreshCart = useCallback(async (sessionId: string) => {
+    const requestSequence = ++cartRefreshSequence.current;
+    const rows = await fetchCart(sessionId);
+    if (requestSequence === cartRefreshSequence.current) {
+      setCart(rows);
+    }
+    return rows;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,10 +58,9 @@ export function TableOrderPage() {
         const joined = await joinTableSession(qrToken);
         if (cancelled) return;
         setSessionInfo(joined);
-        const [menuGroups, cartRows] = await Promise.all([menuPromise, fetchCart(joined.session_id)]);
+        const [menuGroups] = await Promise.all([menuPromise, refreshCart(joined.session_id)]);
         if (cancelled) return;
         setGroups(menuGroups);
-        setCart(cartRows);
       } catch (err) {
         if (!cancelled) setMessage(err instanceof Error ? err.message : String(err));
       } finally {
@@ -63,32 +72,24 @@ export function TableOrderPage() {
     return () => {
       cancelled = true;
     };
-  }, [qrToken]);
+  }, [qrToken, refreshCart]);
 
   useEffect(() => {
     if (!sessionInfo) return;
     return subscribeToTableCart(sessionInfo.session_id, () => {
-      fetchCart(sessionInfo.session_id)
-        .then(setCart)
+      refreshCart(sessionInfo.session_id)
         .catch((err) => setMessage(err.message));
     });
-  }, [sessionInfo]);
+  }, [refreshCart, sessionInfo]);
 
-  const total = useMemo(
-    () => cart.reduce((sum, line) => sum + Number(line.unit_price) * line.quantity, 0),
-    [cart],
-  );
-  const totalQuantity = useMemo(
-    () => cart.reduce((sum, line) => sum + line.quantity, 0),
-    [cart],
-  );
+  const cartSummary = useMemo(() => getCartSummary(cart), [cart]);
 
   async function addItem(item: MenuItem) {
     if (!sessionInfo) return;
     try {
       await addCartItem(sessionInfo.session_id, item.id, 1, notes[item.id] ?? '');
       setNotes((current) => ({ ...current, [item.id]: '' }));
-      setCart(await fetchCart(sessionInfo.session_id));
+      await refreshCart(sessionInfo.session_id);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : String(err));
     }
@@ -102,19 +103,19 @@ export function TableOrderPage() {
       } else {
         await updateCartItemQuantity(line.id, nextQuantity);
       }
-      setCart(await fetchCart(sessionInfo.session_id));
+      await refreshCart(sessionInfo.session_id);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : String(err));
     }
   }
 
   async function submitCurrentOrder() {
-    if (!sessionInfo || !cart.length) return;
+    if (!sessionInfo || cartSummary.isEmpty) return;
     try {
       setSubmitting(true);
       const result = await submitOrder(sessionInfo.session_id, crypto.randomUUID());
       setMessage(`${t('order.submitSuccess')} ${t('order.orderNumber')}: ${result.order_number}`);
-      setCart(await fetchCart(sessionInfo.session_id));
+      await refreshCart(sessionInfo.session_id);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : String(err));
     } finally {
@@ -228,28 +229,50 @@ export function TableOrderPage() {
           );
         })}
         <div className="cart-total">
-          <span>{t('common.total')}</span>
-          <strong>{formatPrice(total)}</strong>
+          <span>{t('order.selectedCount', { count: cartSummary.totalQuantity })}</span>
+          <strong>{formatPrice(cartSummary.totalPrice)}</strong>
         </div>
         <button
           className="primary-button stretch"
           type="button"
-          disabled={!cart.length || submitting}
+          disabled={cartSummary.isEmpty || submitting}
           onClick={submitCurrentOrder}
         >
           {t('order.submit')}
         </button>
       </aside>
 
-      <a className="mobile-cart-bar" href="#shared-cart">
+      <a
+        className={`mobile-cart-bar ${cartSummary.isEmpty ? 'is-empty' : ''}`}
+        href="#shared-cart"
+        aria-label={t('order.cartBarSummary', {
+          count: cartSummary.totalQuantity,
+          total: formatPrice(cartSummary.totalPrice),
+        })}
+      >
         <span>
           <ShoppingBag size={18} />
           {t('order.sharedCart')}
         </span>
         <strong>
-          {totalQuantity} · {formatPrice(total)}
+          {t('order.selectedCount', { count: cartSummary.totalQuantity })} · {formatPrice(cartSummary.totalPrice)}
         </strong>
       </a>
     </main>
   );
+}
+
+export function getCartSummary(cartItems: CartItem[]) {
+  const summary = cartItems.reduce(
+    (result, item) => {
+      const quantity = Number(item.quantity) || 0;
+      const unitPrice = Number(item.unit_price) || 0;
+      result.totalQuantity += quantity;
+      result.totalPrice += quantity * unitPrice;
+      return result;
+    },
+    { totalQuantity: 0, totalPrice: 0 },
+  );
+
+  return { ...summary, isEmpty: summary.totalQuantity === 0 };
 }
