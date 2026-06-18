@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Ban, Banknote, BarChart3, CheckCircle2, ChefHat, Clock3, ClipboardList, CreditCard, Download, LogOut, Plus, Printer, RefreshCw, RotateCcw, Save, Search, Trash2, Upload, WalletCards } from 'lucide-react';
+import { Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Pencil, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
@@ -30,7 +30,7 @@ import type {
   TableSession,
 } from '../lib/types';
 
-type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'import';
+type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'import' | 'system';
 
 const emptySettings: Partial<RestaurantSettings> = {
   name_zh: '',
@@ -92,6 +92,7 @@ const statusIcons: Record<OrderStatus, ReactNode> = {
 export function AdminPage() {
   const [sessionReady, setSessionReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('管理员');
   const [tab, setTab] = useState<AdminTab>('dashboard');
   const [message, setMessage] = useState<string | null>(null);
 
@@ -99,10 +100,12 @@ export function AdminPage() {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
       setLoggedIn(Boolean(data.session));
+      setAdminEmail(data.session?.user.email ?? '管理员');
       setSessionReady(true);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setLoggedIn(Boolean(session));
+      setAdminEmail(session?.user.email ?? '管理员');
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -130,29 +133,35 @@ export function AdminPage() {
     <main className="admin-shell">
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/">
-          龙城酒楼
-          <small>Wok Dragon Express</small>
+          <span className="admin-brand-mark">龙</span>
+          <span>后台管理系统<small>Wok Dragon Express</small></span>
         </Link>
-        <AdminNavButton active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>
-          经营概览
+        <span className="admin-nav-label">经营管理</span>
+        <AdminNavButton icon={<LayoutDashboard size={17} />} active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>
+          仪表盘
         </AdminNavButton>
-        <AdminNavButton active={tab === 'orders'} onClick={() => setTab('orders')}>
+        <AdminNavButton icon={<ClipboardList size={17} />} active={tab === 'orders'} onClick={() => setTab('orders')}>
           订单管理
         </AdminNavButton>
-        <AdminNavButton active={tab === 'items'} onClick={() => setTab('items')}>
+        <span className="admin-nav-label">菜单与桌台</span>
+        <AdminNavButton icon={<UtensilsCrossed size={17} />} active={tab === 'items'} onClick={() => setTab('items')}>
           菜品管理
         </AdminNavButton>
-        <AdminNavButton active={tab === 'categories'} onClick={() => setTab('categories')}>
+        <AdminNavButton icon={<Tags size={17} />} active={tab === 'categories'} onClick={() => setTab('categories')}>
           菜品分类
         </AdminNavButton>
-        <AdminNavButton active={tab === 'tables'} onClick={() => setTab('tables')}>
+        <AdminNavButton icon={<QrCode size={17} />} active={tab === 'tables'} onClick={() => setTab('tables')}>
           桌台二维码
         </AdminNavButton>
-        <AdminNavButton active={tab === 'settings'} onClick={() => setTab('settings')}>
+        <span className="admin-nav-label">系统配置</span>
+        <AdminNavButton icon={<Building2 size={17} />} active={tab === 'settings'} onClick={() => setTab('settings')}>
           餐馆信息设置
         </AdminNavButton>
-        <AdminNavButton active={tab === 'import'} onClick={() => setTab('import')}>
+        <AdminNavButton icon={<Database size={17} />} active={tab === 'import'} onClick={() => setTab('import')}>
           CSV 导入
+        </AdminNavButton>
+        <AdminNavButton icon={<Settings2 size={17} />} active={tab === 'system'} onClick={() => setTab('system')}>
+          系统设置
         </AdminNavButton>
         <button
           className="danger"
@@ -162,16 +171,32 @@ export function AdminPage() {
           退出登录
         </button>
       </aside>
-      <section className="admin-content">
-        {message ? <p className="admin-message">{message}</p> : null}
-        {tab === 'dashboard' ? <Dashboard onMessage={setMessage} onOpenOrders={() => setTab('orders')} /> : null}
-        {tab === 'orders' ? <OrderManager onMessage={setMessage} /> : null}
-        {tab === 'tables' ? <TableManager onMessage={setMessage} /> : null}
-        {tab === 'settings' ? <SettingsEditor onMessage={setMessage} /> : null}
-        {tab === 'categories' ? <CategoryEditor onMessage={setMessage} /> : null}
-        {tab === 'items' ? <ItemEditor onMessage={setMessage} /> : null}
-        {tab === 'import' ? <ImportGuide /> : null}
-      </section>
+      <div className="admin-workspace">
+        <header className="admin-topbar">
+          <strong>Wok Dragon Express 管理后台</strong>
+          <div>
+            <label className="admin-restaurant-select">
+              <Building2 size={16} />
+              <select aria-label="餐馆选择" defaultValue="wok-dragon">
+                <option value="wok-dragon">Wok Dragon Express 龙城酒楼</option>
+              </select>
+              <ChevronDown size={14} />
+            </label>
+            <span className="admin-user"><UserCircle size={19} /><b>{adminEmail}</b></span>
+          </div>
+        </header>
+        <section className="admin-content">
+          {message ? <p className="admin-message">{message}</p> : null}
+          {tab === 'dashboard' ? <Dashboard onMessage={setMessage} onOpenOrders={() => setTab('orders')} /> : null}
+          {tab === 'orders' ? <OrderManager onMessage={setMessage} /> : null}
+          {tab === 'tables' ? <TableManager onMessage={setMessage} /> : null}
+          {tab === 'settings' ? <SettingsEditor onMessage={setMessage} /> : null}
+          {tab === 'categories' ? <CategoryEditor onMessage={setMessage} /> : null}
+          {tab === 'items' ? <ItemEditor onMessage={setMessage} /> : null}
+          {tab === 'import' ? <ImportGuide /> : null}
+          {tab === 'system' ? <SystemSettings /> : null}
+        </section>
+      </div>
     </main>
   );
 }
@@ -179,15 +204,17 @@ export function AdminPage() {
 function AdminNavButton({
   active,
   children,
+  icon,
   onClick,
 }: {
   active: boolean;
   children: ReactNode;
+  icon: ReactNode;
   onClick: () => void;
 }) {
   return (
     <button className={active ? 'active' : ''} onClick={onClick} type="button">
-      {children}
+      {icon}<span>{children}</span>
     </button>
   );
 }
@@ -352,21 +379,32 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
 
   return (
     <AdminSection title="餐馆信息" onRefresh={load}>
-      <div className="admin-form-grid">
-        <TextField label="中文名称" value={settings.name_zh} onChange={(v) => setSettings({ ...settings, name_zh: v })} />
-        <TextField label="英文名称" value={settings.name_en} onChange={(v) => setSettings({ ...settings, name_en: v })} />
-        <TextField label="希腊语名称" value={settings.name_el} onChange={(v) => setSettings({ ...settings, name_el: v })} />
+      <div className="admin-language-panels">
+        <section><h3>简体中文</h3><div className="admin-form-grid">
+          <TextField label="餐馆名称" value={settings.name_zh} onChange={(v) => setSettings({ ...settings, name_zh: v })} />
+          <TextField label="地址" value={settings.address_zh} onChange={(v) => setSettings({ ...settings, address_zh: v })} />
+          <TextField label="营业时间" value={settings.opening_hours_zh} onChange={(v) => setSettings({ ...settings, opening_hours_zh: v })} />
+        </div></section>
+        <section><h3>English</h3><div className="admin-form-grid">
+          <TextField label="Restaurant name" value={settings.name_en} onChange={(v) => setSettings({ ...settings, name_en: v })} />
+          <TextField label="Address" value={settings.address_en} onChange={(v) => setSettings({ ...settings, address_en: v })} />
+          <TextField label="Opening hours" value={settings.opening_hours_en} onChange={(v) => setSettings({ ...settings, opening_hours_en: v })} />
+        </div></section>
+        <section><h3>Ελληνικά</h3><div className="admin-form-grid">
+          <TextField label="Όνομα" value={settings.name_el} onChange={(v) => setSettings({ ...settings, name_el: v })} />
+          <TextField label="Διεύθυνση" value={settings.address_el} onChange={(v) => setSettings({ ...settings, address_el: v })} />
+          <TextField label="Ωράριο" value={settings.opening_hours_el} onChange={(v) => setSettings({ ...settings, opening_hours_el: v })} />
+        </div></section>
+      </div>
+      <div className="admin-form-panel">
+        <h3>联系方式与平台</h3>
+        <div className="admin-form-grid">
         <TextField label="电话" value={settings.phone} onChange={(v) => setSettings({ ...settings, phone: v })} />
-        <TextField label="中文地址" value={settings.address_zh} onChange={(v) => setSettings({ ...settings, address_zh: v })} />
-        <TextField label="英文地址" value={settings.address_en} onChange={(v) => setSettings({ ...settings, address_en: v })} />
-        <TextField label="希腊语地址" value={settings.address_el} onChange={(v) => setSettings({ ...settings, address_el: v })} />
-        <TextField label="地图链接" value={settings.map_url} onChange={(v) => setSettings({ ...settings, map_url: v })} />
-        <TextField label="中文营业时间" value={settings.opening_hours_zh} onChange={(v) => setSettings({ ...settings, opening_hours_zh: v })} />
-        <TextField label="英文营业时间" value={settings.opening_hours_en} onChange={(v) => setSettings({ ...settings, opening_hours_en: v })} />
-        <TextField label="希腊语营业时间" value={settings.opening_hours_el} onChange={(v) => setSettings({ ...settings, opening_hours_el: v })} />
+        <TextField label="Google Maps 链接" value={settings.map_url} onChange={(v) => setSettings({ ...settings, map_url: v })} />
         <TextField label="Wolt 外卖链接" value={settings.wolt_url} onChange={(v) => setSettings({ ...settings, wolt_url: v })} />
         <TextField label="efood 外卖链接" value={settings.efood_url} onChange={(v) => setSettings({ ...settings, efood_url: v })} />
         <TextField label="Box 外卖链接" value={settings.box_url} onChange={(v) => setSettings({ ...settings, box_url: v })} />
+        </div>
       </div>
       <button className="primary-button" type="button" onClick={save}>
         <Save size={16} />
@@ -884,6 +922,17 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     }
   }
 
+  async function duplicateItem(item: MenuItem) {
+    const copy: Partial<MenuItem> = { ...item };
+    delete copy.id;
+    await saveItem({
+      ...copy,
+      name_zh: `${item.name_zh} 副本`,
+      name_en: item.name_en ? `${item.name_en} copy` : item.name_en,
+      sort_order: item.sort_order + 1,
+    });
+  }
+
   async function autoTranslateDraft() {
     try {
       setTranslatingDraft(true);
@@ -985,6 +1034,9 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       ) : null}
 
       <div className="admin-table item-table">
+        <div className="item-table-head" aria-hidden="true">
+          <span>选择</span><span>菜品</span><span>分类</span><span>价格</span><span>状态</span><span>操作</span>
+        </div>
         {filteredItems.map((item) => (
           <ItemRow
             item={item}
@@ -993,6 +1045,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
             onSelect={(checked) => toggleSelect(item.id, checked)}
             onMessage={onMessage}
             onSave={saveItem}
+            onDuplicate={duplicateItem}
             onDelete={(target) => deleteItems([target.id], `删除菜品“${target.name_zh || target.name_en || target.name_el}”`)}
             key={item.id}
           />
@@ -1760,6 +1813,25 @@ category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,descr
   );
 }
 
+function SystemSettings() {
+  return (
+    <AdminSection title="系统设置">
+      <div className="admin-panel-card system-settings-card">
+        <Settings2 size={24} />
+        <div>
+          <h2>运行配置</h2>
+          <p>菜单、订单、桌台、二维码和权限策略由 Supabase 项目统一管理。此页面仅展示入口，不会绕过现有 RPC 或 RLS。</p>
+        </div>
+      </div>
+      <div className="admin-system-grid">
+        <div><strong>实时订单</strong><span>Realtime 订阅已由订单管理页面维护</span></div>
+        <div><strong>桌台会话</strong><span>清桌与二维码继续使用现有安全函数</span></div>
+        <div><strong>访问控制</strong><span>管理员登录与 RLS 策略保持不变</span></div>
+      </div>
+    </AdminSection>
+  );
+}
+
 function AdminSection({
   title,
   children,
@@ -1862,6 +1934,7 @@ function ItemRow({
   onSelect,
   onMessage,
   onSave,
+  onDuplicate,
   onDelete,
 }: {
   item: MenuItem;
@@ -1870,10 +1943,13 @@ function ItemRow({
   onSelect: (checked: boolean) => void;
   onMessage: (value: string | null) => void;
   onSave: (item: Partial<MenuItem>) => void;
+  onDuplicate: (item: MenuItem) => void;
   onDelete: (item: MenuItem) => void;
 }) {
   const [value, setValue] = useState<Partial<MenuItem>>(item);
   const [translating, setTranslating] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const category = categories.find((entry) => entry.id === item.category_id);
 
   async function autoTranslate() {
     try {
@@ -1889,21 +1965,32 @@ function ItemRow({
 
   return (
     <div className="admin-row">
-      <label className="checkbox-label row-select">
-        <input checked={selected} type="checkbox" onChange={(event) => onSelect(event.target.checked)} />
-        选择
-      </label>
-      <ItemForm value={value} categories={categories} onChange={setValue} />
-      <button className="secondary-button" type="button" disabled={translating} onClick={autoTranslate}>
-        {translating ? '正在翻译...' : '自动翻译'}
-      </button>
-      <button className="small-primary" type="button" onClick={() => onSave(value)}>
-        保存
-      </button>
-      <button className="danger-inline" type="button" onClick={() => onDelete(item)}>
-        <Trash2 size={15} />
-        删除
-      </button>
+      <div className="item-row-summary">
+        <input aria-label="选择菜品" checked={selected} type="checkbox" onChange={(event) => onSelect(event.target.checked)} />
+        <div className="item-summary-name">
+          {item.image_url ? <img src={item.image_url} alt="" loading="lazy" /> : <span className="item-image-placeholder">龙</span>}
+          <span><strong>{item.name_zh || item.name_en || item.name_el}</strong><small>{item.name_en || item.name_el}</small></span>
+        </div>
+        <span>{category?.name_zh || category?.name_en || '未分类'}</span>
+        <strong>{formatPrice(Number(item.price))}</strong>
+        <span className={item.is_available ? 'availability-badge active' : 'availability-badge'}>{item.is_available ? '已上架' : '已下架'}</span>
+        <div className="item-row-actions">
+          <button type="button" onClick={() => setEditing((open) => !open)}><Pencil size={14} />编辑</button>
+          <button type="button" onClick={() => onDuplicate(item)}><Copy size={14} />复制</button>
+          <button className="danger-text" type="button" onClick={() => onDelete(item)}><Trash2 size={14} />删除</button>
+        </div>
+      </div>
+      {editing ? (
+        <div className="item-row-editor">
+          <ItemForm value={value} categories={categories} onChange={setValue} />
+          <div className="admin-row-actions">
+            <button className="secondary-button" type="button" disabled={translating} onClick={autoTranslate}>
+              {translating ? '正在翻译...' : '自动翻译'}
+            </button>
+            <button className="small-primary" type="button" onClick={() => onSave(value)}>保存修改</button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1918,7 +2005,8 @@ function ItemForm({
   onChange: (value: Partial<MenuItem>) => void;
 }) {
   return (
-    <div className="admin-form-grid item-grid">
+    <div className="item-editor-grid">
+      <div className="item-editor-core">
       <label>
         分类
         <select value={value.category_id ?? ''} onChange={(event) => onChange({ ...value, category_id: event.target.value })}>
@@ -1930,12 +2018,6 @@ function ItemForm({
           ))}
         </select>
       </label>
-      <TextField label="中文名" value={value.name_zh} onChange={(v) => onChange({ ...value, name_zh: v })} />
-      <TextField label="英文名" value={value.name_en} onChange={(v) => onChange({ ...value, name_en: v })} />
-      <TextField label="希腊语名" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
-      <TextField label="中文描述" value={value.description_zh} onChange={(v) => onChange({ ...value, description_zh: v })} />
-      <TextField label="英文描述" value={value.description_en} onChange={(v) => onChange({ ...value, description_en: v })} />
-      <TextField label="希腊语描述" value={value.description_el} onChange={(v) => onChange({ ...value, description_el: v })} />
       <TextField label="价格" value={value.price} type="number" onChange={(v) => onChange({ ...value, price: Number(v) })} />
       <TextField label="图片 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
       <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
@@ -1947,6 +2029,19 @@ function ItemForm({
         />
         上架
       </label>
+      </div>
+      <div className="item-language-field"><strong>简体中文</strong>
+        <TextField label="菜品名称" value={value.name_zh} onChange={(v) => onChange({ ...value, name_zh: v })} />
+        <TextField label="菜品描述" value={value.description_zh} onChange={(v) => onChange({ ...value, description_zh: v })} />
+      </div>
+      <div className="item-language-field"><strong>English</strong>
+        <TextField label="Name" value={value.name_en} onChange={(v) => onChange({ ...value, name_en: v })} />
+        <TextField label="Description" value={value.description_en} onChange={(v) => onChange({ ...value, description_en: v })} />
+      </div>
+      <div className="item-language-field"><strong>Ελληνικά</strong>
+        <TextField label="Όνομα" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
+        <TextField label="Περιγραφή" value={value.description_el} onChange={(v) => onChange({ ...value, description_el: v })} />
+      </div>
     </div>
   );
 }

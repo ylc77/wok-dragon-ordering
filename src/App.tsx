@@ -1,5 +1,6 @@
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Globe2, Settings } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { Globe2, Menu, Settings, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { HomePage } from './pages/HomePage';
 import { MenuPage } from './pages/MenuPage';
@@ -11,6 +12,11 @@ function PublicShell() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isTableOrder = location.pathname.startsWith('/table/');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname, location.hash]);
 
   if (isAdmin) {
     return <AdminPage />;
@@ -30,17 +36,29 @@ function PublicShell() {
   return (
     <>
       <header className="site-header">
-        <Link className="brand" to="/">
-          <span className="brand-mark">龙</span>
-          <span>
-            <strong>Wok Dragon Express</strong>
-            <small>Monastiraki Athens</small>
-          </span>
-        </Link>
-        <nav className="nav-links" aria-label={t('nav.primary')}>
-          <Link to="/">{t('nav.home')}</Link>
-          <Link to="/menu">{t('nav.menu')}</Link>
-          <a href="#contact">{t('nav.contact')}</a>
+        <div className="site-header-inner">
+          <Link className="brand" to="/">
+            <span className="brand-mark">龙</span>
+            <span>
+              <strong>Wok Dragon Express</strong>
+              <small>Monastiraki · Athens</small>
+            </span>
+          </Link>
+          <button
+            className="mobile-nav-toggle"
+            type="button"
+            aria-label={mobileNavOpen ? t('nav.close') : t('nav.open')}
+            aria-expanded={mobileNavOpen}
+            onClick={() => setMobileNavOpen((open) => !open)}
+          >
+            {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+          <nav className={`nav-links ${mobileNavOpen ? 'is-open' : ''}`} aria-label={t('nav.primary')}>
+            <NavLink to="/" end>{t('nav.home')}</NavLink>
+            <NavLink to="/menu">{t('nav.menu')}</NavLink>
+            <Link to="/#contact">{t('nav.contact')}</Link>
+          </nav>
+          <div className="site-header-actions">
           <button
             className="icon-text-button"
             type="button"
@@ -52,7 +70,8 @@ function PublicShell() {
           <Link className="icon-button" to="/admin" title="Admin">
             <Settings size={18} />
           </Link>
-        </nav>
+          </div>
+        </div>
       </header>
       <Routes>
         <Route path="/" element={<HomePage />} />

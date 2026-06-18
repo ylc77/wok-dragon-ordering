@@ -238,12 +238,12 @@ export function TableOrderPage() {
         </div>
       </section>
 
-      {cartOpen ? <button className="cart-backdrop" type="button" aria-label="Close cart" onClick={() => setCartOpen(false)} /> : null}
+      {cartOpen ? <button className="cart-backdrop" type="button" aria-label={t('order.close')} onClick={() => setCartOpen(false)} /> : null}
 
       <aside className={`cart-panel ${cartOpen ? 'open' : ''}`} id="shared-cart" aria-hidden={!cartOpen}>
         <div className="cart-panel-head">
           <h2>{t('order.sharedCart')}</h2>
-          <button type="button" aria-label="Close cart" onClick={() => setCartOpen(false)}>
+          <button type="button" aria-label={t('order.close')} onClick={() => setCartOpen(false)}>
             <X size={18} />
           </button>
         </div>
