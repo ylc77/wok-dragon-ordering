@@ -213,6 +213,10 @@ export function TableOrderPage() {
 
   async function sendBillRequest(paymentMethod: BillPaymentMethod) {
     if (!sessionInfo) return;
+    if (!hasOrders) {
+      setMessage(t('order.requestBillRequiresOrder'));
+      return;
+    }
     try {
       setRequestingBill(true);
       await requestBill(sessionInfo.session_id, paymentMethod);
@@ -267,11 +271,11 @@ export function TableOrderPage() {
             type="button"
             aria-label={t('order.requestBill')}
             onClick={() => {
-              if (!hasOrders) {
-                setMessage(t('order.requestBillRequiresOrder'));
-                return;
+              if (!billRequested) {
+                setMessage(null);
+                setSelectedPayment(null);
+                setBillOpen(true);
               }
-              if (!billRequested) setBillOpen(true);
             }}
             disabled={!sessionInfo || billRequested}
             title={!hasOrders ? t('order.requestBillRequiresOrder') : undefined}
@@ -433,6 +437,11 @@ export function TableOrderPage() {
               </button>
             </div>
             <p>{t('order.choosePayment')}</p>
+            {!hasOrders ? (
+              <p className="bill-dialog-warning" role="alert">
+                {t('order.requestBillRequiresOrder')}
+              </p>
+            ) : null}
             <div className="bill-payment-options">
               <button
                 type="button"
@@ -459,7 +468,7 @@ export function TableOrderPage() {
               <button type="button" className="secondary-button" disabled={requestingBill} onClick={() => { setBillOpen(false); setSelectedPayment(null); }}>
                 {t('order.cancel')}
               </button>
-              <button type="button" className="primary-button" disabled={!selectedPayment || requestingBill} onClick={() => selectedPayment && sendBillRequest(selectedPayment)}>
+              <button type="button" className="primary-button" disabled={!hasOrders || !selectedPayment || requestingBill} onClick={() => selectedPayment && sendBillRequest(selectedPayment)}>
                 {t('order.confirm')}
               </button>
             </div>

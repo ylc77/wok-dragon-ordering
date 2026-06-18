@@ -851,6 +851,16 @@ button:disabled {
   color: var(--muted);
 }
 
+.bill-dialog .bill-dialog-warning {
+  background: #fff7df;
+  border: 1px solid #e9c96f;
+  border-radius: 8px;
+  color: #6f5310;
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
 .bill-payment-options {
   display: grid;
   gap: 10px;
