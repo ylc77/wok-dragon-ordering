@@ -24,6 +24,7 @@ import type {
   MenuCategory,
   MenuItem,
   Order,
+  OrderItem,
   OrderStatus,
   RestaurantSettings,
   RestaurantTable,
@@ -88,6 +89,88 @@ const statusIcons: Record<OrderStatus, ReactNode> = {
   paid: <WalletCards size={16} />,
   cancelled: <Ban size={16} />,
 };
+
+type AggregatedOrderItem = Pick<OrderItem, 'menu_item_id' | 'item_name_zh' | 'item_name_en' | 'item_name_el' | 'note' | 'unit_price'> & {
+  key: string;
+  quantity: number;
+  line_total: number;
+};
+
+type OrderSessionGroup = {
+  sessionId: string;
+  tableNumber: number | null;
+  orders: Order[];
+  total: number;
+  newestAt: string;
+  items: AggregatedOrderItem[];
+  statusCounts: Record<OrderStatus, number>;
+  primaryStatus: OrderStatus;
+  isClosed: boolean;
+};
+
+const orderStatusPriority: OrderStatus[] = ['pending', 'preparing', 'served', 'paid', 'cancelled'];
+
+function groupOrdersBySession(orders: Order[]): OrderSessionGroup[] {
+  const groups = new Map<string, OrderSessionGroup>();
+
+  for (const order of orders) {
+    let group = groups.get(order.session_id);
+    if (!group) {
+      group = {
+        sessionId: order.session_id,
+        tableNumber: order.restaurant_tables?.table_number ?? null,
+        orders: [],
+        total: 0,
+        newestAt: order.created_at,
+        items: [],
+        statusCounts: { pending: 0, preparing: 0, served: 0, paid: 0, cancelled: 0 },
+        primaryStatus: order.status,
+        isClosed: false,
+      };
+      groups.set(order.session_id, group);
+    }
+
+    group.orders.push(order);
+    group.total += Number(order.total_price);
+    group.statusCounts[order.status] += 1;
+    if (new Date(order.created_at).getTime() > new Date(group.newestAt).getTime()) group.newestAt = order.created_at;
+  }
+
+  for (const group of groups.values()) {
+    const items = new Map<string, AggregatedOrderItem>();
+    group.orders.forEach((order) => {
+      (order.order_items ?? []).forEach((item) => {
+        const itemIdentity = item.menu_item_id ?? `${item.item_name_zh}|${item.item_name_en ?? ''}|${item.item_name_el ?? ''}`;
+        const key = `${itemIdentity}|${Number(item.unit_price).toFixed(2)}|${item.note?.trim() ?? ''}`;
+        const current = items.get(key);
+        if (current) {
+          current.quantity += Number(item.quantity);
+          current.line_total += Number(item.line_total);
+        } else {
+          items.set(key, {
+            key,
+            menu_item_id: item.menu_item_id,
+            item_name_zh: item.item_name_zh,
+            item_name_en: item.item_name_en,
+            item_name_el: item.item_name_el,
+            note: item.note,
+            unit_price: Number(item.unit_price),
+            quantity: Number(item.quantity),
+            line_total: Number(item.line_total),
+          });
+        }
+      });
+    });
+    group.items = Array.from(items.values());
+    group.orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    group.primaryStatus = orderStatusPriority.find((status) => group.statusCounts[status] > 0) ?? 'cancelled';
+    group.isClosed = group.orders.every((order) => order.status === 'paid' || order.status === 'cancelled');
+  }
+
+  return Array.from(groups.values()).sort(
+    (a, b) => new Date(b.newestAt).getTime() - new Date(a.newestAt).getTime(),
+  );
+}
 
 export function AdminPage() {
   const [sessionReady, setSessionReady] = useState(false);
@@ -1075,6 +1158,7 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const knownBillRequestIdsRef = useRef<Set<string>>(new Set());
   const soundEnabledRef = useRef(false);
@@ -1082,6 +1166,8 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   const autoPrintWindowRef = useRef<Window | null>(null);
   const autoPrintQueueRef = useRef<Promise<void>>(Promise.resolve());
   const autoPrintingOrderIdsRef = useRef<Set<string>>(new Set());
+  const initializedSessionIdsRef = useRef<Set<string>>(new Set());
+  const expandedNewOrderIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     load({ initial: true });
@@ -1238,6 +1324,26 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
     });
   }
 
+  function toggleSessionSelection(sessionOrders: Order[], checked: boolean) {
+    setSelectedOrderIds((current) => {
+      const next = new Set(current);
+      sessionOrders.forEach((order) => {
+        if (checked) next.add(order.id);
+        else next.delete(order.id);
+      });
+      return next;
+    });
+  }
+
+  function setSessionExpanded(sessionId: string, expanded: boolean) {
+    setExpandedSessionIds((current) => {
+      const next = new Set(current);
+      if (expanded) next.add(sessionId);
+      else next.delete(sessionId);
+      return next;
+    });
+  }
+
   function toggleVisibleOrders(checked: boolean) {
     setSelectedOrderIds((current) => {
       const next = new Set(current);
@@ -1295,6 +1401,29 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
     () => scopedOrders.filter((order) => statusFilter === 'all' || order.status === statusFilter),
     [scopedOrders, statusFilter],
   );
+
+  const groupedOrders = useMemo(() => groupOrdersBySession(filteredOrders), [filteredOrders]);
+
+  useEffect(() => {
+    setExpandedSessionIds((current) => {
+      const next = new Set(current);
+      groupedOrders.forEach((group) => {
+        if (!initializedSessionIdsRef.current.has(group.sessionId)) {
+          initializedSessionIdsRef.current.add(group.sessionId);
+          if (!group.isClosed) next.add(group.sessionId);
+        }
+
+        const hasUnseenNewOrder = group.orders.some(
+          (order) => newOrderIds.has(order.id) && !expandedNewOrderIdsRef.current.has(order.id),
+        );
+        if (hasUnseenNewOrder) next.add(group.sessionId);
+        group.orders.forEach((order) => {
+          if (newOrderIds.has(order.id)) expandedNewOrderIdsRef.current.add(order.id);
+        });
+      });
+      return next;
+    });
+  }, [groupedOrders, newOrderIds]);
 
   const tableOptions = useMemo(() => {
     const values = new Set<number>();
@@ -1442,44 +1571,51 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
       </div>
 
       <div className="order-admin-list">
-        {filteredOrders.length === 0 ? (
+        {groupedOrders.length === 0 ? (
           <div className="admin-empty-state">
             <ClipboardList size={28} />
             <strong>当前没有这个状态的订单</strong>
             <span>新订单会自动刷新显示在这里。</span>
           </div>
         ) : null}
-        {filteredOrders.map((order) => (
-          <article className={`admin-order status-${order.status} ${newOrderIds.has(order.id) ? 'is-new' : ''}`} key={order.id}>
+        {groupedOrders.map((group) => {
+          const groupIsNew = group.orders.some((order) => newOrderIds.has(order.id));
+          const groupSelected = group.orders.every((order) => selectedOrderIds.has(order.id));
+          return (
+          <article className={`admin-order session-order status-${group.primaryStatus} ${groupIsNew ? 'is-new' : ''}`} key={group.sessionId}>
             <div className="admin-order-head">
               <div>
                 <label className="checkbox-label order-select">
                   <input
-                    checked={selectedOrderIds.has(order.id)}
+                    checked={groupSelected}
                     type="checkbox"
-                    onChange={(event) => toggleOrderSelection(order.id, event.target.checked)}
+                    onChange={(event) => toggleSessionSelection(group.orders, event.target.checked)}
                   />
-                  选择订单
+                  选择整桌总单
                 </label>
-                <span className="order-status-badge">
-                  {statusIcons[order.status]}
-                  {statusLabels[order.status]}
-                </span>
-                {newOrderIds.has(order.id) ? <span className="new-order-badge">新订单</span> : null}
+                <div className="session-status-counts">
+                  {(Object.keys(statusLabels) as OrderStatus[])
+                    .filter((status) => group.statusCounts[status] > 0)
+                    .map((status) => (
+                      <span className="order-status-badge" key={status}>
+                        {statusIcons[status]}
+                        {statusLabels[status]} {group.statusCounts[status]}
+                      </span>
+                    ))}
+                  {groupIsNew ? <span className="new-order-badge">新加餐</span> : null}
+                </div>
                 <h3>
-                  {order.restaurant_tables?.table_number
-                    ? `${order.restaurant_tables.table_number} 号桌`
-                    : '未知桌台'}
+                  {group.tableNumber ? `${group.tableNumber} 号桌` : '未知桌台'}
                 </h3>
                 <p>
-                  订单 #{order.order_number} · {new Date(order.created_at).toLocaleString('zh-CN')}
+                  共 {group.orders.length} 批 · 最近加餐 {new Date(group.newestAt).toLocaleString('zh-CN')}
                 </p>
               </div>
-              <strong className="order-total">{formatPrice(Number(order.total_price))}</strong>
+              <strong className="order-total">{formatPrice(group.total)}</strong>
             </div>
-            <div className="admin-order-items">
-              {(order.order_items ?? []).map((item) => (
-                <div key={item.id}>
+            <div className="admin-order-items session-order-items">
+              {group.items.map((item) => (
+                <div key={item.key}>
                   <span className="order-item-name">
                     <b>×{item.quantity}</b>
                     {item.item_name_zh || item.item_name_en || item.item_name_el}
@@ -1489,30 +1625,79 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
                 </div>
               ))}
             </div>
-            <footer className="order-action-row">
-              <button type="button" onClick={() => printKitchenTicket(order)}>
-                <Printer size={15} />
-                {order.kitchen_printed_at ? '重新打印厨房小票' : '打印厨房小票'}
-              </button>
-              {(Object.keys(statusLabels) as OrderStatus[]).map((status) => (
-                <button
-                  className={order.status === status ? 'selected' : ''}
-                  disabled={order.status === status}
-                  key={status}
-                  onClick={() => changeStatus(order.id, status)}
-                  type="button"
-                >
-                  {statusIcons[status]}
-                  {statusLabels[status]}
-                </button>
-              ))}
-              <button className="danger-inline" type="button" onClick={() => deleteOrders([order.id], `删除订单 #${order.order_number}`)}>
-                <Trash2 size={15} />
-                删除订单
-              </button>
-            </footer>
+            <details
+              className="order-batches"
+              open={expandedSessionIds.has(group.sessionId)}
+              onToggle={(event) => setSessionExpanded(group.sessionId, event.currentTarget.open)}
+            >
+              <summary>
+                <span><ChevronDown size={17} />加餐明细</span>
+                <strong>{group.orders.length} 批</strong>
+              </summary>
+              <div className="order-batch-list">
+                {group.orders.map((order) => (
+                  <section className={`order-batch status-${order.status} ${newOrderIds.has(order.id) ? 'is-new' : ''}`} key={order.id}>
+                    <div className="order-batch-head">
+                      <div>
+                        <label className="checkbox-label order-select">
+                          <input
+                            checked={selectedOrderIds.has(order.id)}
+                            type="checkbox"
+                            onChange={(event) => toggleOrderSelection(order.id, event.target.checked)}
+                          />
+                          选择批次
+                        </label>
+                        <span className="order-status-badge">
+                          {statusIcons[order.status]}
+                          {statusLabels[order.status]}
+                        </span>
+                        {newOrderIds.has(order.id) ? <span className="new-order-badge">新加餐</span> : null}
+                        <h4>订单 #{order.order_number}</h4>
+                        <p>{new Date(order.created_at).toLocaleString('zh-CN')}</p>
+                      </div>
+                      <strong>{formatPrice(Number(order.total_price))}</strong>
+                    </div>
+                    <div className="admin-order-items order-batch-items">
+                      {(order.order_items ?? []).map((item) => (
+                        <div key={item.id}>
+                          <span className="order-item-name">
+                            <b>×{item.quantity}</b>
+                            {item.item_name_zh || item.item_name_en || item.item_name_el}
+                          </span>
+                          <span className="order-item-note">{item.note ? `备注：${item.note}` : ''}</span>
+                          <strong>{formatPrice(Number(item.line_total))}</strong>
+                        </div>
+                      ))}
+                    </div>
+                    <footer className="order-action-row">
+                      <button type="button" onClick={() => printKitchenTicket(order)}>
+                        <Printer size={15} />
+                        {order.kitchen_printed_at ? '重新打印厨房小票' : '打印厨房小票'}
+                      </button>
+                      {(Object.keys(statusLabels) as OrderStatus[]).map((status) => (
+                        <button
+                          className={order.status === status ? 'selected' : ''}
+                          disabled={order.status === status}
+                          key={status}
+                          onClick={() => changeStatus(order.id, status)}
+                          type="button"
+                        >
+                          {statusIcons[status]}
+                          {statusLabels[status]}
+                        </button>
+                      ))}
+                      <button className="danger-inline" type="button" onClick={() => deleteOrders([order.id], `删除订单 #${order.order_number}`)}>
+                        <Trash2 size={15} />
+                        删除订单
+                      </button>
+                    </footer>
+                  </section>
+                ))}
+              </div>
+            </details>
           </article>
-        ))}
+          );
+        })}
       </div>
     </AdminSection>
   );

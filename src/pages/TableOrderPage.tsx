@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Banknote, CreditCard, Globe2, Menu, Minus, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, requireAnonymousSession } from '../lib/menuApi';
@@ -19,6 +19,7 @@ import {
   updateCartItemQuantity,
 } from '../lib/orderApi';
 import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, TableSessionState } from '../lib/types';
+import { LanguageSwitch } from '../components/LanguageSwitch';
 
 export function TableOrderPage() {
   const { qrToken = '' } = useParams();
@@ -134,7 +135,6 @@ export function TableOrderPage() {
     });
     return rows;
   }, [cart]);
-  const nextLang = lang === 'el' ? 'en' : 'el';
   const visibleGroups = useMemo(() => groups.filter((group) => group.items.length), [groups]);
 
   useEffect(() => {
@@ -255,10 +255,7 @@ export function TableOrderPage() {
           <ReceiptText size={34} />
           <h1>{t('order.sessionEndedTitle')}</h1>
           <p>{t('order.sessionEnded')}</p>
-          <button className="icon-text-button" type="button" onClick={() => i18n.changeLanguage(nextLang)}>
-            <Globe2 size={17} />
-            {nextLang.toUpperCase()}
-          </button>
+          <LanguageSwitch />
         </section>
       </main>
     );
@@ -294,15 +291,10 @@ export function TableOrderPage() {
             title={!hasOrders ? t('order.requestBillRequiresOrder') : undefined}
           >
             <ReceiptText size={17} />
-            <span>{t('order.requestBill')}</span>
+            <span className="bill-label-full">{t('order.requestBill')}</span>
+            <span className="bill-label-short">{t('order.requestBillShort')}</span>
           </button>
-          <button className="icon-text-button" type="button" onClick={() => i18n.changeLanguage(nextLang)}>
-            <Globe2 size={17} />
-            {nextLang.toUpperCase()}
-          </button>
-          <a className="icon-button" href="#order-categories" aria-label={t('nav.menu')}>
-            <Menu size={18} />
-          </a>
+          <LanguageSwitch />
         </div>
       </header>
       <section className="order-menu">

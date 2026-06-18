@@ -23,6 +23,8 @@ const resources = {
         empty: 'Δεν υπάρχουν διαθέσιμα πιάτα ακόμα.',
         priceNote: 'Οι τιμές μπορούν να ενημερωθούν από το προσωπικό.',
         total: 'Σύνολο',
+        switchToEnglish: 'Αλλαγή στα Αγγλικά',
+        switchToGreek: 'Αλλαγή στα Ελληνικά',
       },
       home: {
         title: 'Wok Dragon Express',
@@ -54,6 +56,7 @@ const resources = {
         cartBarSummary_other: 'Καλάθι · {{count}} είδη · {{total}} · Παραγγελία',
         clearCart: 'Άδειασμα καλαθιού',
         requestBill: 'Ζητήστε λογαριασμό',
+        requestBillShort: 'Λογαριασμός',
         choosePayment: 'Επιλέξτε τρόπο πληρωμής',
         cardPayment: 'Πληρωμή με κάρτα',
         cashPayment: 'Μετρητά',
@@ -96,6 +99,8 @@ const resources = {
         empty: 'No dishes are available yet.',
         priceNote: 'Prices can be updated by staff.',
         total: 'Total',
+        switchToEnglish: 'Switch to English',
+        switchToGreek: 'Switch to Greek',
       },
       home: {
         title: 'Wok Dragon Express',
@@ -127,6 +132,7 @@ const resources = {
         cartBarSummary_other: 'Cart · {{count}} items · {{total}} · Checkout',
         clearCart: 'Clear cart',
         requestBill: 'Request bill',
+        requestBillShort: 'Bill',
         choosePayment: 'Choose a payment method',
         cardPayment: 'Card POS',
         cashPayment: 'Pay with cash',

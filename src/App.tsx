@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { Globe2, Menu, Settings, X } from 'lucide-react';
+import { Menu, Settings, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { HomePage } from './pages/HomePage';
 import { MenuPage } from './pages/MenuPage';
 import { TableOrderPage } from './pages/TableOrderPage';
 import { AdminPage } from './pages/AdminPage';
+import { LanguageSwitch } from './components/LanguageSwitch';
 
 function PublicShell() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isTableOrder = location.pathname.startsWith('/table/');
@@ -30,8 +31,6 @@ function PublicShell() {
       </Routes>
     );
   }
-
-  const nextLang = i18n.language === 'el' ? 'en' : 'el';
 
   return (
     <>
@@ -59,14 +58,7 @@ function PublicShell() {
             <Link to="/#contact">{t('nav.contact')}</Link>
           </nav>
           <div className="site-header-actions">
-          <button
-            className="icon-text-button"
-            type="button"
-            onClick={() => i18n.changeLanguage(nextLang)}
-          >
-            <Globe2 size={18} />
-            {nextLang.toUpperCase()}
-          </button>
+          <LanguageSwitch />
           <Link className="icon-button" to="/admin" title="Admin">
             <Settings size={18} />
           </Link>
