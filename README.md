@@ -94,6 +94,14 @@ The admin table page can:
 - Any already printed QR code must be printed and replaced again.
 - The admin UI shows a strong confirmation prompt before this action.
 
+## Bill And Payment Flow
+
+- Customers request the bill only after submitting at least one non-cancelled order, then choose `pos` or `cash`.
+- A bill request notifies staff but does not close the table session.
+- Staff confirmation marks all non-cancelled session orders as paid, records the payment method, clears unsubmitted cart items, handles the bill request, and closes the session atomically.
+- The device that joined a session remembers that session for the QR token. If staff closes it, refreshing that old page shows the ended-session message instead of joining the next guests' session.
+- A new device scanning the unchanged QR token can create or join the next active session.
+
 ## Ordering Flow
 
 - Each table can have only one active `table_session`.
@@ -130,6 +138,15 @@ Run before pushing deployment changes:
 ```bash
 pnpm build
 ```
+
+## Kitchen Ticket Printing
+
+- The Chinese admin order page can enable automatic kitchen-ticket printing for new `pending` orders received through Supabase Realtime.
+- Automatic printing only claims orders whose `kitchen_printed_at` is empty. Each later add-on order is a new order and prints only its own item snapshot.
+- Kitchen tickets are operational kitchen order slips, not formal tax receipts.
+- The first version uses the browser print window, so the browser or operating system may still show a print confirmation dialog.
+- Keep the dedicated automatic-print window open and allow popups for the admin site.
+- Fully unattended paper printing requires a later ESC/POS printer integration or a local print service.
 
 ## Important Notes
 

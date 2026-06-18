@@ -7,12 +7,12 @@ import { formatPrice } from '../lib/localized';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
   closeTableSession,
+  confirmBillAndCloseSession,
   createRestaurantTable,
   fetchActiveSessions,
   fetchAdminOrders,
   fetchPendingBillRequests,
   fetchRestaurantTables,
-  handleBillRequest,
   markOrderKitchenPrinted,
   regenerateTableQrToken,
   saveRestaurantTable,
@@ -1072,15 +1072,27 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today');
   const [customDate, setCustomDate] = useState(dateToKey(new Date().toISOString()));
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const knownBillRequestIdsRef = useRef<Set<string>>(new Set());
   const soundEnabledRef = useRef(false);
+  const autoPrintEnabledRef = useRef(false);
+  const autoPrintWindowRef = useRef<Window | null>(null);
+  const autoPrintQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const autoPrintingOrderIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     load({ initial: true });
-    return subscribeToAdminOrders(() => load());
+    const unsubscribe = subscribeToAdminOrders(() => load());
+    return () => {
+      unsubscribe();
+      autoPrintEnabledRef.current = false;
+      if (autoPrintWindowRef.current && !autoPrintWindowRef.current.closed) {
+        autoPrintWindowRef.current.close();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -1113,6 +1125,9 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
         });
         if (soundEnabledRef.current) playOrderNotification();
       }
+      if (autoPrintEnabledRef.current) {
+        queueAutoPrint(insertedPendingOrders.filter((order) => !order.kitchen_printed_at));
+      }
     } catch (err) {
       onMessage(err instanceof Error ? err.message : String(err));
     }
@@ -1128,10 +1143,10 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
     }
   }
 
-  async function markBillHandled(requestId: string) {
+  async function confirmBillPayment(request: BillRequest) {
     try {
-      await handleBillRequest(requestId);
-      onMessage('结账请求已标记为处理完成，桌台会话仍保持开启');
+      const result = await confirmBillAndCloseSession(request.session_id);
+      onMessage(`已付款并清桌：${result.paid_order_count} 张订单已结清，${result.deleted_cart_count} 条未提交购物车已清空`);
       load();
     } catch (err) {
       onMessage(formatUnknownError(err));
@@ -1148,17 +1163,70 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
     printWindow.document.write('<p style="font-family:sans-serif;padding:20px">正在准备厨房小票...</p>');
     try {
       const result = await markOrderKitchenPrinted(order.id);
-      printWindow.document.open();
-      printWindow.document.write(buildKitchenTicket(order, result.is_reprint, result.printed_at));
-      printWindow.document.close();
-      printWindow.focus();
-      window.setTimeout(() => printWindow.print(), 180);
+      await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, result.is_reprint, result.printed_at));
       onMessage(result.is_reprint ? `订单 #${order.order_number} 已打开重打小票` : `订单 #${order.order_number} 已打开厨房小票`);
       load();
     } catch (err) {
       printWindow.close();
       onMessage(formatUnknownError(err));
     }
+  }
+
+  function toggleAutoPrint() {
+    if (autoPrintEnabledRef.current) {
+      autoPrintEnabledRef.current = false;
+      setAutoPrintEnabled(false);
+      if (autoPrintWindowRef.current && !autoPrintWindowRef.current.closed) {
+        autoPrintWindowRef.current.close();
+      }
+      autoPrintWindowRef.current = null;
+      onMessage('自动打印厨房小票已关闭');
+      return;
+    }
+
+    const printWindow = window.open('', 'wok-dragon-kitchen-printer', 'width=420,height=720');
+    if (!printWindow) {
+      onMessage('浏览器阻止了自动打印窗口，请允许此网站打开弹窗后重新启用');
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(buildPrinterReadyScreen());
+    printWindow.document.close();
+    autoPrintWindowRef.current = printWindow;
+    autoPrintEnabledRef.current = true;
+    setAutoPrintEnabled(true);
+    onMessage('自动打印厨房小票已启用，仅处理之后收到的新订单');
+  }
+
+  function queueAutoPrint(pendingOrders: Order[]) {
+    pendingOrders.forEach((order) => {
+      if (autoPrintingOrderIdsRef.current.has(order.id)) return;
+      autoPrintingOrderIdsRef.current.add(order.id);
+      autoPrintQueueRef.current = autoPrintQueueRef.current
+        .then(() => autoPrintKitchenTicket(order))
+        .catch((err) => onMessage(`订单 #${order.order_number} 自动打印失败：${formatUnknownError(err)}`))
+        .finally(() => autoPrintingOrderIdsRef.current.delete(order.id));
+    });
+  }
+
+  async function autoPrintKitchenTicket(order: Order) {
+    if (!autoPrintEnabledRef.current || order.kitchen_printed_at) return;
+    const printWindow = autoPrintWindowRef.current;
+    if (!printWindow || printWindow.closed) {
+      autoPrintEnabledRef.current = false;
+      setAutoPrintEnabled(false);
+      autoPrintWindowRef.current = null;
+      onMessage('自动打印窗口已关闭，请重新启用自动打印厨房小票');
+      return;
+    }
+
+    const result = await markOrderKitchenPrinted(order.id);
+    if (result.is_reprint) return;
+
+    await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, false, result.printed_at));
+    onMessage(`新订单 #${order.order_number} 已触发自动打印厨房小票`);
+    load();
   }
 
   function toggleOrderSelection(orderId: string, checked: boolean) {
@@ -1244,32 +1312,39 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   return (
     <AdminSection title="订单管理" onRefresh={load}>
       {billRequests.length ? (
-        <section className="bill-request-alerts" aria-label="待处理结账请求">
+        <section className="bill-request-alerts" aria-label="请求结账">
           <div className="bill-request-alerts-head">
-            <strong>待处理结账请求</strong>
+            <strong>请求结账</strong>
             <span>{billRequests.length} 桌</span>
           </div>
           <div className="bill-request-list">
             {billRequests.map((request) => (
               <article key={request.id}>
                 <div>
-                  {request.payment_method === 'card' ? <CreditCard size={20} /> : <Banknote size={20} />}
+                  {request.payment_method === 'pos' ? <CreditCard size={20} /> : <Banknote size={20} />}
                   <span>
-                    <strong>{request.table_number} 号桌</strong>
-                    <small>{request.payment_method === 'card' ? 'POS 机支付' : '现金支付'} · {new Date(request.requested_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</small>
+                    <strong>{request.table_number} 号桌请求结账</strong>
+                    <small>{request.payment_method === 'pos' ? 'POS 机支付' : '现金支付'} · 请求时间 {new Date(request.requested_at).toLocaleString('zh-CN')}</small>
                   </span>
                 </div>
-                <button className="primary-button" type="button" onClick={() => markBillHandled(request.id)}>
+                <button className="primary-button" type="button" onClick={() => confirmBillPayment(request)}>
                   <CheckCircle2 size={16} />
-                  标记已处理
+                  确认已收款并清桌
                 </button>
               </article>
             ))}
           </div>
-          <p>处理结账请求不会清桌；完成收款后仍需单独执行“清桌”。</p>
+          <p>该桌结账后将关闭当前点餐会话，下一批顾客扫码会进入新会话。</p>
         </section>
       ) : null}
       <div className="order-tools-row">
+        <label className={autoPrintEnabled ? 'auto-print-toggle enabled' : 'auto-print-toggle'}>
+          <input checked={autoPrintEnabled} type="checkbox" onChange={toggleAutoPrint} />
+          <span>
+            <strong>启用自动打印厨房小票</strong>
+            <small>仅打印 Realtime 收到且尚未打印的新 pending 订单</small>
+          </span>
+        </label>
         <button
           className={soundEnabled ? 'sound-toggle enabled' : 'sound-toggle'}
           type="button"
@@ -1487,7 +1562,7 @@ function buildKitchenTicket(order: Order, isReprint: boolean, printedAt: string)
         </style>
       </head>
       <body>
-        ${isReprint ? '<div class="reprint">重打 REPRINT</div>' : ''}
+        ${isReprint ? '<div class="reprint">重打 / Reprint</div>' : ''}
         <h1>${escapeTicketText(tableNumber)} 号桌</h1>
         <div class="meta">
           <strong>订单 #${escapeTicketText(order.order_number)}</strong>
@@ -1498,6 +1573,28 @@ function buildKitchenTicket(order: Order, isReprint: boolean, printedAt: string)
         <footer>厨房点菜单 · 非正式税务收据</footer>
       </body>
     </html>`;
+}
+
+function buildPrinterReadyScreen() {
+  return `<!doctype html>
+    <html lang="zh-CN">
+      <head><meta charset="utf-8" /><title>厨房小票自动打印</title></head>
+      <body style="font-family:Arial,'Microsoft YaHei',sans-serif;padding:24px;text-align:center">
+        <h1 style="font-size:20px">自动打印已启用</h1>
+        <p>请保持此窗口打开。收到新的 pending 订单后，将自动显示浏览器打印确认窗口。</p>
+        <small>厨房点菜单，不是正式税务收据。</small>
+      </body>
+    </html>`;
+}
+
+async function renderAndPrintKitchenTicket(printWindow: Window, ticketHtml: string) {
+  printWindow.document.open();
+  printWindow.document.write(ticketHtml);
+  printWindow.document.close();
+  printWindow.focus();
+  await new Promise((resolve) => window.setTimeout(resolve, 180));
+  printWindow.print();
+  await new Promise((resolve) => window.setTimeout(resolve, 150));
 }
 
 function isToday(value: string) {

@@ -9,14 +9,16 @@ import { formatPrice, getLocalizedField } from '../lib/localized';
 import {
   addCartItem,
   fetchCart,
+  hasSubmittedOrders,
   joinTableSession,
   removeCartItem,
   requestBill,
+  resumeTableSession,
   submitOrder,
   subscribeToTableCart,
   updateCartItemQuantity,
 } from '../lib/orderApi';
-import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, TableJoinResult } from '../lib/types';
+import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, TableSessionState } from '../lib/types';
 
 export function TableOrderPage() {
   const { qrToken = '' } = useParams();
@@ -24,13 +26,15 @@ export function TableOrderPage() {
   const lang = (i18n.language === 'en' ? 'en' : 'el') as Language;
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [sessionInfo, setSessionInfo] = useState<TableJoinResult | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<TableSessionState | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [billOpen, setBillOpen] = useState(false);
   const [requestingBill, setRequestingBill] = useState(false);
+  const [hasOrders, setHasOrders] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const cartRefreshSequence = useRef(0);
 
   const refreshCart = useCallback(async (sessionId: string) => {
@@ -41,6 +45,20 @@ export function TableOrderPage() {
     }
     return rows;
   }, []);
+
+  const refreshSession = useCallback(async (sessionId: string) => {
+    const nextSession = await resumeTableSession(sessionId, qrToken);
+    setSessionInfo(nextSession);
+    setSessionEnded(nextSession.session_status === 'closed');
+    setHasOrders(await hasSubmittedOrders(sessionId));
+    if (nextSession.session_status === 'active') {
+      await refreshCart(sessionId);
+    } else {
+      setCart([]);
+      setBillOpen(false);
+    }
+    return nextSession;
+  }, [qrToken, refreshCart]);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,12 +76,27 @@ export function TableOrderPage() {
         }
 
         await requireAnonymousSession();
-        const joined = await joinTableSession(qrToken);
+        const savedSession = readSavedTableSession(qrToken);
+        let sessionId = savedSession?.session_id;
+
+        if (!sessionId) {
+          const joined = await joinTableSession(qrToken);
+          sessionId = joined.session_id;
+          saveTableSession(qrToken, joined);
+        }
+
+        const restored = await resumeTableSession(sessionId, qrToken);
         if (cancelled) return;
-        setSessionInfo(joined);
-        const [menuGroups] = await Promise.all([menuPromise, refreshCart(joined.session_id)]);
+        setSessionInfo(restored);
+        setSessionEnded(restored.session_status === 'closed');
+        const [menuGroups, orderExists] = await Promise.all([
+          menuPromise,
+          hasSubmittedOrders(sessionId),
+          restored.session_status === 'active' ? refreshCart(sessionId) : Promise.resolve([]),
+        ]);
         if (cancelled) return;
         setGroups(menuGroups);
+        setHasOrders(orderExists);
       } catch (err) {
         if (!cancelled) setMessage(err instanceof Error ? err.message : String(err));
       } finally {
@@ -80,10 +113,10 @@ export function TableOrderPage() {
   useEffect(() => {
     if (!sessionInfo) return;
     return subscribeToTableCart(sessionInfo.session_id, () => {
-      refreshCart(sessionInfo.session_id)
+      refreshSession(sessionInfo.session_id)
         .catch((err) => setMessage(err.message));
     });
-  }, [refreshCart, sessionInfo]);
+  }, [refreshSession, sessionInfo?.session_id]);
 
   const cartSummary = useMemo(() => getCartSummary(cart), [cart]);
   const cartByMenuItemId = useMemo(() => {
@@ -140,13 +173,36 @@ export function TableOrderPage() {
       setRequestingBill(true);
       await requestBill(sessionInfo.session_id, paymentMethod);
       setBillOpen(false);
-      setMessage(t('order.billRequestSent'));
+      setMessage(null);
+      setSessionInfo((current) => current ? {
+        ...current,
+        bill_request_status: 'requested',
+        bill_payment_method: paymentMethod,
+      } : current);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : String(err));
     } finally {
       setRequestingBill(false);
     }
   }
+
+  if (sessionEnded && sessionInfo) {
+    return (
+      <main className="order-shell session-ended-shell">
+        <section className="session-ended-card">
+          <ReceiptText size={34} />
+          <h1>{t('order.sessionEndedTitle')}</h1>
+          <p>{t('order.sessionEnded')}</p>
+          <button className="icon-text-button" type="button" onClick={() => i18n.changeLanguage(nextLang)}>
+            <Globe2 size={17} />
+            {nextLang.toUpperCase()}
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  const billRequested = sessionInfo?.bill_request_status === 'requested';
 
   return (
     <main className="order-shell">
@@ -165,8 +221,11 @@ export function TableOrderPage() {
             className="bill-request-button"
             type="button"
             aria-label={t('order.requestBill')}
-            onClick={() => setBillOpen(true)}
-            disabled={!sessionInfo}
+            onClick={() => {
+              if (hasOrders && !billRequested) setBillOpen(true);
+            }}
+            disabled={!sessionInfo || !hasOrders || billRequested}
+            title={!hasOrders ? t('order.requestBillRequiresOrder') : undefined}
           >
             <ReceiptText size={17} />
             <span>{t('order.requestBill')}</span>
@@ -189,6 +248,15 @@ export function TableOrderPage() {
           <p>{t('order.liveCart')}</p>
         </div>
         {message ? <p className="admin-message">{message}</p> : null}
+        {billRequested ? (
+          <section className="bill-request-status" role="status">
+            <ReceiptText size={20} />
+            <div>
+              <strong>{t('order.billRequested')}</strong>
+              <p>{t('order.billWaiting')}</p>
+            </div>
+          </section>
+        ) : null}
         <nav className="order-category-tabs" id="order-categories" aria-label={t('nav.menu')}>
           {groups
             .filter((group) => group.items.length)
@@ -310,7 +378,7 @@ export function TableOrderPage() {
             </div>
             <p>{t('order.choosePayment')}</p>
             <div className="bill-payment-options">
-              <button type="button" disabled={requestingBill} onClick={() => sendBillRequest('card')}>
+              <button type="button" disabled={requestingBill} onClick={() => sendBillRequest('pos')}>
                 <CreditCard size={24} />
                 <strong>{t('order.cardPayment')}</strong>
               </button>
@@ -395,4 +463,34 @@ function DishQuantityControl({
       </button>
     </div>
   );
+}
+
+type SavedTableSession = {
+  session_id: string;
+  table_id: string;
+  table_number: number;
+};
+
+function tableSessionStorageKey(qrToken: string) {
+  return `wok-dragon:table-session:${qrToken}`;
+}
+
+function readSavedTableSession(qrToken: string): SavedTableSession | null {
+  try {
+    const raw = window.localStorage.getItem(tableSessionStorageKey(qrToken));
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<SavedTableSession>;
+    if (typeof value.session_id !== 'string' || typeof value.table_id !== 'string' || typeof value.table_number !== 'number') {
+      window.localStorage.removeItem(tableSessionStorageKey(qrToken));
+      return null;
+    }
+    return value as SavedTableSession;
+  } catch {
+    window.localStorage.removeItem(tableSessionStorageKey(qrToken));
+    return null;
+  }
+}
+
+function saveTableSession(qrToken: string, session: SavedTableSession) {
+  window.localStorage.setItem(tableSessionStorageKey(qrToken), JSON.stringify(session));
 }

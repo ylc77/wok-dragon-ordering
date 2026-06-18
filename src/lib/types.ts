@@ -54,6 +54,12 @@ export type TableJoinResult = {
   table_number: number;
 };
 
+export type TableSessionState = TableJoinResult & {
+  session_status: 'active' | 'closed';
+  bill_request_status: 'none' | 'requested' | 'handled';
+  bill_payment_method: BillPaymentMethod | null;
+};
+
 export type RestaurantTable = {
   id: string;
   table_number: number;
@@ -70,6 +76,10 @@ export type TableSession = {
   status: 'active' | 'closed';
   opened_at: string;
   closed_at: string | null;
+  bill_requested_at: string | null;
+  bill_request_status: 'none' | 'requested' | 'handled';
+  bill_payment_method: BillPaymentMethod | null;
+  bill_handled_at: string | null;
   cart_version: number;
   cart_updated_at: string;
 };
@@ -110,6 +120,9 @@ export type Order = {
   submitted_by: string | null;
   client_request_id: string;
   status: OrderStatus;
+  payment_status?: 'unpaid' | 'paid';
+  payment_method?: BillPaymentMethod | null;
+  paid_at?: string | null;
   total_price: number;
   created_at: string;
   updated_at: string;
@@ -119,7 +132,7 @@ export type Order = {
   order_items?: OrderItem[];
 };
 
-export type BillPaymentMethod = 'card' | 'cash';
+export type BillPaymentMethod = 'pos' | 'cash';
 
 export type BillRequest = {
   id: string;
