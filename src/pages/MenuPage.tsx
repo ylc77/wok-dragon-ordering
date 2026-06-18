@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getPublicMenu } from '../lib/menuApi';
 import { formatPrice, getLocalizedField } from '../lib/localized';
@@ -7,6 +8,7 @@ import type { Language, MenuGroup, MenuItem } from '../lib/types';
 
 export function MenuPage() {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const lang = (i18n.language === 'en' ? 'en' : 'el') as Language;
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,11 +21,24 @@ export function MenuPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const visibleGroups = groups.filter((group) => group.items.length > 0);
+
+  useEffect(() => {
+    if (!location.hash || visibleGroups.length === 0) return;
+    const target = document.getElementById(location.hash.slice(1));
+    target?.scrollIntoView({ block: 'start' });
+  }, [location.hash, visibleGroups.length]);
+
   return (
     <main className="page-shell">
       <section className="page-heading">
-        <h1>{t('nav.menu')}</h1>
-        <p>{t('common.priceNote')}</p>
+        <div>
+          <span className="page-brand-mark">龙</span>
+          <div>
+            <h1>{t('nav.menu')}</h1>
+            <p>{t('common.priceNote')}</p>
+          </div>
+        </div>
       </section>
 
       {loading ? <p className="muted">{t('common.loading')}</p> : null}
@@ -32,9 +47,7 @@ export function MenuPage() {
 
       <div className="menu-layout">
         <aside className="menu-category-rail">
-          {groups
-            .filter((group) => group.items.length)
-            .map((group) => (
+          {visibleGroups.map((group) => (
               <a href={`#category-${group.id}`} key={group.id}>
                 {getLocalizedField(lang, {
                   zh: group.name_zh,
@@ -45,7 +58,7 @@ export function MenuPage() {
             ))}
         </aside>
         <div className="menu-list-column">
-          {groups.map((group) =>
+          {visibleGroups.map((group) =>
             group.items.length ? (
               <section className="menu-group" id={`category-${group.id}`} key={group.id}>
                 <h2>

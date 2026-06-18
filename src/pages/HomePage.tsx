@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, MapPin, UtensilsCrossed } from 'lucide-react';
+import { Clock3, ExternalLink, MapPin, Phone, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, getRestaurantSettings } from '../lib/menuApi';
@@ -51,11 +51,16 @@ export function HomePage() {
     { label: t('platforms.efood'), url: settings?.efood_url },
     { label: t('platforms.box'), url: settings?.box_url },
   ].filter((link) => Boolean(link.url?.trim()));
+  const heroItem = featuredItems.find((item) => Boolean(item.image_url));
 
   return (
     <main>
       <section className="hero-section">
         <div className="hero-copy">
+          <div className="hero-brand-lockup" aria-hidden="true">
+            <span className="brand-mark">龙</span>
+            <strong>Wok Dragon Express</strong>
+          </div>
           <h1>{name}</h1>
           <p>{t('home.subtitle')}</p>
           <div className="hero-actions">
@@ -73,10 +78,14 @@ export function HomePage() {
           <p className="muted">{t('home.orderHint')}</p>
           {error ? <p className="error-text">{error}</p> : null}
         </div>
-        <div className="hero-media" aria-hidden="true">
-          <div className="dish-photo photo-one" />
-          <div className="dish-photo photo-two" />
-          <div className="dish-photo photo-three" />
+        <div className="hero-media">
+          {heroItem?.image_url ? (
+            <img src={heroItem.image_url} alt={getLocalizedField(lang, {
+              zh: heroItem.name_zh,
+              en: heroItem.name_en,
+              el: heroItem.name_el,
+            })} />
+          ) : <div className="hero-image-fallback" aria-hidden="true">龙</div>}
         </div>
       </section>
 
@@ -87,13 +96,19 @@ export function HomePage() {
         </div>
         <div className="home-info-cards">
           <div>
-            <span>{t('common.address')}</span>
+            <span><MapPin size={15} /> {t('common.address')}</span>
             <strong>{address}</strong>
           </div>
           <div>
-            <span>{t('common.openingHours')}</span>
+            <span><Clock3 size={15} /> {t('common.openingHours')}</span>
             <strong>{hours}</strong>
           </div>
+          {settings?.phone ? (
+            <div>
+              <span><Phone size={15} /> {t('common.phone')}</span>
+              <a href={`tel:${settings.phone}`}>{settings.phone}</a>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -145,6 +160,16 @@ export function HomePage() {
         <div>
           <span>{t('common.openingHours')}</span>
           <strong>{hours}</strong>
+        </div>
+        <div className="contact-actions">
+          <span>{t('nav.contact')}</span>
+          {settings?.phone ? <a href={`tel:${settings.phone}`}>{settings.phone}</a> : null}
+          {settings?.map_url ? (
+            <a className="outline-button" href={settings.map_url} target="_blank" rel="noreferrer">
+              <MapPin size={15} />
+              {t('common.viewMap')}
+            </a>
+          ) : null}
         </div>
         <div className="platforms">
           <span>{t('common.delivery')}</span>
