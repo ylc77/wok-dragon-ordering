@@ -38,7 +38,6 @@ export function TableOrderPage() {
   const [requestingBill, setRequestingBill] = useState(false);
   const [billOrders, setBillOrders] = useState<Order[]>([]);
   const [sessionEnded, setSessionEnded] = useState(false);
-  const [startingNewSession, setStartingNewSession] = useState(false);
   const cartRefreshSequence = useRef(0);
   const categoryNavRef = useRef<HTMLElement>(null);
   const menuGroupsRef = useRef<HTMLDivElement>(null);
@@ -262,31 +261,6 @@ export function TableOrderPage() {
     }
   }
 
-  async function startNewTableSession() {
-    try {
-      setStartingNewSession(true);
-      setMessage(null);
-      const joined = await joinTableSession(qrToken);
-      saveTableSession(qrToken, joined);
-      const restored = await resumeTableSession(joined.session_id, qrToken);
-      const [nextCart, nextOrders] = await Promise.all([
-        fetchCart(joined.session_id),
-        fetchSessionOrders(joined.session_id),
-      ]);
-      setSessionInfo(restored);
-      setCart(nextCart);
-      setBillOrders(nextOrders);
-      setSessionEnded(false);
-      setBillOpen(false);
-      setPaymentOpen(false);
-      setSelectedPayment(null);
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : String(err));
-    } finally {
-      setStartingNewSession(false);
-    }
-  }
-
   if (sessionEnded && sessionInfo) {
     return (
       <main className="order-shell session-ended-shell">
@@ -295,9 +269,6 @@ export function TableOrderPage() {
           <h1>{t('order.sessionEndedTitle')}</h1>
           <p>{t('order.sessionEnded')}</p>
           {message ? <p className="bill-dialog-warning" role="alert">{message}</p> : null}
-          <button className="primary-button stretch" type="button" disabled={startingNewSession} onClick={startNewTableSession}>
-            {startingNewSession ? t('order.startingNewOrder') : t('order.startNewOrder')}
-          </button>
           <LanguageSwitch />
         </section>
       </main>

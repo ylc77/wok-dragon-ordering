@@ -836,10 +836,6 @@ button:disabled {
   line-height: 1.65;
 }
 
-.session-ended-card .primary-button {
-  margin: 18px 0 12px;
-}
-
 .bill-dialog-backdrop {
   align-items: center;
   background: rgba(29, 24, 20, 0.5);

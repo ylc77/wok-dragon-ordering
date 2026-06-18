@@ -75,8 +75,6 @@ const resources = {
         requestBillRequiresOrder: 'Απαιτείται τουλάχιστον μία παραγγελία πριν ζητήσετε λογαριασμό.',
         sessionEndedTitle: 'Η παραγγελία ολοκληρώθηκε',
         sessionEnded: 'Αυτή η συνεδρία τραπεζιού έχει ολοκληρωθεί. Παρακαλώ ζητήστε βοήθεια από το προσωπικό.',
-        startNewOrder: 'Έναρξη νέας παραγγελίας',
-        startingNewOrder: 'Έναρξη...',
         close: 'Κλείσιμο',
       },
       platforms: {
@@ -159,8 +157,6 @@ const resources = {
         requestBillRequiresOrder: 'At least one submitted order is required before requesting the bill.',
         sessionEndedTitle: 'This order has ended',
         sessionEnded: 'This table session has ended. Please ask staff if you need help.',
-        startNewOrder: 'Start a new order',
-        startingNewOrder: 'Starting...',
         close: 'Close',
       },
       platforms: {
