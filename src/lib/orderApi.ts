@@ -27,6 +27,17 @@ export async function resumeTableSession(sessionId: string, qrToken: string): Pr
   return row as TableSessionState;
 }
 
+export async function fetchTableSessionClosedAt(sessionId: string): Promise<string | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('table_sessions')
+    .select('closed_at')
+    .eq('id', sessionId)
+    .single();
+  if (error) throw error;
+  return data.closed_at as string | null;
+}
+
 export async function hasSubmittedOrders(sessionId: string) {
   const client = requireClient();
   const { count, error } = await client

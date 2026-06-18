@@ -10,6 +10,7 @@ import {
   addCartItem,
   fetchCart,
   fetchSessionOrders,
+  fetchTableSessionClosedAt,
   joinTableSession,
   removeCartItem,
   requestBill,
@@ -20,6 +21,8 @@ import {
 } from '../lib/orderApi';
 import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, TableSessionState } from '../lib/types';
 import { LanguageSwitch } from '../components/LanguageSwitch';
+
+const CLOSED_SESSION_REENTRY_DELAY_MS = 24 * 60 * 60 * 1000;
 
 export function TableOrderPage() {
   const { qrToken = '' } = useParams();
@@ -100,7 +103,16 @@ export function TableOrderPage() {
           saveTableSession(qrToken, joined);
         }
 
-        const restored = await resumeTableSession(sessionId, qrToken);
+        let restored = await resumeTableSession(sessionId, qrToken);
+        if (savedSession && restored.session_status === 'closed') {
+          const closedAt = await fetchTableSessionClosedAt(sessionId);
+          if (isClosedSessionExpired(closedAt)) {
+            const joined = await joinTableSession(qrToken);
+            sessionId = joined.session_id;
+            saveTableSession(qrToken, joined);
+            restored = await resumeTableSession(sessionId, qrToken);
+          }
+        }
         if (cancelled) return;
         setSessionInfo(restored);
         setSessionEnded(restored.session_status === 'closed');
@@ -601,6 +613,12 @@ export function getBillSummary(orders: Order[]) {
     }),
     { orderCount: 0, totalPrice: 0 },
   );
+}
+
+export function isClosedSessionExpired(closedAt: string | null, now = Date.now()) {
+  if (!closedAt) return false;
+  const closedAtTime = new Date(closedAt).getTime();
+  return Number.isFinite(closedAtTime) && now - closedAtTime >= CLOSED_SESSION_REENTRY_DELAY_MS;
 }
 
 function formatOrderTime(value: string, lang: Language) {
