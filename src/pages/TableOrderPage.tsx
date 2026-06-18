@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, requireAnonymousSession } from '../lib/menuApi';
 import { hasSupabaseConfig } from '../lib/supabase';
-import { formatPrice, getLocalizedField } from '../lib/localized';
+import { getLocalizedField } from '../lib/localized';
 import {
   addCartItem,
   fetchCart,
@@ -32,10 +32,14 @@ export function TableOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [billOpen, setBillOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<BillPaymentMethod | null>(null);
   const [requestingBill, setRequestingBill] = useState(false);
   const [hasOrders, setHasOrders] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const cartRefreshSequence = useRef(0);
+  const categoryNavRef = useRef<HTMLElement>(null);
+  const menuGroupsRef = useRef<HTMLDivElement>(null);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
   const refreshCart = useCallback(async (sessionId: string) => {
     const requestSequence = ++cartRefreshSequence.current;
@@ -46,16 +50,19 @@ export function TableOrderPage() {
     return rows;
   }, []);
 
-  const refreshSession = useCallback(async (sessionId: string) => {
-    const nextSession = await resumeTableSession(sessionId, qrToken);
+  const refreshSession = useCallback(async (sessionId: string, includeCart = true) => {
+    const [nextSession, orderExists] = await Promise.all([
+      resumeTableSession(sessionId, qrToken),
+      hasSubmittedOrders(sessionId),
+    ]);
     setSessionInfo(nextSession);
     setSessionEnded(nextSession.session_status === 'closed');
-    setHasOrders(await hasSubmittedOrders(sessionId));
-    if (nextSession.session_status === 'active') {
-      await refreshCart(sessionId);
-    } else {
+    setHasOrders(orderExists);
+    if (nextSession.session_status === 'closed') {
       setCart([]);
       setBillOpen(false);
+    } else if (includeCart) {
+      await refreshCart(sessionId);
     }
     return nextSession;
   }, [qrToken, refreshCart]);
@@ -113,10 +120,10 @@ export function TableOrderPage() {
   useEffect(() => {
     if (!sessionInfo) return;
     return subscribeToTableCart(sessionInfo.session_id, () => {
-      refreshSession(sessionInfo.session_id)
-        .catch((err) => setMessage(err.message));
+      void refreshCart(sessionInfo.session_id).catch((err) => setMessage(err.message));
+      void refreshSession(sessionInfo.session_id, false).catch((err) => setMessage(err.message));
     });
-  }, [refreshSession, sessionInfo?.session_id]);
+  }, [refreshCart, refreshSession, sessionInfo?.session_id]);
 
   const cartSummary = useMemo(() => getCartSummary(cart), [cart]);
   const cartByMenuItemId = useMemo(() => {
@@ -127,6 +134,43 @@ export function TableOrderPage() {
     return rows;
   }, [cart]);
   const nextLang = lang === 'el' ? 'en' : 'el';
+  const visibleGroups = useMemo(() => groups.filter((group) => group.items.length), [groups]);
+
+  useEffect(() => {
+    if (!activeCategoryId && visibleGroups.length) setActiveCategoryId(visibleGroups[0].id);
+  }, [activeCategoryId, visibleGroups]);
+
+  useEffect(() => {
+    const container = menuGroupsRef.current;
+    if (!container) return;
+
+    const updateActiveCategory = () => {
+      const sections = Array.from(container.querySelectorAll<HTMLElement>('.menu-group'));
+      const marker = container.getBoundingClientRect().top + 32;
+      const current = sections.reduce(
+        (active, section) => (section.getBoundingClientRect().top <= marker ? section : active),
+        sections[0],
+      );
+      if (current) setActiveCategoryId(current.dataset.categoryId ?? null);
+    };
+
+    updateActiveCategory();
+    container.addEventListener('scroll', updateActiveCategory, { passive: true });
+    return () => container.removeEventListener('scroll', updateActiveCategory);
+  }, [visibleGroups]);
+
+  useEffect(() => {
+    categoryNavRef.current
+      ?.querySelector<HTMLElement>(`[data-category-link="${activeCategoryId}"]`)
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeCategoryId]);
+
+  function selectCategory(groupId: string) {
+    setActiveCategoryId(groupId);
+    menuGroupsRef.current
+      ?.querySelector<HTMLElement>(`[data-category-id="${groupId}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   async function addItem(item: MenuItem) {
     if (!sessionInfo) return;
@@ -173,6 +217,7 @@ export function TableOrderPage() {
       setRequestingBill(true);
       await requestBill(sessionInfo.session_id, paymentMethod);
       setBillOpen(false);
+      setSelectedPayment(null);
       setMessage(null);
       setSessionInfo((current) => current ? {
         ...current,
@@ -222,9 +267,13 @@ export function TableOrderPage() {
             type="button"
             aria-label={t('order.requestBill')}
             onClick={() => {
-              if (hasOrders && !billRequested) setBillOpen(true);
+              if (!hasOrders) {
+                setMessage(t('order.requestBillRequiresOrder'));
+                return;
+              }
+              if (!billRequested) setBillOpen(true);
             }}
-            disabled={!sessionInfo || !hasOrders || billRequested}
+            disabled={!sessionInfo || billRequested}
             title={!hasOrders ? t('order.requestBillRequiresOrder') : undefined}
           >
             <ReceiptText size={17} />
@@ -257,11 +306,19 @@ export function TableOrderPage() {
             </div>
           </section>
         ) : null}
-        <nav className="order-category-tabs" id="order-categories" aria-label={t('nav.menu')}>
-          {groups
-            .filter((group) => group.items.length)
-            .map((group) => (
-              <a href={`#order-category-${group.id}`} key={group.id}>
+        <nav ref={categoryNavRef} className="order-category-tabs" id="order-categories" aria-label={t('nav.menu')}>
+          {visibleGroups.map((group) => (
+              <a
+                href={`#order-category-${group.id}`}
+                key={group.id}
+                data-category-link={group.id}
+                className={activeCategoryId === group.id ? 'active' : undefined}
+                aria-current={activeCategoryId === group.id ? 'true' : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  selectCategory(group.id);
+                }}
+              >
                 {getLocalizedField(lang, {
                   zh: group.name_zh,
                   en: group.name_en,
@@ -270,10 +327,10 @@ export function TableOrderPage() {
               </a>
             ))}
         </nav>
-        <div className="order-menu-groups">
+        <div ref={menuGroupsRef} className="order-menu-groups">
           {groups.map((group) =>
             group.items.length ? (
-              <section className="menu-group" id={`order-category-${group.id}`} key={group.id}>
+              <section className="menu-group" id={`order-category-${group.id}`} data-category-id={group.id} key={group.id}>
                 <h2>
                   {getLocalizedField(lang, {
                     zh: group.name_zh,
@@ -330,8 +387,7 @@ export function TableOrderPage() {
                     })
                   : line.menu_item_id}
               </strong>
-              <span>{formatPrice(Number(line.unit_price))}</span>
-              <strong className="cart-line-subtotal">{formatPrice(Number(line.unit_price) * line.quantity)}</strong>
+              <strong className="cart-line-subtotal">{formatCartPrice(Number(line.unit_price) * line.quantity)}</strong>
               <div className="cart-controls">
                 <button type="button" onClick={() => updateQuantity(line, line.quantity - 1)}>
                   <Minus size={15} />
@@ -349,7 +405,7 @@ export function TableOrderPage() {
         })}
         <div className="cart-total">
           <span>{t('order.selectedCount', { count: cartSummary.totalQuantity })}</span>
-          <strong>{formatPrice(cartSummary.totalPrice)}</strong>
+          <strong>{formatCartPrice(cartSummary.totalPrice)}</strong>
         </div>
         <button
           className="primary-button stretch"
@@ -362,7 +418,7 @@ export function TableOrderPage() {
       </aside>
 
       {billOpen ? (
-        <div className="bill-dialog-backdrop" role="presentation" onClick={() => setBillOpen(false)}>
+        <div className="bill-dialog-backdrop" role="presentation" onClick={() => { setBillOpen(false); setSelectedPayment(null); }}>
           <section
             className="bill-dialog"
             role="dialog"
@@ -372,19 +428,39 @@ export function TableOrderPage() {
           >
             <div className="cart-panel-head">
               <h2 id="bill-dialog-title">{t('order.requestBill')}</h2>
-              <button type="button" aria-label={t('order.close')} onClick={() => setBillOpen(false)}>
+              <button type="button" aria-label={t('order.close')} onClick={() => { setBillOpen(false); setSelectedPayment(null); }}>
                 <X size={18} />
               </button>
             </div>
             <p>{t('order.choosePayment')}</p>
             <div className="bill-payment-options">
-              <button type="button" disabled={requestingBill} onClick={() => sendBillRequest('pos')}>
+              <button
+                type="button"
+                className={selectedPayment === 'pos' ? 'selected' : undefined}
+                aria-pressed={selectedPayment === 'pos'}
+                disabled={requestingBill}
+                onClick={() => setSelectedPayment('pos')}
+              >
                 <CreditCard size={24} />
                 <strong>{t('order.cardPayment')}</strong>
               </button>
-              <button type="button" disabled={requestingBill} onClick={() => sendBillRequest('cash')}>
+              <button
+                type="button"
+                className={selectedPayment === 'cash' ? 'selected' : undefined}
+                aria-pressed={selectedPayment === 'cash'}
+                disabled={requestingBill}
+                onClick={() => setSelectedPayment('cash')}
+              >
                 <Banknote size={24} />
                 <strong>{t('order.cashPayment')}</strong>
+              </button>
+            </div>
+            <div className="bill-dialog-actions">
+              <button type="button" className="secondary-button" disabled={requestingBill} onClick={() => { setBillOpen(false); setSelectedPayment(null); }}>
+                {t('order.cancel')}
+              </button>
+              <button type="button" className="primary-button" disabled={!selectedPayment || requestingBill} onClick={() => selectedPayment && sendBillRequest(selectedPayment)}>
+                {t('order.confirm')}
               </button>
             </div>
           </section>
@@ -394,20 +470,20 @@ export function TableOrderPage() {
       <button
         className={`mobile-cart-bar ${cartSummary.isEmpty ? 'is-empty' : ''}`}
         type="button"
+        disabled={cartSummary.isEmpty}
         aria-label={t('order.cartBarSummary', {
           count: cartSummary.totalQuantity,
-          total: formatPrice(cartSummary.totalPrice),
+          total: formatCartPrice(cartSummary.totalPrice),
         })}
         onClick={() => setCartOpen(true)}
       >
-        <span>
+        <span className="mobile-cart-summary">
           <ShoppingBag size={18} />
-          {t('order.viewCart')}
+          {t('order.cartBarSummary', {
+            count: cartSummary.totalQuantity,
+            total: formatCartPrice(cartSummary.totalPrice),
+          })}
         </span>
-        <strong>
-          {t('order.selectedCount', { count: cartSummary.totalQuantity })} · {formatPrice(cartSummary.totalPrice)}
-        </strong>
-        <em>{t('order.checkout')}</em>
       </button>
     </main>
   );
@@ -426,6 +502,10 @@ export function getCartSummary(cartItems: CartItem[]) {
   );
 
   return { ...summary, isEmpty: summary.totalQuantity === 0 };
+}
+
+function formatCartPrice(price: number) {
+  return `€${price.toFixed(2)}`;
 }
 
 function DishQuantityControl({
