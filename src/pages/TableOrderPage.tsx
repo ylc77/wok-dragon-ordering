@@ -126,6 +126,7 @@ export function TableOrderPage() {
   }, [refreshCart, refreshSession, sessionInfo?.session_id]);
 
   const cartSummary = useMemo(() => getCartSummary(cart), [cart]);
+  const orderingLocked = sessionInfo?.bill_request_status === 'requested';
   const cartByMenuItemId = useMemo(() => {
     const rows = new Map<string, CartItem>();
     cart.forEach((line) => {
@@ -174,6 +175,10 @@ export function TableOrderPage() {
 
   async function addItem(item: MenuItem) {
     if (!sessionInfo) return;
+    if (orderingLocked) {
+      setMessage(t('order.billOrderingLocked'));
+      return;
+    }
     try {
       await addCartItem(sessionInfo.session_id, item.id, 1, '');
       await refreshCart(sessionInfo.session_id);
@@ -184,6 +189,10 @@ export function TableOrderPage() {
 
   async function updateQuantity(line: CartItem, nextQuantity: number) {
     if (!sessionInfo) return;
+    if (orderingLocked) {
+      setMessage(t('order.billOrderingLocked'));
+      return;
+    }
     try {
       if (nextQuantity <= 0) {
         await removeCartItem(line.id);
@@ -198,6 +207,10 @@ export function TableOrderPage() {
 
   async function submitCurrentOrder() {
     if (!sessionInfo || cartSummary.isEmpty) return;
+    if (orderingLocked) {
+      setMessage(t('order.billOrderingLocked'));
+      return;
+    }
     try {
       setSubmitting(true);
       const result = await submitOrder(sessionInfo.session_id, crypto.randomUUID());
@@ -251,7 +264,7 @@ export function TableOrderPage() {
     );
   }
 
-  const billRequested = sessionInfo?.bill_request_status === 'requested';
+  const billRequested = orderingLocked;
 
   return (
     <main className="order-shell">
@@ -352,7 +365,7 @@ export function TableOrderPage() {
                         <DishQuantityControl
                           item={item}
                           line={cartByMenuItemId.get(item.id)}
-                          disabled={!sessionInfo}
+                          disabled={!sessionInfo || billRequested}
                           onAdd={() => addItem(item)}
                           onChange={updateQuantity}
                           addLabel={t('order.add')}
@@ -393,14 +406,14 @@ export function TableOrderPage() {
               </strong>
               <strong className="cart-line-subtotal">{formatCartPrice(Number(line.unit_price) * line.quantity)}</strong>
               <div className="cart-controls">
-                <button type="button" onClick={() => updateQuantity(line, line.quantity - 1)}>
+                <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, line.quantity - 1)}>
                   <Minus size={15} />
                 </button>
                 <span>{line.quantity}</span>
-                <button type="button" onClick={() => updateQuantity(line, line.quantity + 1)}>
+                <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, line.quantity + 1)}>
                   <Plus size={15} />
                 </button>
-                <button type="button" onClick={() => updateQuantity(line, 0)}>
+                <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, 0)}>
                   <Trash2 size={15} />
                 </button>
               </div>
@@ -414,7 +427,7 @@ export function TableOrderPage() {
         <button
           className="primary-button stretch"
           type="button"
-          disabled={cartSummary.isEmpty || submitting}
+          disabled={cartSummary.isEmpty || submitting || billRequested}
           onClick={submitCurrentOrder}
         >
           {t('order.submit')}
