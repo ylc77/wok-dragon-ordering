@@ -5,7 +5,14 @@ export type RestaurantSettings = {
   name_zh: string | null;
   name_en: string | null;
   name_el: string | null;
+  logo_url: string | null;
+  hero_image_url: string | null;
+  intro_zh: string | null;
+  intro_en: string | null;
+  intro_el: string | null;
   phone: string | null;
+  whatsapp_url: string | null;
+  instagram_url: string | null;
   address_zh: string | null;
   address_en: string | null;
   address_el: string | null;
@@ -16,6 +23,8 @@ export type RestaurantSettings = {
   wolt_url: string | null;
   efood_url: string | null;
   box_url: string | null;
+  accept_pos_payment: boolean;
+  accept_cash_payment: boolean;
   ordering_enabled: boolean;
   ordering_paused_at: string | null;
 };

@@ -14,6 +14,22 @@ export async function getRestaurantSettings(): Promise<RestaurantSettings | null
   return data;
 }
 
+export function subscribeToRestaurantSettings(onChange: (settings: RestaurantSettings) => void) {
+  if (!supabase) return () => {};
+  const client = supabase;
+  const channel = client
+    .channel(`restaurant-settings-${crypto.randomUUID()}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'restaurant_settings' },
+      (payload) => onChange(payload.new as RestaurantSettings),
+    )
+    .subscribe();
+  return () => {
+    void client.removeChannel(channel);
+  };
+}
+
 export async function getPublicMenu(): Promise<MenuGroup[]> {
   if (!hasSupabaseConfig || !supabase) return [];
 

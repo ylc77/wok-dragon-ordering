@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock3, ExternalLink, MapPin, Phone, UtensilsCrossed } from 'lucide-react';
+import { Clock3, ExternalLink, Instagram, MapPin, MessageCircle, Phone, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
-import { getPublicMenu, getRestaurantSettings } from '../lib/menuApi';
+import { getPublicMenu, getRestaurantSettings, subscribeToRestaurantSettings } from '../lib/menuApi';
 import { getLocalizedField, pickLocalized } from '../lib/localized';
 import type { Language, MenuGroup, MenuItem, RestaurantSettings } from '../lib/types';
 
@@ -23,6 +23,7 @@ export function HomePage() {
         setFeaturedItems(menuGroups.flatMap((group) => group.items).slice(0, 4));
       })
       .catch((err) => setError(err.message));
+    return subscribeToRestaurantSettings(setSettings);
   }, []);
 
   const name = settings
@@ -38,28 +39,32 @@ export function HomePage() {
         en: settings.address_en,
         el: settings.address_el,
       })
-    : 'Mitropoleos 51, Monastiraki, 10556 Athens, Greece';
+    : '';
   const hours = settings
     ? pickLocalized(lang, {
         zh: settings.opening_hours_zh,
         en: settings.opening_hours_en,
         el: settings.opening_hours_el,
       })
-    : '12:00-23:00';
+    : '';
+  const intro = settings
+    ? pickLocalized(lang, { zh: settings.intro_zh, en: settings.intro_en, el: settings.intro_el })
+    : '';
   const deliveryLinks = [
     { label: t('platforms.wolt'), url: settings?.wolt_url },
     { label: t('platforms.efood'), url: settings?.efood_url },
     { label: t('platforms.box'), url: settings?.box_url },
   ].filter((link) => Boolean(link.url?.trim()));
   const heroItem = featuredItems.find((item) => Boolean(item.image_url));
+  const heroImageUrl = settings?.hero_image_url?.trim() || heroItem?.image_url;
 
   return (
     <main>
       <section className="hero-section">
         <div className="hero-copy">
           <div className="hero-brand-lockup" aria-hidden="true">
-            <span className="brand-mark">龙</span>
-            <strong>Wok Dragon Express</strong>
+            {settings?.logo_url ? <img className="brand-logo" src={settings.logo_url} alt="" /> : <span className="brand-mark">餐</span>}
+            <strong>{name}</strong>
           </div>
           <h1>{name}</h1>
           <p>{t('home.subtitle')}</p>
@@ -79,30 +84,30 @@ export function HomePage() {
           {error ? <p className="error-text">{error}</p> : null}
         </div>
         <div className="hero-media">
-          {heroItem?.image_url ? (
-            <img src={heroItem.image_url} alt={getLocalizedField(lang, {
+          {heroImageUrl ? (
+            <img src={heroImageUrl} alt={heroItem ? getLocalizedField(lang, {
               zh: heroItem.name_zh,
               en: heroItem.name_en,
               el: heroItem.name_el,
-            })} />
-          ) : <div className="hero-image-fallback" aria-hidden="true">龙</div>}
+            }) : name} />
+          ) : <div className="hero-image-fallback" aria-hidden="true">餐</div>}
         </div>
       </section>
 
       <section className="home-intro">
         <div>
           <h2>{t('home.introTitle')}</h2>
-          <p>{t('home.introText')}</p>
+          <p>{intro || t('home.introText')}</p>
         </div>
         <div className="home-info-cards">
-          <div>
+          {address ? <div>
             <span><MapPin size={15} /> {t('common.address')}</span>
             <strong>{address}</strong>
-          </div>
-          <div>
+          </div> : null}
+          {hours ? <div>
             <span><Clock3 size={15} /> {t('common.openingHours')}</span>
             <strong>{hours}</strong>
-          </div>
+          </div> : null}
           {settings?.phone ? (
             <div>
               <span><Phone size={15} /> {t('common.phone')}</span>
@@ -153,17 +158,19 @@ export function HomePage() {
       </section>
 
       <section className="info-band" id="contact">
-        <div>
+        {address ? <div>
           <span>{t('common.address')}</span>
           <strong>{address}</strong>
-        </div>
-        <div>
+        </div> : null}
+        {hours ? <div>
           <span>{t('common.openingHours')}</span>
           <strong>{hours}</strong>
-        </div>
+        </div> : null}
         <div className="contact-actions">
           <span>{t('nav.contact')}</span>
           {settings?.phone ? <a href={`tel:${settings.phone}`}>{settings.phone}</a> : null}
+          {settings?.whatsapp_url ? <a className="outline-button" href={settings.whatsapp_url} target="_blank" rel="noreferrer"><MessageCircle size={15} />WhatsApp</a> : null}
+          {settings?.instagram_url ? <a className="outline-button" href={settings.instagram_url} target="_blank" rel="noreferrer"><Instagram size={15} />Instagram</a> : null}
           {settings?.map_url ? (
             <a className="outline-button" href={settings.map_url} target="_blank" rel="noreferrer">
               <MapPin size={15} />

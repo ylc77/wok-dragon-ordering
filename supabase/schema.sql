@@ -21,7 +21,14 @@ alter table public.restaurant_settings
   add column if not exists name_zh text,
   add column if not exists name_en text,
   add column if not exists name_el text,
+  add column if not exists logo_url text,
+  add column if not exists hero_image_url text,
+  add column if not exists intro_zh text,
+  add column if not exists intro_en text,
+  add column if not exists intro_el text,
   add column if not exists phone text,
+  add column if not exists whatsapp_url text,
+  add column if not exists instagram_url text,
   add column if not exists address_zh text,
   add column if not exists address_en text,
   add column if not exists address_el text,
@@ -31,7 +38,14 @@ alter table public.restaurant_settings
   add column if not exists opening_hours_el text,
   add column if not exists wolt_url text,
   add column if not exists efood_url text,
-  add column if not exists box_url text;
+  add column if not exists box_url text,
+  add column if not exists accept_pos_payment boolean not null default true,
+  add column if not exists accept_cash_payment boolean not null default true;
+
+alter table public.restaurant_settings
+  drop constraint if exists restaurant_settings_payment_method_check,
+  add constraint restaurant_settings_payment_method_check
+    check (accept_pos_payment or accept_cash_payment);
 
 create table if not exists public.menu_categories (
   id uuid primary key default gen_random_uuid(),
@@ -1755,6 +1769,7 @@ declare
   v_table_number int;
   v_request_id uuid;
   v_existing_method text;
+  v_payment_enabled boolean;
 begin
   if v_user_id is null then
     raise exception 'anonymous sign-in is required';
@@ -1762,6 +1777,19 @@ begin
 
   if p_payment_method not in ('pos', 'cash') then
     raise exception 'invalid payment method';
+  end if;
+
+  select case
+    when p_payment_method = 'pos' then rs.accept_pos_payment
+    else rs.accept_cash_payment
+  end
+  into v_payment_enabled
+  from restaurant_settings rs
+  order by rs.created_at
+  limit 1;
+
+  if coalesce(v_payment_enabled, false) = false then
+    raise exception 'payment method is not enabled';
   end if;
 
   select s.table_id, t.table_number

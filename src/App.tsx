@@ -7,13 +7,34 @@ import { MenuPage } from './pages/MenuPage';
 import { TableOrderPage } from './pages/TableOrderPage';
 import { AdminPage } from './pages/AdminPage';
 import { LanguageSwitch } from './components/LanguageSwitch';
+import { getRestaurantSettings, subscribeToRestaurantSettings } from './lib/menuApi';
+import { getLocalizedField } from './lib/localized';
+import type { Language, RestaurantSettings } from './lib/types';
 
 function PublicShell() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isTableOrder = location.pathname.startsWith('/table/');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+  const lang = (i18n.language === 'en' ? 'en' : 'el') as Language;
+  const restaurantName = settings
+    ? getLocalizedField(lang, { zh: settings.name_zh, en: settings.name_en, el: settings.name_el })
+    : t('home.title');
+  const restaurantAddress = settings
+    ? getLocalizedField(lang, { zh: settings.address_zh, en: settings.address_en, el: settings.address_el })
+    : '';
+
+  useEffect(() => {
+    void getRestaurantSettings().then(setSettings).catch(() => setSettings(null));
+    return subscribeToRestaurantSettings(setSettings);
+  }, []);
+
+  useEffect(() => {
+    document.title = restaurantName;
+    document.querySelector('meta[name="description"]')?.setAttribute('content', `${restaurantName} restaurant website and QR table ordering.`);
+  }, [restaurantName]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -37,10 +58,10 @@ function PublicShell() {
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand" to="/">
-            <span className="brand-mark">龙</span>
+            {settings?.logo_url ? <img className="brand-logo" src={settings.logo_url} alt="" /> : <span className="brand-mark">餐</span>}
             <span>
-              <strong>Wok Dragon Express</strong>
-              <small>Monastiraki · Athens</small>
+              <strong>{restaurantName}</strong>
+              {restaurantAddress ? <small>{restaurantAddress}</small> : null}
             </span>
           </Link>
           <button

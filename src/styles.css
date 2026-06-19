@@ -836,6 +836,38 @@ button:disabled {
   line-height: 1.65;
 }
 
+.session-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.session-brand > strong {
+  font-size: 1rem;
+}
+
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.hero-brand-lockup .brand-logo {
+  width: 48px;
+  height: 48px;
+}
+
+.settings-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
 .session-ended-card .primary-button {
   margin: 16px 0 12px;
 }

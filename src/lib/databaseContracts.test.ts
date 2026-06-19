@@ -24,9 +24,18 @@ describe('database ordering contracts', () => {
   });
 
   it('requires an empty cart before requesting the bill', () => {
-    expect(latestFunction('request_bill')).toContain(
+    const definition = latestFunction('request_bill');
+    expect(definition).toContain(
       'if exists (select 1 from cart_items where session_id = p_session_id)',
     );
+    expect(definition).toContain('payment method is not enabled');
+  });
+
+  it('keeps reusable branding in the existing restaurant settings table', () => {
+    for (const field of ['logo_url', 'hero_image_url', 'intro_en', 'whatsapp_url', 'instagram_url']) {
+      expect(schema).toContain(`add column if not exists ${field}`);
+    }
+    expect(schema).toContain('restaurant_settings_payment_method_check');
   });
 
   it('keeps paid status behind the payment transaction', () => {

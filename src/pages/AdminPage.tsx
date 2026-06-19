@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
+import { getRestaurantSettings } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
   approveTableReentry,
@@ -50,7 +51,14 @@ const emptySettings: Partial<RestaurantSettings> = {
   name_zh: '',
   name_en: '',
   name_el: '',
+  logo_url: '',
+  hero_image_url: '',
+  intro_zh: '',
+  intro_en: '',
+  intro_el: '',
   phone: '',
+  whatsapp_url: '',
+  instagram_url: '',
   address_zh: '',
   address_en: '',
   address_el: '',
@@ -61,6 +69,8 @@ const emptySettings: Partial<RestaurantSettings> = {
   wolt_url: '',
   efood_url: '',
   box_url: '',
+  accept_pos_payment: true,
+  accept_cash_payment: true,
   ordering_enabled: true,
   ordering_paused_at: null,
 };
@@ -87,7 +97,7 @@ const emptyItem: Partial<MenuItem> = {
   sort_order: 0,
 };
 
-const publicSiteUrl = 'https://wok-dragon-ordering.vercel.app';
+const publicSiteUrl = window.location.origin;
 
 const statusLabels: Record<OrderStatus, string> = {
   pending: '待处理',
@@ -276,7 +286,7 @@ export function AdminPage() {
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/">
           <span className="admin-brand-mark">龙</span>
-          <span>后台管理系统<small>Wok Dragon Express</small></span>
+          <span>后台管理系统<small>餐馆运营管理</small></span>
         </Link>
         <span className="admin-nav-label">经营管理</span>
         <AdminNavButton icon={<LayoutDashboard size={17} />} active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>
@@ -315,7 +325,7 @@ export function AdminPage() {
       </aside>
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <strong>Wok Dragon Express 管理后台</strong>
+          <strong>餐馆管理后台</strong>
           <div>
             <span className={`realtime-status is-${realtimeStatus}`} role="status">
               {realtimeStatus === 'connected' ? <Wifi size={16} /> : <WifiOff size={16} />}
@@ -323,8 +333,8 @@ export function AdminPage() {
             </span>
             <label className="admin-restaurant-select">
               <Building2 size={16} />
-              <select aria-label="餐馆选择" defaultValue="wok-dragon">
-                <option value="wok-dragon">Wok Dragon Express 龙城酒楼</option>
+              <select aria-label="餐馆选择" defaultValue="restaurant">
+                <option value="restaurant">当前餐馆</option>
               </select>
               <ChevronDown size={14} />
             </label>
@@ -498,6 +508,10 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
 
   async function save() {
     if (!supabase) return;
+    if (settings.accept_pos_payment === false && settings.accept_cash_payment === false) {
+      onMessage('现金和刷卡至少需要启用一种付款方式。');
+      return;
+    }
     const payload = { ...emptySettings, ...settings };
     const { error } = settings.id
       ? await supabase.from('restaurant_settings').update(payload).eq('id', settings.id)
@@ -539,26 +553,41 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
           <TextField label="餐馆名称" value={settings.name_zh} onChange={(v) => setSettings({ ...settings, name_zh: v })} />
           <TextField label="地址" value={settings.address_zh} onChange={(v) => setSettings({ ...settings, address_zh: v })} />
           <TextField label="营业时间" value={settings.opening_hours_zh} onChange={(v) => setSettings({ ...settings, opening_hours_zh: v })} />
+          <TextField label="餐馆介绍" value={settings.intro_zh} onChange={(v) => setSettings({ ...settings, intro_zh: v })} />
         </div></section>
         <section><h3>English</h3><div className="admin-form-grid">
           <TextField label="Restaurant name" value={settings.name_en} onChange={(v) => setSettings({ ...settings, name_en: v })} />
           <TextField label="Address" value={settings.address_en} onChange={(v) => setSettings({ ...settings, address_en: v })} />
           <TextField label="Opening hours" value={settings.opening_hours_en} onChange={(v) => setSettings({ ...settings, opening_hours_en: v })} />
+          <TextField label="Introduction" value={settings.intro_en} onChange={(v) => setSettings({ ...settings, intro_en: v })} />
         </div></section>
         <section><h3>Ελληνικά</h3><div className="admin-form-grid">
           <TextField label="Όνομα" value={settings.name_el} onChange={(v) => setSettings({ ...settings, name_el: v })} />
           <TextField label="Διεύθυνση" value={settings.address_el} onChange={(v) => setSettings({ ...settings, address_el: v })} />
           <TextField label="Ωράριο" value={settings.opening_hours_el} onChange={(v) => setSettings({ ...settings, opening_hours_el: v })} />
+          <TextField label="Παρουσίαση" value={settings.intro_el} onChange={(v) => setSettings({ ...settings, intro_el: v })} />
         </div></section>
       </div>
       <div className="admin-form-panel">
         <h3>联系方式与平台</h3>
         <div className="admin-form-grid">
+        <TextField label="Logo 图片链接" value={settings.logo_url} onChange={(v) => setSettings({ ...settings, logo_url: v })} />
+        <TextField label="首页主图链接" value={settings.hero_image_url} onChange={(v) => setSettings({ ...settings, hero_image_url: v })} />
         <TextField label="电话" value={settings.phone} onChange={(v) => setSettings({ ...settings, phone: v })} />
+        <TextField label="WhatsApp 链接" value={settings.whatsapp_url} onChange={(v) => setSettings({ ...settings, whatsapp_url: v })} />
+        <TextField label="Instagram 链接" value={settings.instagram_url} onChange={(v) => setSettings({ ...settings, instagram_url: v })} />
         <TextField label="Google Maps 链接" value={settings.map_url} onChange={(v) => setSettings({ ...settings, map_url: v })} />
         <TextField label="Wolt 外卖链接" value={settings.wolt_url} onChange={(v) => setSettings({ ...settings, wolt_url: v })} />
         <TextField label="efood 外卖链接" value={settings.efood_url} onChange={(v) => setSettings({ ...settings, efood_url: v })} />
         <TextField label="Box 外卖链接" value={settings.box_url} onChange={(v) => setSettings({ ...settings, box_url: v })} />
+        </div>
+      </div>
+      <div className="admin-form-panel">
+        <h3>顾客付款方式</h3>
+        <p className="muted">至少保留一种。关闭后，顾客结账弹窗不会显示该选项。</p>
+        <div className="settings-checkbox-row">
+          <label className="checkbox-label"><input type="checkbox" checked={settings.accept_pos_payment !== false} onChange={(event) => setSettings({ ...settings, accept_pos_payment: event.target.checked })} />刷卡 / POS</label>
+          <label className="checkbox-label"><input type="checkbox" checked={settings.accept_cash_payment !== false} onChange={(event) => setSettings({ ...settings, accept_cash_payment: event.target.checked })} />现金</label>
         </div>
       </div>
       <button className="primary-button" type="button" onClick={save}>
@@ -944,7 +973,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `wok-dragon-menu-${dateToKey(new Date().toISOString())}.csv`;
+    link.download = `restaurant-menu-${dateToKey(new Date().toISOString())}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -1377,7 +1406,7 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       return;
     }
 
-    const printWindow = window.open('', 'wok-dragon-kitchen-printer', 'width=420,height=720');
+    const printWindow = window.open('', 'restaurant-kitchen-printer', 'width=420,height=720');
     if (!printWindow) {
       onMessage('浏览器阻止了自动打印窗口，请允许此网站打开弹窗后重新启用');
       return;
@@ -1912,6 +1941,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
   const [reentryRequests, setReentryRequests] = useState<TableReentryRequest[]>([]);
   const [newNumber, setNewNumber] = useState(1);
   const [newLabel, setNewLabel] = useState('');
+  const [restaurantName, setRestaurantName] = useState('餐馆');
 
   useEffect(() => {
     void load();
@@ -1919,16 +1949,18 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
 
   async function load() {
     try {
-      const [tableRows, sessionRows, orderRows, reentryRows] = await Promise.all([
+      const [tableRows, sessionRows, orderRows, reentryRows, settings] = await Promise.all([
         fetchRestaurantTables(),
         fetchActiveSessions(),
         fetchAdminOrders(),
         fetchPendingTableReentryRequests(),
+        getRestaurantSettings(),
       ]);
       setTables(tableRows);
       setSessions(sessionRows);
       setOrders(orderRows);
       setReentryRequests(reentryRows);
+      setRestaurantName(settings?.name_zh || settings?.name_en || settings?.name_el || '餐馆');
     } catch (err) {
       onMessage(err instanceof Error ? err.message : String(err));
     }
@@ -2041,6 +2073,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
             session={sessionByTable.get(table.id) ?? null}
             sessionOrders={orders.filter((order) => order.session_id === sessionByTable.get(table.id)?.id)}
             reentryRequests={reentryRequests.filter((request) => request.table_id === table.id)}
+            restaurantName={restaurantName}
             onSave={saveTable}
             onRegenerate={regenerate}
             onClose={closeSession}
@@ -2058,6 +2091,7 @@ function TableCard({
   session,
   sessionOrders,
   reentryRequests,
+  restaurantName,
   onSave,
   onRegenerate,
   onClose,
@@ -2068,6 +2102,7 @@ function TableCard({
   session: TableSession | null;
   sessionOrders: Order[];
   reentryRequests: TableReentryRequest[];
+  restaurantName: string;
   onSave: (table: RestaurantTable) => void;
   onRegenerate: (tableId: string) => void;
   onClose: (session: TableSession) => void;
@@ -2127,14 +2162,14 @@ function TableCard({
       ctx.font = '700 72px Arial, sans-serif';
       ctx.fillText(tableLabel, width / 2, 120);
       ctx.font = '400 28px Arial, sans-serif';
-      ctx.fillText('Wok Dragon Express', width / 2, 170);
+      ctx.fillText(restaurantName, width / 2, 170);
       ctx.drawImage(image, 150, 230, 600, 600);
       ctx.fillStyle = '#555555';
       ctx.font = '400 24px Arial, sans-serif';
       wrapCanvasText(ctx, qrUrl, width / 2, 900, 760, 32);
 
       const link = document.createElement('a');
-      link.download = `wok-dragon-${tableLabel.toLowerCase().replace(/\s+/g, '-')}-qr.png`;
+      link.download = `restaurant-${tableLabel.toLowerCase().replace(/\s+/g, '-')}-qr.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
       URL.revokeObjectURL(svgUrl);

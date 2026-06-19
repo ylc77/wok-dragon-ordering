@@ -22,7 +22,7 @@ import {
   subscribeToTableReentryRequest,
   updateCartItemQuantity,
 } from '../lib/orderApi';
-import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, RealtimeConnectionStatus, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
+import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, RealtimeConnectionStatus, RestaurantSettings, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
 import { LanguageSwitch } from '../components/LanguageSwitch';
 
 export function TableOrderPage() {
@@ -51,10 +51,23 @@ export function TableOrderPage() {
   const menuGroupsRef = useRef<HTMLDivElement>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [orderingEnabled, setOrderingEnabled] = useState(true);
+  const [restaurantSettings, setRestaurantSettings] = useState<RestaurantSettings | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
+  const restaurantName = restaurantSettings
+    ? getLocalizedField(lang, {
+        zh: restaurantSettings.name_zh,
+        en: restaurantSettings.name_en,
+        el: restaurantSettings.name_el,
+      })
+    : t('home.title');
+
+  useEffect(() => {
+    document.title = restaurantName;
+  }, [restaurantName]);
 
   const refreshOrderingStatus = useCallback(async () => {
     const settings = await getRestaurantSettings();
+    setRestaurantSettings(settings);
     setOrderingEnabled(settings?.ordering_enabled ?? true);
   }, []);
 
@@ -100,6 +113,16 @@ export function TableOrderPage() {
         setMessage(null);
         const menuPromise = getPublicMenu();
         const settingsPromise = getRestaurantSettings();
+        void settingsPromise
+          .then((settings) => {
+            if (!cancelled) {
+              setRestaurantSettings(settings);
+              setOrderingEnabled(settings?.ordering_enabled ?? true);
+            }
+          })
+          .catch((err) => {
+            if (!cancelled) setMessage(err instanceof Error ? err.message : String(err));
+          });
 
         if (!hasSupabaseConfig) {
           setGroups(await menuPromise);
@@ -151,6 +174,7 @@ export function TableOrderPage() {
         ]);
         if (cancelled) return;
         setGroups(menuGroups);
+        setRestaurantSettings(settings);
         setOrderingEnabled(settings?.ordering_enabled ?? true);
       } catch (err) {
         if (!cancelled) setMessage(err instanceof Error ? err.message : String(err));
@@ -409,6 +433,10 @@ export function TableOrderPage() {
     return (
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card table-entry-card">
+          <div className="session-brand">
+            {restaurantSettings?.logo_url ? <img className="brand-logo" src={restaurantSettings.logo_url} alt="" /> : <span className="brand-mark">餐</span>}
+            <strong>{restaurantName}</strong>
+          </div>
           <ShoppingBag size={34} />
           <h1>{t('order.entryTitle', { table: entryState.table_number })}</h1>
           <p>{t(entryState.is_occupied ? 'order.entryOccupied' : 'order.entryIdle', { table: entryState.table_number })}</p>
@@ -433,6 +461,10 @@ export function TableOrderPage() {
     return (
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card">
+          <div className="session-brand">
+            {restaurantSettings?.logo_url ? <img className="brand-logo" src={restaurantSettings.logo_url} alt="" /> : <span className="brand-mark">餐</span>}
+            <strong>{restaurantName}</strong>
+          </div>
           <ReceiptText size={34} />
           <h1>{t('order.sessionEndedTitle')}</h1>
           <p>{t('order.sessionEnded')}</p>
@@ -468,9 +500,9 @@ export function TableOrderPage() {
     <main className="order-shell">
       <header className="order-topbar">
         <div className="order-brand">
-          <span className="brand-mark">龙</span>
+          {restaurantSettings?.logo_url ? <img className="brand-logo" src={restaurantSettings.logo_url} alt="" /> : <span className="brand-mark">餐</span>}
           <span>
-            <strong>Wok Dragon Express</strong>
+            <strong>{restaurantName}</strong>
             <small>
               {t('order.table')} {sessionInfo?.table_number ?? (loading ? '' : qrToken)}
             </small>
@@ -723,7 +755,7 @@ export function TableOrderPage() {
             </div>
             <p>{t('order.choosePayment')}</p>
             <div className="bill-payment-options">
-              <button
+              {restaurantSettings?.accept_pos_payment !== false ? <button
                 type="button"
                 className={selectedPayment === 'pos' ? 'selected' : undefined}
                 aria-pressed={selectedPayment === 'pos'}
@@ -732,8 +764,8 @@ export function TableOrderPage() {
               >
                 <CreditCard size={24} />
                 <strong>{t('order.cardPayment')}</strong>
-              </button>
-              <button
+              </button> : null}
+              {restaurantSettings?.accept_cash_payment !== false ? <button
                 type="button"
                 className={selectedPayment === 'cash' ? 'selected' : undefined}
                 aria-pressed={selectedPayment === 'cash'}
@@ -742,7 +774,7 @@ export function TableOrderPage() {
               >
                 <Banknote size={24} />
                 <strong>{t('order.cashPayment')}</strong>
-              </button>
+              </button> : null}
             </div>
             <div className="bill-dialog-actions">
               <button type="button" className="secondary-button" disabled={requestingBill} onClick={() => { setPaymentOpen(false); setSelectedPayment(null); setBillOpen(true); }}>
