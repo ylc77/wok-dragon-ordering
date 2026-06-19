@@ -6,15 +6,18 @@ import { Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown
 import { formatPrice } from '../lib/localized';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
+  approveTableReentry,
   closeTableSession,
   confirmBillAndCloseSession,
   createRestaurantTable,
   fetchActiveSessions,
   fetchAdminOrders,
   fetchPendingBillRequests,
+  fetchPendingTableReentryRequests,
   fetchRestaurantTables,
   markOrderKitchenPrinted,
   regenerateTableQrToken,
+  rejectTableReentry,
   saveRestaurantTable,
   subscribeToAdminOrders,
   updateOrderStatus,
@@ -28,6 +31,7 @@ import type {
   OrderStatus,
   RestaurantSettings,
   RestaurantTable,
+  TableReentryRequest,
   TableSession,
 } from '../lib/types';
 
@@ -1830,6 +1834,7 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [sessions, setSessions] = useState<TableSession[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [reentryRequests, setReentryRequests] = useState<TableReentryRequest[]>([]);
   const [newNumber, setNewNumber] = useState(1);
   const [newLabel, setNewLabel] = useState('');
 
@@ -1840,14 +1845,16 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
 
   async function load() {
     try {
-      const [tableRows, sessionRows, orderRows] = await Promise.all([
+      const [tableRows, sessionRows, orderRows, reentryRows] = await Promise.all([
         fetchRestaurantTables(),
         fetchActiveSessions(),
         fetchAdminOrders(),
+        fetchPendingTableReentryRequests(),
       ]);
       setTables(tableRows);
       setSessions(sessionRows);
       setOrders(orderRows);
+      setReentryRequests(reentryRows);
     } catch (err) {
       onMessage(err instanceof Error ? err.message : String(err));
     }
@@ -1912,6 +1919,26 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
     }
   }
 
+  async function approveReentry(request: TableReentryRequest) {
+    try {
+      const result = await approveTableReentry(request.id);
+      onMessage(result.request_status === 'approved' ? '已批准该设备重新开桌。' : '目标会话已结束，请顾客重新发起请求。');
+      await load();
+    } catch (err) {
+      onMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function rejectReentry(request: TableReentryRequest) {
+    try {
+      await rejectTableReentry(request.id);
+      onMessage('已拒绝该设备的重新开桌请求。');
+      await load();
+    } catch (err) {
+      onMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const sessionByTable = useMemo(
     () => new Map(sessions.map((session) => [session.table_id, session])),
     [sessions],
@@ -1933,9 +1960,12 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
             key={table.id}
             table={table}
             session={sessionByTable.get(table.id) ?? null}
+            reentryRequests={reentryRequests.filter((request) => request.table_id === table.id)}
             onSave={saveTable}
             onRegenerate={regenerate}
             onClose={closeSession}
+            onApproveReentry={approveReentry}
+            onRejectReentry={rejectReentry}
           />
         ))}
       </div>
@@ -1946,20 +1976,27 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
 function TableCard({
   table,
   session,
+  reentryRequests,
   onSave,
   onRegenerate,
   onClose,
+  onApproveReentry,
+  onRejectReentry,
 }: {
   table: RestaurantTable;
   session: TableSession | null;
+  reentryRequests: TableReentryRequest[];
   onSave: (table: RestaurantTable) => void;
   onRegenerate: (tableId: string) => void;
   onClose: (sessionId: string) => void;
+  onApproveReentry: (request: TableReentryRequest) => void;
+  onRejectReentry: (request: TableReentryRequest) => void;
 }) {
   const [value, setValue] = useState<RestaurantTable>(table);
   const qrRef = useRef<HTMLDivElement | null>(null);
   const tableLabel = table.label || `Table ${table.table_number}`;
   const qrUrl = `${publicSiteUrl}/table/${table.qr_token}`;
+  const occupied = Boolean(session && (session.participant_count ?? 0) > 0);
 
   useEffect(() => {
     setValue(table);
@@ -2027,12 +2064,28 @@ function TableCard({
           </label>
         </div>
         <p className="qr-url">{qrUrl}</p>
+        <div className={`table-occupancy-status ${occupied ? 'is-occupied' : 'is-ready'}`}>
+          <strong>{occupied ? '使用中' : '待客 / 空闲'}</strong>
+          <span>{occupied ? `${session?.participant_count ?? 0} 台设备已加入` : '已有可用会话，等待新顾客扫码'}</span>
+        </div>
+        {reentryRequests.length ? (
+          <div className="table-reentry-admin">
+            <strong>重新开桌请求</strong>
+            {reentryRequests.map((request) => (
+              <div key={request.id}>
+                <span>{new Date(request.requested_at).toLocaleString('zh-CN')}</span>
+                <button className="primary-button" type="button" onClick={() => onApproveReentry(request)}>批准</button>
+                <button className="secondary-button" type="button" onClick={() => onRejectReentry(request)}>拒绝</button>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="table-primary-action">
           <button
             className="clear-table-button"
             type="button"
-            disabled={!session}
-            onClick={() => session && onClose(session.id)}
+            disabled={!occupied}
+            onClick={() => occupied && session && onClose(session.id)}
           >
             清桌
           </button>
@@ -2051,7 +2104,7 @@ function TableCard({
           </button>
         </div>
         <small>
-          {session ? '当前有客人会话，日常交接请使用清桌。' : '当前空桌。重生成二维码只在二维码泄露或需要更换时使用。'}
+          {occupied ? '当前有顾客设备加入，交接桌台时请使用清桌。' : '当前待客。二维码保持不变，新顾客扫码会加入当前会话。'}
         </small>
       </div>
     </article>

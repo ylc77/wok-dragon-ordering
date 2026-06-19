@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RestaurantTable, TableJoinResult, TableSession, TableSessionState } from './types';
+import type { BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RestaurantTable, TableJoinResult, TableReentryRequest, TableSession, TableSessionState } from './types';
 
 function requireClient() {
   if (!supabase) throw new Error('Supabase is not configured.');
@@ -25,17 +25,6 @@ export async function resumeTableSession(sessionId: string, qrToken: string): Pr
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) throw new Error('Saved table session was not returned.');
   return row as TableSessionState;
-}
-
-export async function fetchTableSessionClosedAt(sessionId: string): Promise<string | null> {
-  const client = requireClient();
-  const { data, error } = await client
-    .from('table_sessions')
-    .select('closed_at')
-    .eq('id', sessionId)
-    .single();
-  if (error) throw error;
-  return data.closed_at as string | null;
 }
 
 export async function hasSubmittedOrders(sessionId: string) {
@@ -159,6 +148,52 @@ export function subscribeToTableCart(sessionId: string, onChange: () => void) {
   };
 }
 
+export async function requestTableReentry(closedSessionId: string, qrToken: string) {
+  const client = requireClient();
+  const { data, error } = await client.rpc('request_table_reentry', {
+    p_closed_session_id: closedSessionId,
+    p_qr_token: qrToken,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('Table reentry request was not returned.');
+  return {
+    id: row.request_id,
+    status: row.request_status,
+    target_session_id: row.target_session_id,
+    closed_session_id: closedSessionId,
+  } as Pick<TableReentryRequest, 'id' | 'status' | 'target_session_id' | 'closed_session_id'>;
+}
+
+export async function fetchLatestTableReentryRequest(closedSessionId: string): Promise<TableReentryRequest | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('table_reentry_requests')
+    .select('*')
+    .eq('closed_session_id', closedSessionId)
+    .order('requested_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as TableReentryRequest | null;
+}
+
+export function subscribeToTableReentryRequest(requestId: string, onChange: () => void) {
+  const client = requireClient();
+  const channel = client
+    .channel(`table-reentry-${requestId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'table_reentry_requests', filter: `id=eq.${requestId}` },
+      onChange,
+    )
+    .subscribe();
+
+  return () => {
+    client.removeChannel(channel);
+  };
+}
+
 export async function fetchAdminOrders(): Promise<Order[]> {
   const client = requireClient();
   const { data, error } = await client
@@ -187,6 +222,8 @@ export function subscribeToAdminOrders(onChange: () => void) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_requests' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'table_session_participants' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'table_reentry_requests' }, onChange)
     .subscribe();
 
   return () => {
@@ -245,11 +282,42 @@ export async function fetchActiveSessions(): Promise<TableSession[]> {
   const client = requireClient();
   const { data, error } = await client
     .from('table_sessions')
-    .select('*')
+    .select('*, table_session_participants(count)')
     .eq('status', 'active')
     .order('opened_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []) as TableSession[];
+  return (data ?? []).map((row) => ({
+    ...row,
+    participant_count: row.table_session_participants?.[0]?.count ?? 0,
+    table_session_participants: undefined,
+  })) as TableSession[];
+}
+
+export async function fetchPendingTableReentryRequests(): Promise<TableReentryRequest[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('table_reentry_requests')
+    .select('*, restaurant_tables(table_number,label)')
+    .eq('status', 'pending')
+    .order('requested_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as TableReentryRequest[];
+}
+
+export async function approveTableReentry(requestId: string) {
+  const client = requireClient();
+  const { data, error } = await client.rpc('approve_table_reentry', { p_request_id: requestId });
+  if (error) throw error;
+  return (Array.isArray(data) ? data[0] : data) as {
+    request_status: 'approved' | 'expired';
+    target_session_id: string;
+  };
+}
+
+export async function rejectTableReentry(requestId: string) {
+  const client = requireClient();
+  const { error } = await client.rpc('reject_table_reentry', { p_request_id: requestId });
+  if (error) throw error;
 }
 
 export async function createRestaurantTable(tableNumber: number, label: string) {

@@ -9,20 +9,20 @@ import { getLocalizedField } from '../lib/localized';
 import {
   addCartItem,
   fetchCart,
+  fetchLatestTableReentryRequest,
   fetchSessionOrders,
-  fetchTableSessionClosedAt,
   joinTableSession,
   removeCartItem,
   requestBill,
+  requestTableReentry,
   resumeTableSession,
   submitOrder,
   subscribeToTableCart,
+  subscribeToTableReentryRequest,
   updateCartItemQuantity,
 } from '../lib/orderApi';
-import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, TableSessionState } from '../lib/types';
+import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, TableReentryRequest, TableSessionState } from '../lib/types';
 import { LanguageSwitch } from '../components/LanguageSwitch';
-
-const CLOSED_SESSION_REENTRY_DELAY_MS = 24 * 60 * 60 * 1000;
 
 export function TableOrderPage() {
   const { qrToken = '' } = useParams();
@@ -41,6 +41,8 @@ export function TableOrderPage() {
   const [requestingBill, setRequestingBill] = useState(false);
   const [billOrders, setBillOrders] = useState<Order[]>([]);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [reentryRequest, setReentryRequest] = useState<TableReentryRequest | null>(null);
+  const [requestingReentry, setRequestingReentry] = useState(false);
   const cartRefreshSequence = useRef(0);
   const categoryNavRef = useRef<HTMLElement>(null);
   const menuGroupsRef = useRef<HTMLDivElement>(null);
@@ -105,12 +107,18 @@ export function TableOrderPage() {
 
         let restored = await resumeTableSession(sessionId, qrToken);
         if (savedSession && restored.session_status === 'closed') {
-          const closedAt = await fetchTableSessionClosedAt(sessionId);
-          if (isClosedSessionExpired(closedAt)) {
-            const joined = await joinTableSession(qrToken);
-            sessionId = joined.session_id;
-            saveTableSession(qrToken, joined);
-            restored = await resumeTableSession(sessionId, qrToken);
+          const latestReentry = await fetchLatestTableReentryRequest(sessionId);
+          if (latestReentry?.status === 'approved') {
+            const approvedSession = await resumeTableSession(latestReentry.target_session_id, qrToken);
+            if (approvedSession.session_status === 'active') {
+              sessionId = approvedSession.session_id;
+              restored = approvedSession;
+              saveTableSession(qrToken, approvedSession);
+            } else {
+              setReentryRequest(latestReentry);
+            }
+          } else {
+            setReentryRequest(latestReentry);
           }
         }
         if (cancelled) return;
@@ -143,6 +151,35 @@ export function TableOrderPage() {
       void refreshSession(sessionInfo.session_id, false).catch((err) => setMessage(err.message));
     });
   }, [refreshCart, refreshSession, sessionInfo?.session_id]);
+
+  const refreshReentryRequest = useCallback(async () => {
+    if (!sessionInfo || sessionInfo.session_status !== 'closed') return;
+    const nextRequest = await fetchLatestTableReentryRequest(sessionInfo.session_id);
+    setReentryRequest(nextRequest);
+    if (nextRequest?.status !== 'approved') return;
+
+    const nextSession = await resumeTableSession(nextRequest.target_session_id, qrToken);
+    if (nextSession.session_status !== 'active') return;
+
+    saveTableSession(qrToken, nextSession);
+    const [nextCart, nextOrders] = await Promise.all([
+      fetchCart(nextSession.session_id),
+      fetchSessionOrders(nextSession.session_id),
+    ]);
+    setSessionInfo(nextSession);
+    setSessionEnded(false);
+    setReentryRequest(null);
+    setCart(nextCart);
+    setBillOrders(nextOrders);
+    setMessage(null);
+  }, [qrToken, sessionInfo]);
+
+  useEffect(() => {
+    if (!reentryRequest?.id || reentryRequest.status !== 'pending') return;
+    return subscribeToTableReentryRequest(reentryRequest.id, () => {
+      void refreshReentryRequest().catch((err) => setMessage(err.message));
+    });
+  }, [reentryRequest?.id, reentryRequest?.status, refreshReentryRequest]);
 
   const cartSummary = useMemo(() => getCartSummary(cart), [cart]);
   const billSummary = useMemo(() => getBillSummary(billOrders), [billOrders]);
@@ -273,6 +310,20 @@ export function TableOrderPage() {
     }
   }
 
+  async function sendReentryRequest() {
+    if (!sessionInfo || sessionInfo.session_status !== 'closed') return;
+    try {
+      setRequestingReentry(true);
+      setMessage(null);
+      await requestTableReentry(sessionInfo.session_id, qrToken);
+      setReentryRequest(await fetchLatestTableReentryRequest(sessionInfo.session_id));
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRequestingReentry(false);
+    }
+  }
+
   if (sessionEnded && sessionInfo) {
     return (
       <main className="order-shell session-ended-shell">
@@ -280,7 +331,21 @@ export function TableOrderPage() {
           <ReceiptText size={34} />
           <h1>{t('order.sessionEndedTitle')}</h1>
           <p>{t('order.sessionEnded')}</p>
+          {reentryRequest?.status === 'pending' ? (
+            <p className="reentry-request-status" role="status">{t('order.reentryPending')}</p>
+          ) : null}
+          {reentryRequest?.status === 'rejected' || reentryRequest?.status === 'expired' ? (
+            <p className="reentry-request-status is-rejected" role="status">{t('order.reentryRejected')}</p>
+          ) : null}
           {message ? <p className="bill-dialog-warning" role="alert">{message}</p> : null}
+          <button
+            className="primary-button stretch"
+            type="button"
+            disabled={requestingReentry || reentryRequest?.status === 'pending'}
+            onClick={sendReentryRequest}
+          >
+            {requestingReentry ? t('order.requestingReentry') : t('order.requestReentry')}
+          </button>
           <LanguageSwitch />
         </section>
       </main>
@@ -613,12 +678,6 @@ export function getBillSummary(orders: Order[]) {
     }),
     { orderCount: 0, totalPrice: 0 },
   );
-}
-
-export function isClosedSessionExpired(closedAt: string | null, now = Date.now()) {
-  if (!closedAt) return false;
-  const closedAtTime = new Date(closedAt).getTime();
-  return Number.isFinite(closedAtTime) && now - closedAtTime >= CLOSED_SESSION_REENTRY_DELAY_MS;
 }
 
 function formatOrderTime(value: string, lang: Language) {

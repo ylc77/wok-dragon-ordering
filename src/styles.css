@@ -836,6 +836,25 @@ button:disabled {
   line-height: 1.65;
 }
 
+.session-ended-card .primary-button {
+  margin: 16px 0 12px;
+}
+
+.session-ended-card .reentry-request-status {
+  background: #fff7df;
+  border: 1px solid #e9c96f;
+  border-radius: 9px;
+  color: #6f5310;
+  font-size: 14px;
+  padding: 10px 12px;
+}
+
+.session-ended-card .reentry-request-status.is-rejected {
+  background: #fff1f0;
+  border-color: #e8b4b1;
+  color: var(--accent-dark);
+}
+
 .bill-dialog-backdrop {
   align-items: center;
   background: rgba(29, 24, 20, 0.5);
@@ -1888,6 +1907,55 @@ button:disabled {
 .table-primary-action {
   display: flex;
   margin: 12px 0 10px;
+}
+
+.table-occupancy-status {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0;
+  padding: 10px 12px;
+}
+
+.table-occupancy-status span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.table-occupancy-status.is-ready {
+  background: #eef8f0;
+  border-color: #b9d9bf;
+  color: #28643a;
+}
+
+.table-occupancy-status.is-occupied {
+  background: #fff7df;
+  border-color: #e9c96f;
+  color: #6f5310;
+}
+
+.table-reentry-admin {
+  background: #fff4ef;
+  border: 1px solid #efc9bd;
+  border-radius: 9px;
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px;
+}
+
+.table-reentry-admin > div {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr auto auto;
+}
+
+.table-reentry-admin button {
+  min-height: 34px;
+  padding: 7px 11px;
 }
 
 .clear-table-button {

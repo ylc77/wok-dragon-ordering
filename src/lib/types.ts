@@ -82,6 +82,22 @@ export type TableSession = {
   bill_handled_at: string | null;
   cart_version: number;
   cart_updated_at: string;
+  participant_count?: number;
+};
+
+export type TableReentryRequestStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+export type TableReentryRequest = {
+  id: string;
+  table_id: string;
+  closed_session_id: string;
+  target_session_id: string;
+  requested_by: string;
+  status: TableReentryRequestStatus;
+  requested_at: string;
+  handled_at: string | null;
+  handled_by: string | null;
+  restaurant_tables?: Pick<RestaurantTable, 'table_number' | 'label'> | null;
 };
 
 export type CartItem = {
