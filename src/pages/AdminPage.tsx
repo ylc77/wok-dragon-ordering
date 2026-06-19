@@ -715,16 +715,6 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
           <label className="checkbox-label"><input type="checkbox" checked={settings.accept_cash_payment !== false} onChange={(event) => setSettings({ ...settings, accept_cash_payment: event.target.checked })} />现金</label>
         </div>
       </div>
-      <div className="admin-form-panel">
-        <h3>订单删除密码</h3>
-        <p className="muted">设置后，删除订单时需要输入此密码。留空则不启用删除密码保护。</p>
-        <TextField
-          label="删除密码"
-          value={settings.delete_password ?? ''}
-          type="password"
-          onChange={(v) => setSettings({ ...settings, delete_password: v || null })}
-        />
-      </div>
       <button className="primary-button" type="button" onClick={save}>
         <Save size={16} />
         保存

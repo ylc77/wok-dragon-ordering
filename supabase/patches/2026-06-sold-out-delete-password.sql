@@ -64,7 +64,7 @@ begin
 
   -- 密码未设置
   if v_stored_password is null or v_stored_password = '' then
-    raise exception '删除密码未设置，请联系管理员在系统设置中配置删除密码';
+    raise exception '删除密码未设置，请联系技术人员通过数据库配置';
   end if;
 
   -- 验证密码
