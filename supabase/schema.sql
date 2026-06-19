@@ -348,6 +348,99 @@ create trigger set_orders_updated_at
 before update on public.orders
 for each row execute function public.set_updated_at();
 
+create or replace function private.guard_cart_ordering_open()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  v_session_id uuid;
+begin
+  v_session_id := case when tg_op = 'DELETE' then old.session_id else new.session_id end;
+  if (select private.is_staff()) then
+    if tg_op = 'DELETE' then return old; end if;
+    return new;
+  end if;
+  if not exists (
+    select 1 from public.table_sessions s
+    join public.table_session_participants p on p.session_id = s.id
+    where s.id = v_session_id
+      and s.status = 'active'
+      and s.bill_request_status = 'none'
+      and p.user_id = (select auth.uid())
+  ) then
+    raise exception 'ordering is closed for this table session';
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end;
+$$;
+
+create or replace function private.guard_order_submission_open()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  if (select private.is_staff()) then return new; end if;
+  if not exists (
+    select 1 from public.table_sessions s
+    join public.table_session_participants p on p.session_id = s.id
+    where s.id = new.session_id
+      and s.status = 'active'
+      and s.bill_request_status = 'none'
+      and p.user_id = (select auth.uid())
+  ) then
+    raise exception 'ordering is closed for this table session';
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function private.protect_order_history()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+begin
+  if tg_op = 'DELETE' then
+    raise exception 'orders must be archived, not deleted';
+  end if;
+  if old.status = 'paid' and (
+    new.status is distinct from old.status
+    or new.payment_status is distinct from old.payment_status
+    or new.payment_method is distinct from old.payment_method
+    or new.paid_at is distinct from old.paid_at
+    or new.deleted_at is distinct from old.deleted_at
+  ) then
+    raise exception 'paid order payment history cannot be changed';
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function private.guard_cart_ordering_open() from public, anon, authenticated;
+revoke execute on function private.guard_order_submission_open() from public, anon, authenticated;
+revoke execute on function private.protect_order_history() from public, anon, authenticated;
+
+drop trigger if exists guard_cart_ordering_open on public.cart_items;
+create trigger guard_cart_ordering_open
+before insert or update or delete on public.cart_items
+for each row execute function private.guard_cart_ordering_open();
+
+drop trigger if exists guard_order_submission_open on public.orders;
+create trigger guard_order_submission_open
+before insert on public.orders
+for each row execute function private.guard_order_submission_open();
+
+drop trigger if exists protect_order_history on public.orders;
+create trigger protect_order_history
+before update or delete on public.orders
+for each row execute function private.protect_order_history();
+
 alter table public.restaurant_tables enable row level security;
 alter table public.table_sessions enable row level security;
 alter table public.table_session_participants enable row level security;
@@ -577,6 +670,7 @@ begin
     join table_session_participants p on p.session_id = s.id
     where s.id = p_session_id
       and s.status = 'active'
+      and s.bill_request_status = 'none'
       and p.user_id = v_user_id
   ) then
     raise exception 'not a participant of this active table session';
@@ -633,6 +727,7 @@ begin
   join table_session_participants p on p.session_id = s.id
   where ci.id = p_cart_item_id
     and s.status = 'active'
+    and s.bill_request_status = 'none'
     and p.user_id = v_user_id;
 
   if v_session_id is null then
@@ -671,6 +766,7 @@ begin
   join table_session_participants p on p.session_id = s.id
   where ci.id = p_cart_item_id
     and s.status = 'active'
+    and s.bill_request_status = 'none'
     and p.user_id = v_user_id;
 
   if v_session_id is null then
@@ -707,6 +803,7 @@ begin
   join table_session_participants p on p.session_id = s.id
   where ci.id = p_cart_item_id
     and s.status = 'active'
+    and s.bill_request_status = 'none'
     and p.user_id = v_user_id;
 
   if v_session_id is null then
@@ -767,6 +864,7 @@ begin
   join table_session_participants p on p.session_id = s.id
   where s.id = p_session_id
     and s.status = 'active'
+    and s.bill_request_status = 'none'
     and p.user_id = v_user_id
   for update of s;
 
@@ -853,13 +951,21 @@ begin
     raise exception 'admin or staff role is required';
   end if;
 
-  if p_status not in ('pending', 'preparing', 'served', 'paid', 'cancelled') then
+  if p_status not in ('pending', 'preparing', 'served', 'cancelled') then
     raise exception 'invalid order status';
+  end if;
+
+  if exists (select 1 from orders where id = p_order_id and status = 'paid') then
+    raise exception 'paid orders cannot be changed';
   end if;
 
   update orders
   set status = p_status
-  where id = p_order_id;
+  where id = p_order_id and deleted_at is null;
+
+  if not found then
+    raise exception 'order not found';
+  end if;
 end;
 $$;
 
@@ -891,7 +997,19 @@ begin
   into v_open_count
   from orders
   where session_id = p_session_id
+    and deleted_at is null
     and status in ('pending', 'preparing', 'served');
+
+  if v_open_count > 0 then
+    raise exception 'finish or cancel open orders before clearing the table';
+  end if;
+
+  if exists (
+    select 1 from table_sessions
+    where id = p_session_id and bill_request_status = 'requested'
+  ) then
+    raise exception 'confirm the bill request before clearing the table';
+  end if;
 
   delete from cart_items
   where session_id = p_session_id;
@@ -952,7 +1070,7 @@ begin
 end;
 $$;
 
-revoke execute on function public.join_table_session(text) from public, anon;
+revoke execute on function public.join_table_session(text) from public, anon, authenticated;
 revoke execute on function public.add_cart_item(uuid, uuid, int, text) from public, anon;
 revoke execute on function public.update_cart_item_quantity(uuid, int) from public, anon;
 revoke execute on function public.remove_cart_item(uuid) from public, anon;
@@ -963,7 +1081,6 @@ revoke execute on function public.close_table_session(uuid) from public, anon;
 revoke execute on function public.create_restaurant_table(int, text) from public, anon;
 revoke execute on function public.regenerate_table_qr_token(uuid) from public, anon;
 
-grant execute on function public.join_table_session(text) to authenticated;
 grant execute on function public.add_cart_item(uuid, uuid, int, text) to authenticated;
 grant execute on function public.update_cart_item_quantity(uuid, int) to authenticated;
 grant execute on function public.remove_cart_item(uuid) to authenticated;
@@ -1200,7 +1317,19 @@ begin
   into v_open_count
   from orders
   where session_id = p_session_id
+    and deleted_at is null
     and status in ('pending', 'preparing', 'served');
+
+  if v_open_count > 0 then
+    raise exception 'finish or cancel open orders before clearing the table';
+  end if;
+
+  if exists (
+    select 1 from table_sessions
+    where id = p_session_id and bill_request_status = 'requested'
+  ) then
+    raise exception 'confirm the bill request before clearing the table';
+  end if;
 
   delete from cart_items
   where session_id = p_session_id;
@@ -1647,6 +1776,10 @@ begin
 
   if v_table_id is null then
     raise exception 'active table participant is required';
+  end if;
+
+  if exists (select 1 from cart_items where session_id = p_session_id) then
+    raise exception 'submit or remove cart items before requesting the bill';
   end if;
 
   if not exists (

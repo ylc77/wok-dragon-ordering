@@ -1936,6 +1936,12 @@ button:disabled {
   color: #6f5310;
 }
 
+.table-occupancy-status.is-payment {
+  background: #fff1f0;
+  border-color: #e8aaa5;
+  color: var(--accent-dark);
+}
+
 .table-reentry-admin {
   background: #fff4ef;
   border: 1px solid #efc9bd;

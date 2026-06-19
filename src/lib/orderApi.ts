@@ -239,6 +239,7 @@ export function subscribeToAdminOrders(onChange: () => void) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_requests' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'table_sessions' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'table_session_participants' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'table_reentry_requests' }, onChange)
     .subscribe();

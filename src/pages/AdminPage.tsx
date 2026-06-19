@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Pencil, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards } from 'lucide-react';
@@ -185,16 +186,41 @@ export function AdminPage() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => {
-      setLoggedIn(Boolean(data.session));
-      setAdminEmail(data.session?.user.email ?? '管理员');
+    const client = supabase;
+    let active = true;
+
+    async function syncAdminAccess(session: Session | null) {
+      if (!active) return;
+      if (!session) {
+        setLoggedIn(false);
+        setAdminEmail('管理员');
+        setSessionReady(true);
+        return;
+      }
+
+      const { data: profile, error } = await client
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (!active) return;
+
+      const allowed = !error && (profile?.role === 'admin' || profile?.role === 'staff');
+      setLoggedIn(allowed);
+      setAdminEmail(allowed ? (session.user.email ?? '管理员') : '管理员');
+      if (allowed) setMessage(null);
+      if (!allowed && !session.user.is_anonymous) setMessage('该账户没有后台管理权限');
       setSessionReady(true);
+    }
+
+    client.auth.getSession().then(({ data }) => void syncAdminAccess(data.session));
+    const { data: listener } = client.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => void syncAdminAccess(session), 0);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setLoggedIn(Boolean(session));
-      setAdminEmail(session?.user.email ?? '管理员');
-    });
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   if (!hasSupabaseConfig || !supabase) {
@@ -1252,9 +1278,10 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
 
     printWindow.document.write('<p style="font-family:sans-serif;padding:20px">正在准备厨房小票...</p>');
     try {
-      const result = await markOrderKitchenPrinted(order.id);
-      await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, result.is_reprint, result.printed_at));
-      onMessage(result.is_reprint ? `订单 #${order.order_number} 已打开重打小票` : `订单 #${order.order_number} 已打开厨房小票`);
+      const isReprint = Boolean(order.kitchen_printed_at);
+      await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, isReprint, new Date().toISOString()));
+      await markOrderKitchenPrinted(order.id);
+      onMessage(isReprint ? `订单 #${order.order_number} 已打开重打小票` : `订单 #${order.order_number} 已打开厨房小票`);
       load();
     } catch (err) {
       printWindow.close();
@@ -1311,10 +1338,8 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
       return;
     }
 
-    const result = await markOrderKitchenPrinted(order.id);
-    if (result.is_reprint) return;
-
-    await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, false, result.printed_at));
+    await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, false, new Date().toISOString()));
+    await markOrderKitchenPrinted(order.id);
     onMessage(`新订单 #${order.order_number} 已触发自动打印厨房小票`);
     load();
   }
@@ -1678,7 +1703,9 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
                         <Printer size={15} />
                         {order.kitchen_printed_at ? '重新打印厨房小票' : '打印厨房小票'}
                       </button>
-                      {(Object.keys(statusLabels) as OrderStatus[]).map((status) => (
+                      {(Object.keys(statusLabels) as OrderStatus[])
+                        .filter((status) => status !== 'paid' || order.status === 'paid')
+                        .map((status) => (
                         <button
                           className={order.status === status ? 'selected' : ''}
                           disabled={order.status === status}
@@ -1897,21 +1924,26 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
     }
   }
 
-  async function closeSession(sessionId: string) {
+  async function closeSession(session: TableSession) {
     const openCount = orders.filter(
       (order) =>
-        order.session_id === sessionId &&
+        order.session_id === session.id &&
         ['pending', 'preparing', 'served'].includes(order.status),
     ).length;
-    if (
-      openCount > 0 &&
-      !window.confirm(`该桌还有 ${openCount} 张未完成订单，确认清桌吗？`)
-    ) {
+    if (openCount > 0) {
+      onMessage(`该桌还有 ${openCount} 张未完成订单，请先完成或取消这些订单。`);
+      return;
+    }
+    if (session.bill_request_status === 'requested') {
+      onMessage('该桌正在等待付款，请先确认收款。');
+      return;
+    }
+    if (!window.confirm('确认清空该桌未提交购物车并结束本次用餐吗？')) {
       return;
     }
 
     try {
-      const result = await closeTableSession(sessionId);
+      const result = await closeTableSession(session.id);
       onMessage(`已清桌，删除未提交购物车 ${result.deleted_cart_count} 条。`);
       load();
     } catch (err) {
@@ -1960,6 +1992,7 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
             key={table.id}
             table={table}
             session={sessionByTable.get(table.id) ?? null}
+            sessionOrders={orders.filter((order) => order.session_id === sessionByTable.get(table.id)?.id)}
             reentryRequests={reentryRequests.filter((request) => request.table_id === table.id)}
             onSave={saveTable}
             onRegenerate={regenerate}
@@ -1976,6 +2009,7 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
 function TableCard({
   table,
   session,
+  sessionOrders,
   reentryRequests,
   onSave,
   onRegenerate,
@@ -1985,10 +2019,11 @@ function TableCard({
 }: {
   table: RestaurantTable;
   session: TableSession | null;
+  sessionOrders: Order[];
   reentryRequests: TableReentryRequest[];
   onSave: (table: RestaurantTable) => void;
   onRegenerate: (tableId: string) => void;
-  onClose: (sessionId: string) => void;
+  onClose: (session: TableSession) => void;
   onApproveReentry: (request: TableReentryRequest) => void;
   onRejectReentry: (request: TableReentryRequest) => void;
 }) {
@@ -1997,6 +2032,23 @@ function TableCard({
   const tableLabel = table.label || `Table ${table.table_number}`;
   const qrUrl = `${publicSiteUrl}/table/${table.qr_token}`;
   const occupied = Boolean(session && (session.participant_count ?? 0) > 0);
+  const openOrderCount = sessionOrders.filter((order) => ['pending', 'preparing', 'served'].includes(order.status)).length;
+  const paymentRequested = occupied && session?.bill_request_status === 'requested';
+  const paidPendingClear = occupied && !paymentRequested && openOrderCount === 0 && sessionOrders.some((order) => order.status === 'paid');
+  const occupancyLabel = paymentRequested
+    ? '待付款'
+    : paidPendingClear
+      ? '已付款 / 待清桌'
+      : occupied
+        ? '使用中'
+        : '待客 / 空闲';
+  const occupancyDetail = paymentRequested
+    ? `${session?.participant_count ?? 0} 台设备已加入，等待确认收款`
+    : paidPendingClear
+      ? '订单已付款，请清桌结束本次用餐'
+      : occupied
+        ? `${session?.participant_count ?? 0} 台设备已加入，${openOrderCount} 张未完成订单`
+        : '已有可用会话，等待新顾客扫码';
 
   useEffect(() => {
     setValue(table);
@@ -2064,9 +2116,9 @@ function TableCard({
           </label>
         </div>
         <p className="qr-url">{qrUrl}</p>
-        <div className={`table-occupancy-status ${occupied ? 'is-occupied' : 'is-ready'}`}>
-          <strong>{occupied ? '使用中' : '待客 / 空闲'}</strong>
-          <span>{occupied ? `${session?.participant_count ?? 0} 台设备已加入` : '已有可用会话，等待新顾客扫码'}</span>
+        <div className={`table-occupancy-status ${paymentRequested ? 'is-payment' : occupied ? 'is-occupied' : 'is-ready'}`}>
+          <strong>{occupancyLabel}</strong>
+          <span>{occupancyDetail}</span>
         </div>
         {reentryRequests.length ? (
           <div className="table-reentry-admin">
@@ -2084,8 +2136,8 @@ function TableCard({
           <button
             className="clear-table-button"
             type="button"
-            disabled={!occupied}
-            onClick={() => occupied && session && onClose(session.id)}
+            disabled={!occupied || paymentRequested || openOrderCount > 0}
+            onClick={() => occupied && session && onClose(session)}
           >
             清桌
           </button>
