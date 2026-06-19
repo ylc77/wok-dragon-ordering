@@ -3,10 +3,11 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { getRestaurantSettings } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
+import { downloadFile, exportRowsToCSV, exportRowsToJSON, fetchAllTableData, generateBackupFilename } from '../lib/dataExport';
 import {
   approveTableReentry,
   closeTableSession,
@@ -204,6 +205,7 @@ export function AdminPage() {
   const [tab, setTab] = useState<AdminTab>('dashboard');
   const [message, setMessage] = useState<string | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
+  const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
   const [syncVersion, setSyncVersion] = useState(0);
 
   useEffect(() => {
@@ -230,6 +232,7 @@ export function AdminPage() {
       const allowed = !error && (profile?.role === 'admin' || profile?.role === 'staff');
       setLoggedIn(allowed);
       setAdminEmail(allowed ? (session.user.email ?? '管理员') : '管理员');
+      setAdminRole(allowed ? (profile?.role === 'admin' ? 'admin' : 'staff') : null);
       if (allowed) setMessage(null);
       if (!allowed && !session.user.is_anonymous) setMessage('该账户没有后台管理权限');
       setSessionReady(true);
@@ -350,7 +353,7 @@ export function AdminPage() {
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} /> : null}
           {tab === 'import' ? <ImportGuide /> : null}
-          {tab === 'system' ? <SystemSettings /> : null}
+          {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
         </section>
       </div>
     </main>
@@ -2282,7 +2285,13 @@ category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,descr
   );
 }
 
-function SystemSettings() {
+function SystemSettings({
+  realtimeStatus,
+  adminRole,
+}: {
+  realtimeStatus: RealtimeConnectionStatus;
+  adminRole: 'admin' | 'staff' | null;
+}) {
   return (
     <AdminSection title="系统设置">
       <div className="admin-panel-card system-settings-card">
@@ -2296,6 +2305,292 @@ function SystemSettings() {
         <div><strong>实时订单</strong><span>Realtime 订阅已由订单管理页面维护</span></div>
         <div><strong>桌台会话</strong><span>清桌与二维码继续使用现有安全函数</span></div>
         <div><strong>访问控制</strong><span>管理员登录与 RLS 策略保持不变</span></div>
+      </div>
+      <SystemHealthSection realtimeStatus={realtimeStatus} />
+      {adminRole === 'admin' ? (
+        <DataBackupSection />
+      ) : (
+        <AdminSection title="数据备份">
+          <div className="admin-panel-card">
+            <Database size={24} />
+            <div>
+              <h2>仅限管理员</h2>
+              <p>数据备份导出功能仅对管理员账户开放。如需备份，请联系管理员操作。</p>
+            </div>
+          </div>
+        </AdminSection>
+      )}
+    </AdminSection>
+  );
+}
+
+function SystemHealthSection({
+  realtimeStatus,
+}: {
+  realtimeStatus: RealtimeConnectionStatus;
+}) {
+  const [health, setHealth] = useState<{
+    status: string;
+    timestamp: string;
+    version: string;
+    checks: Record<string, string>;
+    error?: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [checkError, setCheckError] = useState<string | null>(null);
+
+  const checkHealth = async () => {
+    setLoading(true);
+    setCheckError(null);
+    try {
+      const res = await fetch('/api/health');
+      const json = await res.json();
+      setHealth(json);
+    } catch (err) {
+      setCheckError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    checkHealth();
+  }, []);
+
+  const dbOk = health?.checks?.database === 'connected';
+  const configOk = health?.checks?.config === 'readable';
+  const rtOk = realtimeStatus === 'connected';
+  const overallOk = health?.status === 'ok' && rtOk;
+
+  return (
+    <AdminSection title="系统状态" onRefresh={checkHealth}>
+      <div className="health-status-grid">
+        <div className={`health-check-card ${overallOk ? 'is-ok' : 'is-error'}`}>
+          <Activity size={20} />
+          <div>
+            <strong>系统状态</strong>
+            <span>{loading ? '检查中…' : overallOk ? '运行正常' : '需要关注'}</span>
+          </div>
+        </div>
+        <div className={`health-check-card ${dbOk ? 'is-ok' : 'is-error'}`}>
+          <Database size={20} />
+          <div>
+            <strong>数据库连接</strong>
+            <span>{loading ? '检查中…' : dbOk ? '已连接' : '未连接'}</span>
+          </div>
+        </div>
+        <div className={`health-check-card ${configOk ? 'is-ok' : 'is-error'}`}>
+          <Settings2 size={20} />
+          <div>
+            <strong>基础配置</strong>
+            <span>{loading ? '检查中…' : configOk ? '可读取' : '不可用'}</span>
+          </div>
+        </div>
+        <div className={`health-check-card ${rtOk ? 'is-ok' : 'is-error'}`}>
+          {rtOk ? <Wifi size={20} /> : <WifiOff size={20} />}
+          <div>
+            <strong>Realtime</strong>
+            <span>{rtOk ? '已连接' : realtimeStatus === 'connecting' ? '连接中…' : '已断开'}</span>
+          </div>
+        </div>
+      </div>
+      {health ? (
+        <div className="health-meta">
+          <span>
+            <Clock3 size={14} /> 最近检查: {new Date(health.timestamp).toLocaleString('zh-CN')}
+          </span>
+          <span>版本: {health.version}</span>
+        </div>
+      ) : null}
+      {checkError ? (
+        <p className="admin-message" style={{ color: 'var(--color-danger, #dc2626)' }}>
+          健康检查失败: {checkError}
+        </p>
+      ) : null}
+      {health?.error ? (
+        <p className="admin-message" style={{ color: 'var(--color-danger, #dc2626)' }}>
+          {health.error}
+        </p>
+      ) : null}
+    </AdminSection>
+  );
+}
+
+function DataBackupSection() {
+  const TABLE_OPTIONS: { key: string; label: string }[] = [
+    { key: 'restaurant_settings', label: '餐馆设置' },
+    { key: 'menu_categories', label: '菜单分类' },
+    { key: 'menu_items', label: '菜品' },
+    { key: 'restaurant_tables', label: '桌台' },
+    { key: 'orders', label: '订单' },
+    { key: 'order_items', label: '订单明细' },
+    { key: 'bill_requests', label: '付款记录' },
+  ];
+
+  const [selected, setSelected] = useState<Set<string>>(
+    new Set(TABLE_OPTIONS.map((t) => t.key)),
+  );
+  const [format, setFormat] = useState<'csv' | 'json'>('json');
+  const [exporting, setExporting] = useState(false);
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  const toggleTable = (key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const selectAll = () => setSelected(new Set(TABLE_OPTIONS.map((t) => t.key)));
+  const clearAll = () => setSelected(new Set());
+
+  const handleExport = async () => {
+    if (!supabase) {
+      setMessage({ type: 'error', text: 'Supabase 客户端未初始化' });
+      return;
+    }
+    if (selected.size === 0) {
+      setMessage({ type: 'error', text: '请至少选择一张表' });
+      return;
+    }
+
+    setExporting(true);
+    setMessage(null);
+
+    try {
+      const { data, errors } = await fetchAllTableData(supabase);
+
+      const errorKeys = Object.keys(errors);
+      if (errorKeys.length > 0) {
+        const msg = errorKeys
+          .map((k) => `${k}: ${errors[k]}`)
+          .join('; ');
+        setMessage({ type: 'error', text: `部分表读取失败: ${msg}` });
+      }
+
+      if (format === 'json') {
+        const exportData: Record<string, unknown[]> = {};
+        for (const key of selected) {
+          if (data[key]) exportData[key] = data[key];
+        }
+        if (Object.keys(exportData).length === 0) {
+          setMessage({ type: 'error', text: '没有可导出的数据' });
+        } else {
+          downloadFile(
+            exportRowsToJSON(exportData as unknown as Record<string, unknown>[]),
+            generateBackupFilename('json'),
+            'application/json',
+          );
+          setMessage({ type: 'success', text: 'JSON 备份文件已下载' });
+        }
+      } else {
+        let downloaded = 0;
+        for (const key of selected) {
+          if (!data[key] || data[key].length === 0) continue;
+          const columns = Object.keys(data[key][0]);
+          downloadFile(
+            exportRowsToCSV(data[key], columns),
+            `${key}-${generateBackupFilename('csv')}`,
+            'text/csv;charset=utf-8',
+          );
+          downloaded++;
+        }
+        if (downloaded === 0) {
+          setMessage({ type: 'error', text: '没有可导出的数据' });
+        } else {
+          setMessage({
+            type: 'success',
+            text: `${downloaded} 个 CSV 文件已下载`,
+          });
+        }
+      }
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <AdminSection title="数据备份">
+      <div className="admin-panel-card">
+        <Download size={24} />
+        <div>
+          <h2>手动备份导出</h2>
+          <p>选择要导出的数据表，下载 CSV 或 JSON 格式的备份文件。此操作为只读，不影响生产数据。</p>
+        </div>
+      </div>
+      <div className="backup-control-panel">
+        <div className="backup-table-checklist">
+          <div className="backup-checklist-header">
+            <strong>选择数据表</strong>
+            <div className="backup-checklist-actions">
+              <button className="secondary-button" type="button" onClick={selectAll}>
+                全选
+              </button>
+              <button className="secondary-button" type="button" onClick={clearAll}>
+                取消全选
+              </button>
+            </div>
+          </div>
+          {TABLE_OPTIONS.map((t) => (
+            <label key={t.key} className="backup-checklist-item">
+              <input
+                type="checkbox"
+                checked={selected.has(t.key)}
+                onChange={() => toggleTable(t.key)}
+              />
+              <span>{t.label}</span>
+              <code>{t.key}</code>
+            </label>
+          ))}
+        </div>
+        <div className="backup-format-selector">
+          <strong>导出格式</strong>
+          <div className="backup-format-buttons">
+            <button
+              className={format === 'json' ? 'primary-button' : 'secondary-button'}
+              type="button"
+              onClick={() => setFormat('json')}
+            >
+              JSON
+            </button>
+            <button
+              className={format === 'csv' ? 'primary-button' : 'secondary-button'}
+              type="button"
+              onClick={() => setFormat('csv')}
+            >
+              CSV
+            </button>
+          </div>
+        </div>
+        <div className="backup-actions">
+          <button
+            className="primary-button"
+            type="button"
+            onClick={handleExport}
+            disabled={exporting || selected.size === 0}
+          >
+            <Download size={16} />
+            {exporting ? '导出中…' : '导出数据'}
+          </button>
+          {message ? (
+            <span
+              className="backup-message"
+              data-type={message.type}
+            >
+              {message.text}
+            </span>
+          ) : null}
+        </div>
       </div>
     </AdminSection>
   );
