@@ -56,6 +56,8 @@ The backend UI is Chinese only. Admin/staff permissions are controlled by `publi
 
 Anonymous table-ordering customers sign in anonymously through Supabase Auth. They are `authenticated` users, but they do not need `profiles` rows.
 
+For production, enable **Leaked Password Protection** in Supabase Dashboard under Authentication security settings. This project-level Auth switch cannot be enabled by a SQL migration. The admin UI detects signed-out or expired sessions and returns staff to the login screen.
+
 ## Table QR Code Rules
 
 Customer table links use QR tokens, not table numbers:

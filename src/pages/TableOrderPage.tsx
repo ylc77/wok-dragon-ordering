@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Ban, Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
-import { getPublicMenu, requireAnonymousSession } from '../lib/menuApi';
+import { getPublicMenu, getRestaurantSettings, requireAnonymousSession } from '../lib/menuApi';
 import { hasSupabaseConfig } from '../lib/supabase';
 import { getLocalizedField } from '../lib/localized';
 import {
@@ -22,7 +22,7 @@ import {
   subscribeToTableReentryRequest,
   updateCartItemQuantity,
 } from '../lib/orderApi';
-import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
+import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, RealtimeConnectionStatus, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
 import { LanguageSwitch } from '../components/LanguageSwitch';
 
 export function TableOrderPage() {
@@ -50,6 +50,13 @@ export function TableOrderPage() {
   const categoryNavRef = useRef<HTMLElement>(null);
   const menuGroupsRef = useRef<HTMLDivElement>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [orderingEnabled, setOrderingEnabled] = useState(true);
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
+
+  const refreshOrderingStatus = useCallback(async () => {
+    const settings = await getRestaurantSettings();
+    setOrderingEnabled(settings?.ordering_enabled ?? true);
+  }, []);
 
   const refreshCart = useCallback(async (sessionId: string) => {
     const requestSequence = ++cartRefreshSequence.current;
@@ -92,6 +99,7 @@ export function TableOrderPage() {
         setLoading(true);
         setMessage(null);
         const menuPromise = getPublicMenu();
+        const settingsPromise = getRestaurantSettings();
 
         if (!hasSupabaseConfig) {
           setGroups(await menuPromise);
@@ -135,13 +143,15 @@ export function TableOrderPage() {
         setSessionInfo(restored);
         setSessionEnded(restored?.session_status === 'closed');
         setEntryState(nextEntryState);
-        const [menuGroups] = await Promise.all([
+        const [menuGroups, settings] = await Promise.all([
           menuPromise,
+          settingsPromise,
           restored ? refreshOrders(restored.session_id) : Promise.resolve([]),
           restored?.session_status === 'active' ? refreshCart(restored.session_id) : Promise.resolve([]),
         ]);
         if (cancelled) return;
         setGroups(menuGroups);
+        setOrderingEnabled(settings?.ordering_enabled ?? true);
       } catch (err) {
         if (!cancelled) setMessage(err instanceof Error ? err.message : String(err));
       } finally {
@@ -157,11 +167,20 @@ export function TableOrderPage() {
 
   useEffect(() => {
     if (!sessionInfo) return;
-    return subscribeToTableCart(sessionInfo.session_id, () => {
+    const unsubscribe = subscribeToTableCart(sessionInfo.session_id, () => {
       void refreshCart(sessionInfo.session_id).catch((err) => setMessage(err.message));
       void refreshSession(sessionInfo.session_id, false).catch((err) => setMessage(err.message));
-    });
-  }, [refreshCart, refreshSession, sessionInfo?.session_id]);
+      void refreshOrderingStatus().catch((err) => setMessage(err.message));
+    }, setRealtimeStatus);
+    const interval = window.setInterval(() => {
+      void refreshSession(sessionInfo.session_id, true).catch((err) => setMessage(err.message));
+      void refreshOrderingStatus().catch((err) => setMessage(err.message));
+    }, 30_000);
+    return () => {
+      window.clearInterval(interval);
+      unsubscribe();
+    };
+  }, [refreshCart, refreshOrderingStatus, refreshSession, sessionInfo?.session_id]);
 
   const refreshReentryRequest = useCallback(async () => {
     if (!sessionInfo || sessionInfo.session_status !== 'closed') return;
@@ -282,6 +301,10 @@ export function TableOrderPage() {
 
   async function addItem(item: MenuItem) {
     if (!sessionInfo) return;
+    if (!orderingEnabled) {
+      setMessage(t('order.orderingPausedText'));
+      return;
+    }
     if (orderingLocked) {
       setMessage(t('order.billOrderingLocked'));
       return;
@@ -300,6 +323,10 @@ export function TableOrderPage() {
       setMessage(t('order.billOrderingLocked'));
       return;
     }
+    if (!orderingEnabled && nextQuantity >= line.quantity) {
+      setMessage(t('order.orderingPausedText'));
+      return;
+    }
     try {
       if (nextQuantity <= 0) {
         await removeCartItem(line.id);
@@ -314,6 +341,10 @@ export function TableOrderPage() {
 
   async function submitCurrentOrder() {
     if (!sessionInfo || cartSummary.isEmpty) return;
+    if (!orderingEnabled) {
+      setMessage(t('order.orderingPausedText'));
+      return;
+    }
     if (orderingLocked) {
       setMessage(t('order.billOrderingLocked'));
       return;
@@ -475,6 +506,17 @@ export function TableOrderPage() {
           <p>{t('order.liveCart')}</p>
         </div>
         {message ? <p className="admin-message">{message}</p> : null}
+        {!orderingEnabled ? (
+          <section className="ordering-paused-banner" role="status">
+            <Ban size={20} />
+            <div><strong>{t('order.orderingPausedTitle')}</strong><p>{t('order.orderingPausedText')}</p></div>
+          </section>
+        ) : null}
+        {realtimeStatus !== 'connected' ? (
+          <p className="realtime-customer-status" role="status">
+            {t(realtimeStatus === 'connecting' ? 'order.realtimeConnecting' : 'order.realtimeDisconnected')}
+          </p>
+        ) : null}
         {billRequested ? (
           <section className="bill-request-status" role="status">
             <ReceiptText size={20} />
@@ -526,7 +568,9 @@ export function TableOrderPage() {
                         <DishQuantityControl
                           item={item}
                           line={cartByMenuItemId.get(item.id)}
-                          disabled={!sessionInfo || billRequested}
+                          disabled={!sessionInfo || billRequested || !orderingEnabled}
+                          increaseDisabled={billRequested || !orderingEnabled}
+                          decreaseDisabled={billRequested}
                           onAdd={() => addItem(item)}
                           onChange={updateQuantity}
                           addLabel={t('order.add')}
@@ -571,7 +615,7 @@ export function TableOrderPage() {
                   <Minus size={15} />
                 </button>
                 <span>{line.quantity}</span>
-                <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, line.quantity + 1)}>
+                <button type="button" disabled={billRequested || !orderingEnabled} onClick={() => updateQuantity(line, line.quantity + 1)}>
                   <Plus size={15} />
                 </button>
                 <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, 0)}>
@@ -588,7 +632,7 @@ export function TableOrderPage() {
         <button
           className="primary-button stretch"
           type="button"
-          disabled={cartSummary.isEmpty || submitting || billRequested}
+          disabled={cartSummary.isEmpty || submitting || billRequested || !orderingEnabled}
           onClick={submitCurrentOrder}
         >
           {t('order.submit')}
@@ -774,6 +818,8 @@ function DishQuantityControl({
   item,
   line,
   disabled,
+  increaseDisabled,
+  decreaseDisabled,
   onAdd,
   onChange,
   addLabel,
@@ -781,6 +827,8 @@ function DishQuantityControl({
   item: MenuItem;
   line?: CartItem;
   disabled: boolean;
+  increaseDisabled: boolean;
+  decreaseDisabled: boolean;
   onAdd: () => void;
   onChange: (line: CartItem, nextQuantity: number) => void;
   addLabel: string;
@@ -796,11 +844,11 @@ function DishQuantityControl({
 
   return (
     <div className="dish-quantity-control" aria-label={item.name_en ?? item.name_el ?? item.name_zh}>
-      <button type="button" onClick={() => onChange(line, line.quantity - 1)}>
+      <button type="button" disabled={decreaseDisabled} onClick={() => onChange(line, line.quantity - 1)}>
         <Minus size={15} />
       </button>
       <strong>{line.quantity}</strong>
-      <button type="button" onClick={() => onChange(line, line.quantity + 1)}>
+      <button type="button" disabled={increaseDisabled} onClick={() => onChange(line, line.quantity + 1)}>
         <Plus size={15} />
       </button>
     </div>

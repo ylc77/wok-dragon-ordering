@@ -42,4 +42,26 @@ describe('database ordering contracts', () => {
     expect(definition).toContain('finish or cancel open orders before clearing the table');
     expect(definition).toContain('confirm the bill request before clearing the table');
   });
+
+  it('supports a global ordering pause without deleting the shared cart', () => {
+    expect(schema).toContain('ordering_enabled boolean not null default true');
+    expect(schema).toContain('restaurant ordering is temporarily paused');
+    expect(schema).toContain("if tg_op = 'UPDATE'");
+    expect(schema).toContain('new.quantity >= old.quantity');
+    expect(schema).toContain('create or replace function public.set_restaurant_ordering');
+  });
+
+  it('paginates complete table sessions and calculates unpaged statistics', () => {
+    expect(schema).toContain('create or replace function public.admin_order_page');
+    expect(schema).toContain('group by fo.session_id');
+    expect(schema).toContain("'total_sessions'");
+    expect(schema).toContain('create or replace function public.admin_order_stats');
+    expect(schema).toContain("'paid_total'");
+  });
+
+  it('keeps all operational admin queries behind the staff check', () => {
+    for (const name of ['set_restaurant_ordering', 'admin_order_page', 'admin_order_stats', 'admin_dashboard_summary']) {
+      expect(latestFunction(name)).toContain('private.is_staff()');
+    }
+  });
 });

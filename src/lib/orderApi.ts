@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RestaurantTable, TableEntryState, TableJoinResult, TableReentryRequest, TableSession, TableSessionState } from './types';
+import type { AdminDashboardSummary, AdminOrderPage, AdminOrderStats, BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RealtimeConnectionStatus, RestaurantTable, TableEntryState, TableJoinResult, TableReentryRequest, TableSession, TableSessionState } from './types';
 
 function requireClient() {
   if (!supabase) throw new Error('Supabase is not configured.');
@@ -139,7 +139,17 @@ export async function requestBill(sessionId: string, paymentMethod: BillPaymentM
   return (Array.isArray(data) ? data[0] : data) as { request_id: string; request_status: 'requested' };
 }
 
-export function subscribeToTableCart(sessionId: string, onChange: () => void) {
+function mapRealtimeStatus(status: string): RealtimeConnectionStatus {
+  if (status === 'SUBSCRIBED') return 'connected';
+  if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') return 'disconnected';
+  return 'connecting';
+}
+
+export function subscribeToTableCart(
+  sessionId: string,
+  onChange: () => void,
+  onStatus?: (status: RealtimeConnectionStatus) => void,
+) {
   const client = requireClient();
   const channel = client
     .channel(`table-cart-${sessionId}`)
@@ -158,7 +168,8 @@ export function subscribeToTableCart(sessionId: string, onChange: () => void) {
       { event: '*', schema: 'public', table: 'orders', filter: `session_id=eq.${sessionId}` },
       onChange,
     )
-    .subscribe();
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'restaurant_settings' }, onChange)
+    .subscribe((status) => onStatus?.(mapRealtimeStatus(status)));
 
   return () => {
     client.removeChannel(channel);
@@ -223,6 +234,64 @@ export async function fetchAdminOrders(): Promise<Order[]> {
   return (data ?? []) as Order[];
 }
 
+export async function fetchAdminPendingOrders(): Promise<Order[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('orders')
+    .select('*, restaurant_tables(table_number,label), order_items(*)')
+    .eq('status', 'pending')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Order[];
+}
+
+export async function fetchAdminOrderPage(filters: {
+  dateFrom: string | null;
+  dateTo: string | null;
+  tableNumber: number | null;
+  status: OrderStatus | null;
+  page: number;
+  pageSize?: number;
+}): Promise<AdminOrderPage> {
+  const client = requireClient();
+  const { data, error } = await client.rpc('admin_order_page', {
+    p_date_from: filters.dateFrom,
+    p_date_to: filters.dateTo,
+    p_table_number: filters.tableNumber,
+    p_status: filters.status,
+    p_page: filters.page,
+    p_page_size: filters.pageSize ?? 50,
+  });
+  if (error) throw error;
+  return data as AdminOrderPage;
+}
+
+export async function fetchAdminOrderStats(filters: {
+  dateFrom: string | null;
+  dateTo: string | null;
+  tableNumber: number | null;
+}): Promise<AdminOrderStats> {
+  const client = requireClient();
+  const { data, error } = await client.rpc('admin_order_stats', {
+    p_date_from: filters.dateFrom,
+    p_date_to: filters.dateTo,
+    p_table_number: filters.tableNumber,
+  });
+  if (error) throw error;
+  return data as AdminOrderStats;
+}
+
+export async function fetchAdminDashboardSummary(dateFrom: string, dateTo: string): Promise<AdminDashboardSummary> {
+  const client = requireClient();
+  const { data, error } = await client.rpc('admin_dashboard_summary', {
+    p_today_from: dateFrom,
+    p_today_to: dateTo,
+  });
+  if (error) throw error;
+  return data as AdminDashboardSummary;
+}
+
 export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   const client = requireClient();
   const { error } = await client.rpc('update_order_status', {
@@ -232,7 +301,10 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   if (error) throw error;
 }
 
-export function subscribeToAdminOrders(onChange: () => void) {
+export function subscribeToAdminOrders(
+  onChange: () => void,
+  onStatus?: (status: RealtimeConnectionStatus) => void,
+) {
   const client = requireClient();
   const channel = client
     .channel('admin-orders')
@@ -242,7 +314,8 @@ export function subscribeToAdminOrders(onChange: () => void) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'table_sessions' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'table_session_participants' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'table_reentry_requests' }, onChange)
-    .subscribe();
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'restaurant_settings' }, onChange)
+    .subscribe((status) => onStatus?.(mapRealtimeStatus(status)));
 
   return () => {
     client.removeChannel(channel);
@@ -309,6 +382,14 @@ export async function fetchActiveSessions(): Promise<TableSession[]> {
     participant_count: row.table_session_participants?.[0]?.count ?? 0,
     table_session_participants: undefined,
   })) as TableSession[];
+}
+
+export async function setRestaurantOrdering(enabled: boolean) {
+  const client = requireClient();
+  const { data, error } = await client.rpc('set_restaurant_ordering', { p_enabled: enabled });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row as { ordering_enabled: boolean; ordering_paused_at: string | null };
 }
 
 export async function fetchPendingTableReentryRequests(): Promise<TableReentryRequest[]> {

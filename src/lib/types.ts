@@ -16,6 +16,8 @@ export type RestaurantSettings = {
   wolt_url: string | null;
   efood_url: string | null;
   box_url: string | null;
+  ordering_enabled: boolean;
+  ordering_paused_at: string | null;
 };
 
 export type MenuCategory = {
@@ -171,4 +173,27 @@ export type BillRequest = {
   requested_at: string;
   handled_at: string | null;
   restaurant_tables?: Pick<RestaurantTable, 'table_number' | 'label'> | null;
+};
+
+export type RealtimeConnectionStatus = 'connecting' | 'connected' | 'disconnected';
+
+export type AdminOrderPage = {
+  orders: Order[];
+  page: number;
+  page_size: number;
+  total_sessions: number;
+  total_pages: number;
+};
+
+export type AdminOrderStats = Record<OrderStatus, number> & {
+  total_orders: number;
+  paid_total: number;
+};
+
+export type AdminDashboardSummary = {
+  today_order_count: number;
+  today_revenue: number;
+  pending_count: number;
+  preparing_count: number;
+  hot_items: Array<{ name: string; quantity: number; total: number }>;
 };

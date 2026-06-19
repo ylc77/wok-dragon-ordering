@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Pencil, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards } from 'lucide-react';
+import { Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import {
@@ -12,7 +12,11 @@ import {
   confirmBillAndCloseSession,
   createRestaurantTable,
   fetchActiveSessions,
+  fetchAdminDashboardSummary,
+  fetchAdminOrderPage,
+  fetchAdminOrderStats,
   fetchAdminOrders,
+  fetchAdminPendingOrders,
   fetchPendingBillRequests,
   fetchPendingTableReentryRequests,
   fetchRestaurantTables,
@@ -20,16 +24,20 @@ import {
   regenerateTableQrToken,
   rejectTableReentry,
   saveRestaurantTable,
+  setRestaurantOrdering,
   subscribeToAdminOrders,
   updateOrderStatus,
 } from '../lib/orderApi';
 import type {
   BillRequest,
+  AdminDashboardSummary,
+  AdminOrderStats,
   MenuCategory,
   MenuItem,
   Order,
   OrderItem,
   OrderStatus,
+  RealtimeConnectionStatus,
   RestaurantSettings,
   RestaurantTable,
   TableReentryRequest,
@@ -53,6 +61,8 @@ const emptySettings: Partial<RestaurantSettings> = {
   wolt_url: '',
   efood_url: '',
   box_url: '',
+  ordering_enabled: true,
+  ordering_paused_at: null,
 };
 
 const emptyCategory: Partial<MenuCategory> = {
@@ -183,6 +193,8 @@ export function AdminPage() {
   const [adminEmail, setAdminEmail] = useState('管理员');
   const [tab, setTab] = useState<AdminTab>('dashboard');
   const [message, setMessage] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
+  const [syncVersion, setSyncVersion] = useState(0);
 
   useEffect(() => {
     if (!supabase) return;
@@ -214,7 +226,8 @@ export function AdminPage() {
     }
 
     client.auth.getSession().then(({ data }) => void syncAdminAccess(data.session));
-    const { data: listener } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = client.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') setMessage('登录会话已失效，请重新登录');
       window.setTimeout(() => void syncAdminAccess(session), 0);
     });
     return () => {
@@ -222,6 +235,22 @@ export function AdminPage() {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!loggedIn) return;
+    let previousStatus: RealtimeConnectionStatus = 'connecting';
+    const requestSync = () => setSyncVersion((current) => current + 1);
+    const unsubscribe = subscribeToAdminOrders(requestSync, (status) => {
+      setRealtimeStatus(status);
+      if (status === 'connected' && previousStatus !== 'connected') requestSync();
+      previousStatus = status;
+    });
+    const interval = window.setInterval(requestSync, 30_000);
+    return () => {
+      window.clearInterval(interval);
+      unsubscribe();
+    };
+  }, [loggedIn]);
 
   if (!hasSupabaseConfig || !supabase) {
     return (
@@ -288,6 +317,10 @@ export function AdminPage() {
         <header className="admin-topbar">
           <strong>Wok Dragon Express 管理后台</strong>
           <div>
+            <span className={`realtime-status is-${realtimeStatus}`} role="status">
+              {realtimeStatus === 'connected' ? <Wifi size={16} /> : <WifiOff size={16} />}
+              {realtimeStatus === 'connected' ? '实时连接正常' : realtimeStatus === 'connecting' ? '正在连接' : '连接中断，自动重试'}
+            </span>
             <label className="admin-restaurant-select">
               <Building2 size={16} />
               <select aria-label="餐馆选择" defaultValue="wok-dragon">
@@ -300,9 +333,9 @@ export function AdminPage() {
         </header>
         <section className="admin-content">
           {message ? <p className="admin-message">{message}</p> : null}
-          {tab === 'dashboard' ? <Dashboard onMessage={setMessage} onOpenOrders={() => setTab('orders')} /> : null}
-          {tab === 'orders' ? <OrderManager onMessage={setMessage} /> : null}
-          {tab === 'tables' ? <TableManager onMessage={setMessage} /> : null}
+          {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} onOpenOrders={() => setTab('orders')} /> : null}
+          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} onMessage={setMessage} /> : null}
+          {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} /> : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} /> : null}
@@ -367,68 +400,51 @@ function AdminLogin({ onMessage, message }: { onMessage: (value: string | null) 
 function Dashboard({
   onMessage,
   onOpenOrders,
+  syncVersion,
 }: {
   onMessage: (value: string | null) => void;
   onOpenOrders: () => void;
+  syncVersion: number;
 }) {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [summary, setSummary] = useState<AdminDashboardSummary>({
+    today_order_count: 0,
+    today_revenue: 0,
+    pending_count: 0,
+    preparing_count: 0,
+    hot_items: [],
+  });
 
   useEffect(() => {
-    load();
-    return subscribeToAdminOrders(load);
-  }, []);
+    void load();
+  }, [syncVersion]);
 
   async function load() {
     try {
-      setOrders(await fetchAdminOrders());
+      const { from, to } = localDayBounds(new Date());
+      setSummary(await fetchAdminDashboardSummary(from, to));
     } catch (err) {
       onMessage(err instanceof Error ? err.message : String(err));
     }
   }
-
-  const todayOrders = useMemo(() => orders.filter((order) => isToday(order.created_at)), [orders]);
-  const todayRevenue = todayOrders
-    .filter((order) => order.status === 'paid')
-    .reduce((sum, order) => sum + Number(order.total_price), 0);
-  const pendingCount = orders.filter((order) => order.status === 'pending').length;
-  const preparingCount = orders.filter((order) => order.status === 'preparing').length;
-
-  const hotItems = useMemo(() => {
-    const rows = new Map<string, { name: string; quantity: number; total: number }>();
-    todayOrders
-      .filter((order) => order.status !== 'cancelled')
-      .forEach((order) => {
-        (order.order_items ?? []).forEach((item) => {
-          const name = item.item_name_zh || item.item_name_en || item.item_name_el || '未命名菜品';
-          const current = rows.get(name) ?? { name, quantity: 0, total: 0 };
-          current.quantity += Number(item.quantity);
-          current.total += Number(item.line_total);
-          rows.set(name, current);
-        });
-      });
-    return Array.from(rows.values())
-      .sort((a, b) => b.quantity - a.quantity || b.total - a.total)
-      .slice(0, 8);
-  }, [todayOrders]);
 
   return (
     <AdminSection title="经营概览" onRefresh={load}>
       <div className="dashboard-grid">
         <div className="summary-tile urgent">
           <span>今日订单数量</span>
-          <strong>{todayOrders.length}</strong>
+          <strong>{summary.today_order_count}</strong>
         </div>
         <div className="summary-tile">
           <span>今日营业额（已付款）</span>
-          <strong>{formatPrice(todayRevenue)}</strong>
+          <strong>{formatPrice(Number(summary.today_revenue))}</strong>
         </div>
         <div className="summary-tile">
           <span>待处理订单</span>
-          <strong>{pendingCount}</strong>
+          <strong>{summary.pending_count}</strong>
         </div>
         <div className="summary-tile">
           <span>制作中订单</span>
-          <strong>{preparingCount}</strong>
+          <strong>{summary.preparing_count}</strong>
         </div>
       </div>
 
@@ -443,7 +459,7 @@ function Dashboard({
             查看全部历史订单
           </button>
         </div>
-        {hotItems.length === 0 ? (
+        {summary.hot_items.length === 0 ? (
           <div className="admin-empty-state">
             <BarChart3 size={28} />
             <strong>今天还没有可统计的菜品</strong>
@@ -451,7 +467,7 @@ function Dashboard({
           </div>
         ) : (
           <div className="hot-item-list">
-            {hotItems.map((item, index) => (
+            {summary.hot_items.map((item, index) => (
               <div key={item.name}>
                 <span>{index + 1}</span>
                 <strong>{item.name}</strong>
@@ -490,8 +506,34 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
     if (!error) load();
   }
 
+  async function toggleOrdering() {
+    const nextEnabled = settings.ordering_enabled === false;
+    const action = nextEnabled ? '恢复接单' : '暂停接单';
+    if (!window.confirm(`${action}？${nextEnabled ? '顾客将可以继续加菜和提交订单。' : '现有购物车会保留，顾客仍可减量、删除和申请结账。'}`)) return;
+    try {
+      const next = await setRestaurantOrdering(nextEnabled);
+      setSettings((current) => ({ ...current, ...next }));
+      onMessage(nextEnabled ? '已恢复全店接单' : '已暂停全店接单');
+    } catch (err) {
+      onMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   return (
     <AdminSection title="餐馆信息" onRefresh={load}>
+      <section className={`ordering-control-card ${settings.ordering_enabled === false ? 'is-paused' : ''}`}>
+        <div>
+          {settings.ordering_enabled === false ? <PauseCircle size={24} /> : <PlayCircle size={24} />}
+          <span>
+            <strong>{settings.ordering_enabled === false ? '全店已暂停接单' : '全店正在接单'}</strong>
+            <small>{settings.ordering_enabled === false && settings.ordering_paused_at ? `暂停于 ${new Date(settings.ordering_paused_at).toLocaleString('zh-CN')}` : '顾客可以正常加菜并提交订单'}</small>
+          </span>
+        </div>
+        <button className={settings.ordering_enabled === false ? 'primary-button' : 'danger-inline'} type="button" onClick={toggleOrdering}>
+          {settings.ordering_enabled === false ? <PlayCircle size={16} /> : <PauseCircle size={16} />}
+          {settings.ordering_enabled === false ? '恢复接单' : '暂停接单'}
+        </button>
+      </section>
       <div className="admin-language-panels">
         <section><h3>简体中文</h3><div className="admin-form-grid">
           <TextField label="餐馆名称" value={settings.name_zh} onChange={(v) => setSettings({ ...settings, name_zh: v })} />
@@ -1177,13 +1219,20 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   );
 }
 
-function OrderManager({ onMessage }: { onMessage: (value: string | null) => void }) {
+function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | null) => void; syncVersion: number }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [tableFilter, setTableFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today');
   const [customDate, setCustomDate] = useState(dateToKey(new Date().toISOString()));
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [tableOptions, setTableOptions] = useState<number[]>([]);
+  const [stats, setStats] = useState<AdminOrderStats>({
+    total_orders: 0, pending: 0, preparing: 0, served: 0, paid: 0, cancelled: 0, paid_total: 0,
+  });
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
@@ -1198,12 +1247,15 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   const autoPrintingOrderIdsRef = useRef<Set<string>>(new Set());
   const initializedSessionIdsRef = useRef<Set<string>>(new Set());
   const expandedNewOrderIdsRef = useRef<Set<string>>(new Set());
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    load({ initial: true });
-    const unsubscribe = subscribeToAdminOrders(() => load());
+    void load({ initial: !initializedRef.current });
+    initializedRef.current = true;
+  }, [syncVersion, page, statusFilter, tableFilter, dateFilter, customDate]);
+
+  useEffect(() => {
     return () => {
-      unsubscribe();
       autoPrintEnabledRef.current = false;
       if (autoPrintWindowRef.current && !autoPrintWindowRef.current.closed) {
         autoPrintWindowRef.current.close();
@@ -1212,24 +1264,48 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
   }, []);
 
   useEffect(() => {
+    setPage(1);
+    setSelectedOrderIds(new Set());
+  }, [statusFilter, tableFilter, dateFilter, customDate]);
+
+  useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
   async function load(options?: { initial?: boolean }) {
     try {
-      const [nextOrders, nextBillRequests] = await Promise.all([
-        fetchAdminOrders(),
+      const bounds = orderDateBounds(dateFilter, customDate);
+      const [orderPage, nextStats, nextBillRequests, pendingOrders, tables] = await Promise.all([
+        fetchAdminOrderPage({
+          dateFrom: bounds.from,
+          dateTo: bounds.to,
+          tableNumber: tableFilter === 'all' ? null : Number(tableFilter),
+          status: statusFilter === 'all' ? null : statusFilter,
+          page,
+        }),
+        fetchAdminOrderStats({
+          dateFrom: bounds.from,
+          dateTo: bounds.to,
+          tableNumber: tableFilter === 'all' ? null : Number(tableFilter),
+        }),
         fetchPendingBillRequests(),
+        fetchAdminPendingOrders(),
+        fetchRestaurantTables(),
       ]);
       const previousIds = knownOrderIdsRef.current;
       const previousBillIds = knownBillRequestIdsRef.current;
       const insertedPendingOrders = options?.initial
         ? []
-        : nextOrders.filter((order) => !previousIds.has(order.id) && order.status === 'pending');
+        : pendingOrders.filter((order) => !previousIds.has(order.id));
 
-      knownOrderIdsRef.current = new Set(nextOrders.map((order) => order.id));
+      knownOrderIdsRef.current = new Set(pendingOrders.map((order) => order.id));
       knownBillRequestIdsRef.current = new Set(nextBillRequests.map((request) => request.id));
-      setOrders(nextOrders);
+      setOrders(orderPage.orders);
+      setStats(nextStats);
+      setTotalPages(orderPage.total_pages);
+      setTotalSessions(orderPage.total_sessions);
+      if (page > orderPage.total_pages) setPage(orderPage.total_pages);
+      setTableOptions(tables.filter((table) => table.is_active).map((table) => table.table_number));
       setBillRequests(nextBillRequests);
 
       const hasNewBillRequest = !options?.initial && nextBillRequests.some((request) => !previousBillIds.has(request.id));
@@ -1399,37 +1475,8 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
     }
   }
 
-  const scopedOrders = useMemo(
-    () =>
-      orders.filter((order) => {
-        const tableMatches = tableFilter === 'all' || order.restaurant_tables?.table_number === Number(tableFilter);
-        const dateMatches =
-          dateFilter === 'all' ||
-          (dateFilter === 'today' && isToday(order.created_at)) ||
-          (dateFilter === 'custom' && dateToKey(order.created_at) === customDate);
-        return tableMatches && dateMatches;
-      }),
-    [orders, tableFilter, dateFilter, customDate],
-  );
-
-  const statusCounts = useMemo(() => {
-    const counts: Record<OrderStatus, number> = {
-      pending: 0,
-      preparing: 0,
-      served: 0,
-      paid: 0,
-      cancelled: 0,
-    };
-    for (const order of scopedOrders) {
-      counts[order.status] += 1;
-    }
-    return counts;
-  }, [scopedOrders]);
-
-  const filteredOrders = useMemo(
-    () => scopedOrders.filter((order) => statusFilter === 'all' || order.status === statusFilter),
-    [scopedOrders, statusFilter],
-  );
+  const statusCounts = stats;
+  const filteredOrders = orders;
 
   const groupedOrders = useMemo(() => groupOrdersBySession(filteredOrders), [filteredOrders]);
 
@@ -1454,18 +1501,8 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
     });
   }, [groupedOrders, newOrderIds]);
 
-  const tableOptions = useMemo(() => {
-    const values = new Set<number>();
-    orders.forEach((order) => {
-      if (order.restaurant_tables?.table_number) values.add(order.restaurant_tables.table_number);
-    });
-    return Array.from(values).sort((a, b) => a - b);
-  }, [orders]);
-
   const activeOrders = statusCounts.pending + statusCounts.preparing + statusCounts.served;
-  const paidTotal = scopedOrders
-    .filter((order) => order.status === 'paid')
-    .reduce((sum, order) => sum + Number(order.total_price), 0);
+  const paidTotal = Number(stats.paid_total);
 
   return (
     <AdminSection title="订单管理" onRefresh={load}>
@@ -1563,7 +1600,7 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
           onClick={() => setStatusFilter('all')}
         >
           <ClipboardList size={16} />
-          全部 {orders.length}
+          全部 {stats.total_orders}
         </button>
         {(Object.keys(statusLabels) as OrderStatus[]).map((status) => (
           <button
@@ -1730,6 +1767,15 @@ function OrderManager({ onMessage }: { onMessage: (value: string | null) => void
           );
         })}
       </div>
+      <nav className="order-pagination" aria-label="订单分页">
+        <button className="secondary-button" type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(current - 1, 1))}>
+          上一页
+        </button>
+        <span>第 {page} / {totalPages} 页 · 共 {totalSessions} 桌用餐记录</span>
+        <button className="secondary-button" type="button" disabled={page >= totalPages} onClick={() => setPage((current) => Math.min(current + 1, totalPages))}>
+          下一页
+        </button>
+      </nav>
     </AdminSection>
   );
 }
@@ -1813,14 +1859,16 @@ async function renderAndPrintKitchenTicket(printWindow: Window, ticketHtml: stri
   await new Promise((resolve) => window.setTimeout(resolve, 150));
 }
 
-function isToday(value: string) {
-  const date = new Date(value);
-  const now = new Date();
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  );
+function localDayBounds(value: Date) {
+  const from = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const to = new Date(value.getFullYear(), value.getMonth(), value.getDate() + 1);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+function orderDateBounds(filter: 'today' | 'all' | 'custom', customDate: string) {
+  if (filter === 'all') return { from: null, to: null };
+  if (filter === 'custom') return localDayBounds(new Date(`${customDate}T00:00:00`));
+  return localDayBounds(new Date());
 }
 
 function dateToKey(value: string) {
@@ -1857,7 +1905,7 @@ function playOrderNotification() {
   window.setTimeout(() => audioContext.close(), 650);
 }
 
-function TableManager({ onMessage }: { onMessage: (value: string | null) => void }) {
+function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | null) => void; syncVersion: number }) {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [sessions, setSessions] = useState<TableSession[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -1866,9 +1914,8 @@ function TableManager({ onMessage }: { onMessage: (value: string | null) => void
   const [newLabel, setNewLabel] = useState('');
 
   useEffect(() => {
-    load();
-    return subscribeToAdminOrders(load);
-  }, []);
+    void load();
+  }, [syncVersion]);
 
   async function load() {
     try {
