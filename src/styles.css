@@ -3555,6 +3555,42 @@ body {
   margin-left: auto;
 }
 
+.backup-date-range {
+  margin-bottom: 16px;
+}
+
+.backup-date-range > strong {
+  display: block;
+  font-size: 13.5px;
+  margin-bottom: 8px;
+}
+
+.backup-date-inputs {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.backup-date-inputs label {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.backup-date-inputs label span {
+  color: #6b7280;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.backup-date-inputs input[type="date"] {
+  border: 1px solid #dedfe1;
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 5px 8px;
+}
+
 .backup-format-selector {
   align-items: center;
   display: flex;

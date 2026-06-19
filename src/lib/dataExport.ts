@@ -61,7 +61,13 @@ export function generateBackupFilename(format: 'csv' | 'json'): string {
   return `restaurant-backup-${ts}.${format}`;
 }
 
-/** 分页获取全表数据 */
+interface DateRange {
+  column: string;
+  from?: string;
+  to?: string;
+}
+
+/** 分页获取全表数据，支持可选的日期范围筛选 */
 async function fetchAllRows(
   client: SupabaseClient,
   table: string,
@@ -70,6 +76,7 @@ async function fetchAllRows(
   orderAscending?: boolean,
   isDeletedNull = false,
   limit = 1000,
+  dateRange?: DateRange,
 ): Promise<Record<string, unknown>[]> {
   const all: Record<string, unknown>[] = [];
   let cursor = 0;
@@ -77,6 +84,8 @@ async function fetchAllRows(
   while (true) {
     let query = client.from(table).select(select, { count: 'exact' });
     if (isDeletedNull) query = query.is('deleted_at', null);
+    if (dateRange?.from) query = query.gte(dateRange.column, dateRange.from);
+    if (dateRange?.to) query = query.lte(dateRange.column, dateRange.to);
     if (orderColumn) {
       query = query.order(orderColumn, {
         ascending: orderAscending ?? true,
@@ -96,10 +105,19 @@ async function fetchAllRows(
 
 export type TableDataMap = Record<string, Record<string, unknown>[]>;
 
-/** 查询所有需要备份的表数据 */
+export interface DataExportOptions {
+  dateFrom?: string; // ISO date string, inclusive
+  dateTo?: string;   // ISO date string, inclusive (end of day)
+}
+
+/** 查询所有需要备份的表数据，支持时间范围筛选 */
 export async function fetchAllTableData(
   client: SupabaseClient,
+  options?: DataExportOptions,
 ): Promise<{ data: TableDataMap; errors: Record<string, string> }> {
+  const dateFrom = options?.dateFrom;
+  const dateTo = options?.dateTo;
+
   const tables: Record<
     string,
     () => Promise<Record<string, unknown>[]>
@@ -127,9 +145,10 @@ export async function fetchAllTableData(
         false,
         true,
         500,
+        dateFrom ? { column: 'created_at', from: dateFrom, to: dateTo } : undefined,
       ),
     order_items: () =>
-      fetchAllRows(client, 'order_items', '*', undefined, undefined, false, 500),
+      fetchOrderItemsByDate(client, dateFrom, dateTo),
     bill_requests: () =>
       fetchAllRows(
         client,
@@ -139,6 +158,7 @@ export async function fetchAllTableData(
         false,
         false,
         500,
+        dateFrom ? { column: 'requested_at', from: dateFrom, to: dateTo } : undefined,
       ),
   };
 
@@ -165,4 +185,61 @@ export async function fetchAllTableData(
   }
 
   return { data, errors };
+}
+
+/** 按订单时间范围获取 order_items */
+async function fetchOrderItemsByDate(
+  client: SupabaseClient,
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<Record<string, unknown>[]> {
+  if (!dateFrom && !dateTo) {
+    return fetchAllRows(client, 'order_items', '*', undefined, undefined, false, 500);
+  }
+
+  // 先获取时间范围内的订单 ID
+  const orderIds: string[] = [];
+  let cursor = 0;
+  const limit = 500;
+  while (true) {
+    let query = client
+      .from('orders')
+      .select('id')
+      .is('deleted_at', null)
+      .gte('created_at', dateFrom ?? '1970-01-01')
+      .range(cursor, cursor + limit - 1);
+    if (dateTo) query = query.lte('created_at', dateTo);
+    query = query.order('created_at', { ascending: false });
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    orderIds.push(...data.map((o) => (o as Record<string, string>).id));
+    if (data.length < limit) break;
+    cursor += limit;
+  }
+
+  if (orderIds.length === 0) return [];
+
+  // 批量获取 order_items（Supabase IN 限制 300 个值，分批处理）
+  const all: Record<string, unknown>[] = [];
+  const batchSize = 300;
+  for (let i = 0; i < orderIds.length; i += batchSize) {
+    const batch = orderIds.slice(i, i + batchSize);
+    let itemCursor = 0;
+    while (true) {
+      const { data, error } = await client
+        .from('order_items')
+        .select('*')
+        .in('order_id', batch)
+        .range(itemCursor, itemCursor + limit - 1)
+        .order('order_id');
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      all.push(...(data as unknown as Record<string, unknown>[]));
+      if (data.length < limit) break;
+      itemCursor += limit;
+    }
+  }
+
+  return all;
 }

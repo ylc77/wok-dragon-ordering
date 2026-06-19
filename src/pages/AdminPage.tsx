@@ -2681,6 +2681,8 @@ function DataBackupSection() {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const toggleTable = (key: string) => {
     setSelected((prev) => {
@@ -2708,7 +2710,10 @@ function DataBackupSection() {
     setMessage(null);
 
     try {
-      const { data, errors } = await fetchAllTableData(supabase);
+      const { data, errors } = await fetchAllTableData(supabase, {
+        dateFrom: dateFrom ? `${dateFrom}T00:00:00` : undefined,
+        dateTo: dateTo ? `${dateTo}T23:59:59` : undefined,
+      });
 
       const errorKeys = Object.keys(errors);
       if (errorKeys.length > 0) {
@@ -2797,6 +2802,24 @@ function DataBackupSection() {
               <code>{t.key}</code>
             </label>
           ))}
+        </div>
+        <div className="backup-date-range">
+          <strong>时间范围（可选，仅对订单/付款记录生效）</strong>
+          <div className="backup-date-inputs">
+            <label>
+              <span>开始日期</span>
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </label>
+            <label>
+              <span>结束日期</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </label>
+            {dateFrom || dateTo ? (
+              <button className="secondary-button" type="button" onClick={() => { setDateFrom(''); setDateTo(''); }}>
+                清除
+              </button>
+            ) : null}
+          </div>
         </div>
         <div className="backup-format-selector">
           <strong>导出格式</strong>
