@@ -9,6 +9,7 @@ import { getRestaurantSettings } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { downloadFile, exportRowsToCSV, exportRowsToJSON, fetchAllTableData, generateBackupFilename } from '../lib/dataExport';
 import {
+  adminHardDeleteOrder,
   approveTableReentry,
   closeTableSession,
   confirmBillAndCloseSession,
@@ -714,6 +715,16 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
           <label className="checkbox-label"><input type="checkbox" checked={settings.accept_cash_payment !== false} onChange={(event) => setSettings({ ...settings, accept_cash_payment: event.target.checked })} />现金</label>
         </div>
       </div>
+      <div className="admin-form-panel">
+        <h3>订单删除密码</h3>
+        <p className="muted">设置后，删除订单时需要输入此密码。留空则不启用删除密码保护。</p>
+        <TextField
+          label="删除密码"
+          value={settings.delete_password ?? ''}
+          type="password"
+          onChange={(v) => setSettings({ ...settings, delete_password: v || null })}
+        />
+      </div>
       <button className="primary-button" type="button" onClick={save}>
         <Save size={16} />
         保存
@@ -1218,6 +1229,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       price: Number(item.price ?? 0),
       image_url: item.image_url || null,
       is_available: Boolean(item.is_available),
+      is_sold_out: Boolean(item.is_sold_out),
       sort_order: Number(item.sort_order ?? 0),
     };
     const { error } = item.id
@@ -1618,18 +1630,40 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
     });
   }
 
-  async function deleteOrders(ids: string[], label: string) {
-    if (!supabase || ids.length === 0) return;
-    const confirmed = window.confirm(`${label}会从后台订单列表隐藏，订单明细历史快照仍会保留。确定继续吗？`);
-    if (!confirmed) return;
-    const { error } = await supabase
-      .from('orders')
-      .update({ deleted_at: new Date().toISOString(), status: 'cancelled' })
-      .in('id', ids);
-    onMessage(error ? error.message : `已删除 ${ids.length} 张订单`);
-    if (!error) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  function promptDeleteOrders(ids: string[], label: string) {
+    setDeleteTarget({ ids, label });
+    setDeletePassword('');
+    setDeleteError(null);
+    setDeleteDialogOpen(true);
+  }
+
+  async function executeDeleteOrders() {
+    if (!deleteTarget || deleteTarget.ids.length === 0) return;
+    if (!deletePassword.trim()) {
+      setDeleteError('请输入删除密码');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      for (const id of deleteTarget.ids) {
+        await adminHardDeleteOrder(id, deletePassword);
+      }
+      onMessage(`已永久删除 ${deleteTarget.ids.length} 张订单`);
       setSelectedOrderIds(new Set());
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
       load();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -1787,7 +1821,7 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
           className="danger-inline"
           type="button"
           disabled={selectedOrderIds.size === 0}
-          onClick={() => deleteOrders(Array.from(selectedOrderIds), `批量删除 ${selectedOrderIds.size} 张订单`)}
+          onClick={() => promptDeleteOrders(Array.from(selectedOrderIds), `批量删除 ${selectedOrderIds.size} 张订单`)}
         >
           <Trash2 size={15} />
           批量删除订单
@@ -1912,7 +1946,7 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
                           {statusLabels[status]}
                         </button>
                       ))}
-                      <button className="danger-inline" type="button" onClick={() => deleteOrders([order.id], `删除订单 #${order.order_number}`)}>
+                      <button className="danger-inline" type="button" onClick={() => promptDeleteOrders([order.id], `删除订单 #${order.order_number}`)}>
                         <Trash2 size={15} />
                         删除订单
                       </button>
@@ -1973,6 +2007,57 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
               >
                 <Printer size={16} />
                 确认打印
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {deleteDialogOpen && deleteTarget ? (
+        <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
+          <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h2>删除订单验证</h2>
+            <p style={{ color: '#dc2626', fontSize: '14px', marginBottom: '12px' }}>
+              ⚠ 此操作将<strong>永久删除</strong>{deleteTarget.ids.length} 张订单及关联数据，不可恢复。
+            </p>
+            <div className="print-confirm-meta">
+              <span>{deleteTarget.label}</span>
+            </div>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 600, marginBottom: '6px' }}>
+                请输入删除密码
+              </label>
+              <input
+                type="password"
+                className="text-field"
+                value={deletePassword}
+                onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }}
+                placeholder="输入删除密码"
+                autoFocus
+                disabled={deleting}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteOrders(); }}
+              />
+            </div>
+            {deleteError ? (
+              <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{deleteError}</p>
+            ) : null}
+            <div className="print-confirm-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }}
+                disabled={deleting}
+              >
+                取消
+              </button>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void executeDeleteOrders()}
+                disabled={deleting}
+                style={{ background: deleting ? undefined : '#dc2626', borderColor: deleting ? undefined : '#dc2626' }}
+              >
+                <Trash2 size={16} />
+                {deleting ? '删除中…' : '确认永久删除'}
               </button>
             </div>
           </div>
@@ -2908,6 +2993,7 @@ function ItemRow({
         <span>{category?.name_zh || category?.name_en || '未分类'}</span>
         <strong>{formatPrice(Number(item.price))}</strong>
         <span className={item.is_available ? 'availability-badge active' : 'availability-badge'}>{item.is_available ? '已上架' : '已下架'}</span>
+        {item.is_sold_out ? <span className="availability-badge sold-out">已售罄</span> : null}
         <div className="item-row-actions">
           <button type="button" onClick={() => setEditing((open) => !open)}><Pencil size={14} />编辑</button>
           <button type="button" onClick={() => onDuplicate(item)}><Copy size={14} />复制</button>
@@ -2962,6 +3048,14 @@ function ItemForm({
           onChange={(event) => onChange({ ...value, is_available: event.target.checked })}
         />
         上架
+      </label>
+      <label className="checkbox-label">
+        <input
+          checked={Boolean(value.is_sold_out)}
+          type="checkbox"
+          onChange={(event) => onChange({ ...value, is_sold_out: event.target.checked })}
+        />
+        已售罄
       </label>
       </div>
       <div className="item-language-field"><strong>简体中文</strong>

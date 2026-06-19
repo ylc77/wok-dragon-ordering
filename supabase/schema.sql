@@ -71,6 +71,7 @@ create table if not exists public.menu_items (
   price numeric(10, 2) not null check (price >= 0),
   image_url text,
   is_available boolean not null default true,
+  is_sold_out boolean not null default false,
   sort_order int not null default 0,
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
@@ -421,6 +422,9 @@ set search_path = public, private
 as $$
 begin
   if tg_op = 'DELETE' then
+    if nullif(current_setting('app.allow_hard_delete', true), '') = 'true' then
+      return old;
+    end if;
     raise exception 'orders must be archived, not deleted';
   end if;
   if old.status = 'paid' and (
@@ -1994,11 +1998,60 @@ grant execute on function public.request_bill(uuid, text) to authenticated;
 grant execute on function public.confirm_bill_and_close_session(uuid) to authenticated;
 grant execute on function public.handle_bill_request(uuid) to authenticated;
 grant execute on function public.mark_order_kitchen_printed(uuid) to authenticated;
-+-- Operational reliability: ordering pause, complete admin statistics, and session pagination.
+
+-- Hard delete order with secondary password verification
+create or replace function public.admin_hard_delete_order(
+  p_order_id uuid,
+  p_password text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_stored_password text;
+begin
+  if not (select private.is_staff()) then
+    raise exception 'admin or staff role is required';
+  end if;
+
+  select delete_password into v_stored_password
+  from restaurant_settings
+  limit 1;
+
+  if v_stored_password is null or v_stored_password = '' then
+    raise exception '删除密码未设置，请联系管理员在系统设置中配置删除密码';
+  end if;
+
+  if p_password is null or p_password = '' then
+    raise exception '请输入删除密码';
+  end if;
+
+  if p_password <> v_stored_password then
+    raise exception '删除密码错误，无法删除订单';
+  end if;
+
+  perform set_config('app.allow_hard_delete', 'true', true);
+  delete from orders where id = p_order_id;
+
+  if not found then
+    raise exception '订单不存在';
+  end if;
+end;
+$$;
+
+revoke execute on function public.admin_hard_delete_order(uuid, text) from public, anon;
+grant execute on function public.admin_hard_delete_order(uuid, text) to authenticated;
+
+-- Operational reliability: ordering pause, complete admin statistics, and session pagination.
 
 alter table public.restaurant_settings
   add column if not exists ordering_enabled boolean not null default true,
   add column if not exists ordering_paused_at timestamptz;
+
+alter table public.restaurant_settings
+  add column if not exists delete_password text;
 
 create index if not exists idx_orders_admin_history
   on public.orders (deleted_at, created_at desc, session_id, status, table_id);

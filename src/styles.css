@@ -3725,3 +3725,29 @@ body {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ---------- 售罄标记 ---------- */
+
+.menu-card.sold-out {
+  opacity: 0.6;
+  position: relative;
+}
+
+.sold-out-badge {
+  background: #dc2626;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 2;
+}
+
+.availability-badge.sold-out {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}

@@ -600,12 +600,12 @@ export function TableOrderPage() {
                         <DishQuantityControl
                           item={item}
                           line={cartByMenuItemId.get(item.id)}
-                          disabled={!sessionInfo || billRequested || !orderingEnabled}
-                          increaseDisabled={billRequested || !orderingEnabled}
+                          disabled={!sessionInfo || billRequested || !orderingEnabled || Boolean(item.is_sold_out)}
+                          increaseDisabled={billRequested || !orderingEnabled || Boolean(item.is_sold_out)}
                           decreaseDisabled={billRequested}
                           onAdd={() => addItem(item)}
                           onChange={updateQuantity}
-                          addLabel={t('order.add')}
+                          addLabel={item.is_sold_out ? '已售罄' : t('order.add')}
                         />
                       }
                     />

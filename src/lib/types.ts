@@ -27,6 +27,7 @@ export type RestaurantSettings = {
   accept_cash_payment: boolean;
   ordering_enabled: boolean;
   ordering_paused_at: string | null;
+  delete_password?: string | null;
 };
 
 export type MenuCategory = {
@@ -51,6 +52,7 @@ export type MenuItem = {
   price: number;
   image_url: string | null;
   is_available: boolean;
+  is_sold_out?: boolean;
   sort_order: number;
   deleted_at?: string | null;
 };

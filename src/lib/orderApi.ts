@@ -359,6 +359,15 @@ export async function markOrderKitchenPrinted(orderId: string) {
   return row as { is_reprint: boolean; printed_at: string };
 }
 
+export async function adminHardDeleteOrder(orderId: string, password: string) {
+  const client = requireClient();
+  const { error } = await client.rpc('admin_hard_delete_order', {
+    p_order_id: orderId,
+    p_password: password,
+  });
+  if (error) throw error;
+}
+
 export async function fetchRestaurantTables(): Promise<RestaurantTable[]> {
   const client = requireClient();
   const { data, error } = await client
