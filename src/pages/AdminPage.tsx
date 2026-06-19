@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
-import { getRestaurantSettings } from '../lib/menuApi';
+import { adminHardDeleteMenuCategory, adminHardDeleteMenuItem, getRestaurantSettings } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { downloadFile, exportRowsToCSV, exportRowsToJSON, fetchAllTableData, generateBackupFilename } from '../lib/dataExport';
 import {
@@ -726,6 +726,11 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
 function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => void }) {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [draft, setDraft] = useState<Partial<MenuCategory>>(emptyCategory);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MenuCategory | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     load();
@@ -761,37 +766,56 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
     }
   }
 
-  async function deleteCategory(category: MenuCategory) {
+  function promptDeleteCategory(category: MenuCategory) {
+    // 先检查旗下是否有菜品
     if (!supabase) return;
-    if (!window.confirm(`确定删除分类“${category.name_zh || category.name_en || category.name_el}”吗？删除后前台不会再显示。`)) return;
-
-    const { count, error: countError } = await supabase
+    supabase
       .from('menu_items')
       .select('id', { count: 'exact', head: true })
       .eq('category_id', category.id)
-      .is('deleted_at', null);
-    if (countError) {
-      onMessage(countError.message);
-      return;
-    }
-    if ((count ?? 0) > 0) {
-      onMessage(`该分类下还有 ${count} 个菜品，请先移动或删除菜品后再删除分类。`);
-      return;
-    }
+      .is('deleted_at', null)
+      .then(({ count, error: countError }) => {
+        if (countError) {
+          onMessage(countError.message);
+          return;
+        }
+        if ((count ?? 0) > 0) {
+          onMessage(`该分类下还有 ${count} 个菜品，请先移动或删除菜品后再删除分类。`);
+          return;
+        }
+        setDeleteTarget(category);
+        setDeletePassword('');
+        setDeleteError(null);
+        setDeleteDialogOpen(true);
+      });
+  }
 
-    const { error } = await supabase
-      .from('menu_categories')
-      .update({ deleted_at: new Date().toISOString(), is_active: false })
-      .eq('id', category.id);
-    onMessage(error ? error.message : '分类已删除');
-    if (!error) load();
+  async function executeDeleteCategory() {
+    if (!deleteTarget) return;
+    if (!deletePassword.trim()) {
+      setDeleteError('请输入删除密码');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await adminHardDeleteMenuCategory(deleteTarget.id, deletePassword);
+      onMessage(`已永久删除分类”${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}”`);
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
+      load();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
     <AdminSection title="菜单分类" onRefresh={load}>
       <div className="admin-table">
         {categories.map((category) => (
-          <CategoryRow category={category} onSave={saveCategory} onDelete={deleteCategory} key={category.id} />
+          <CategoryRow category={category} onSave={saveCategory} onDelete={promptDeleteCategory} key={category.id} />
         ))}
       </div>
       <h3>新增分类</h3>
@@ -800,6 +824,25 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
         <Plus size={16} />
         新增分类
       </button>
+      {deleteDialogOpen && deleteTarget ? (
+        <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
+          <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h2>删除分类验证</h2>
+            <p style={{ color: '#dc2626', fontSize: '14px', marginBottom: '12px' }}>
+              ⚠ 此操作将<strong>永久删除</strong>分类"{deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"。旗下菜品将变为"未分类"。
+            </p>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 600, marginBottom: '6px' }}>请输入删除密码</label>
+              <input type="password" className="text-field" value={deletePassword} onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }} placeholder="输入删除密码" autoFocus disabled={deleting} onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteCategory(); }} />
+            </div>
+            {deleteError ? <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{deleteError}</p> : null}
+            <div className="print-confirm-actions">
+              <button className="secondary-button" type="button" onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>取消</button>
+              <button className="primary-button" type="button" onClick={() => void executeDeleteCategory()} disabled={deleting} style={{ background: deleting ? undefined : '#dc2626', borderColor: deleting ? undefined : '#dc2626' }}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AdminSection>
   );
 }
@@ -993,6 +1036,11 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   const [csvPreview, setCsvPreview] = useState<MenuCsvRow[]>([]);
   const [csvResult, setCsvResult] = useState<CsvImportResult | null>(null);
   const [translatingDraft, setTranslatingDraft] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     load();
@@ -1058,21 +1106,34 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     }
   }
 
-  async function deleteItems(ids: string[], label: string) {
-    if (!supabase || ids.length === 0) return;
-    const confirmed = window.confirm(
-      `${label}将从前台菜单隐藏，并保留历史订单快照。确定继续吗？`,
-    );
-    if (!confirmed) return;
+  function promptDeleteItems(ids: string[], label: string) {
+    setDeleteTarget({ ids, label });
+    setDeletePassword('');
+    setDeleteError(null);
+    setDeleteDialogOpen(true);
+  }
 
-    const { error } = await supabase
-      .from('menu_items')
-      .update({ deleted_at: new Date().toISOString(), is_available: false })
-      .in('id', ids);
-    onMessage(error ? error.message : `已删除 ${ids.length} 个菜品`);
-    if (!error) {
+  async function executeDeleteItems() {
+    if (!deleteTarget || deleteTarget.ids.length === 0) return;
+    if (!deletePassword.trim()) {
+      setDeleteError('请输入删除密码');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      for (const id of deleteTarget.ids) {
+        await adminHardDeleteMenuItem(id, deletePassword);
+      }
+      onMessage(`已永久删除 ${deleteTarget.ids.length} 个菜品`);
       setSelectedIds(new Set());
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
       load();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -1302,7 +1363,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>
           批量下架
         </button>
-        <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => deleteItems(Array.from(selectedIds), `批量删除 ${selectedIds.size} 个菜品`)}>
+        <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => promptDeleteItems(Array.from(selectedIds), `批量删除 ${selectedIds.size} 个菜品`)}>
           <Trash2 size={15} />
           批量删除
         </button>
@@ -1356,7 +1417,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
             onMessage={onMessage}
             onSave={saveItem}
             onDuplicate={duplicateItem}
-            onDelete={(target) => deleteItems([target.id], `删除菜品“${target.name_zh || target.name_en || target.name_el}”`)}
+            onDelete={(target) => promptDeleteItems([target.id], `删除菜品”${target.name_zh || target.name_en || target.name_el}”`)}
             key={item.id}
           />
         ))}
@@ -1370,6 +1431,38 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         <Plus size={16} />
         新增菜品
       </button>
+      {deleteDialogOpen && deleteTarget ? (
+        <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
+          <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h2>删除菜品验证</h2>
+            <p style={{ color: '#dc2626', fontSize: '14px', marginBottom: '12px' }}>
+              ⚠ 此操作将<strong>永久删除</strong>{deleteTarget.ids.length} 个菜品。历史订单中的菜名快照不受影响。
+            </p>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 600, marginBottom: '6px' }}>
+                请输入删除密码
+              </label>
+              <input
+                type="password"
+                className="text-field"
+                value={deletePassword}
+                onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }}
+                placeholder="输入删除密码"
+                autoFocus
+                disabled={deleting}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteItems(); }}
+              />
+            </div>
+            {deleteError ? (
+              <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{deleteError}</p>
+            ) : null}
+            <div className="print-confirm-actions">
+              <button className="secondary-button" type="button" onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>取消</button>
+              <button className="primary-button" type="button" onClick={() => void executeDeleteItems()} disabled={deleting} style={{ background: deleting ? undefined : '#dc2626', borderColor: deleting ? undefined : '#dc2626' }}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AdminSection>
   );
 }

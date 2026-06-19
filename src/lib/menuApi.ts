@@ -67,3 +67,21 @@ export async function requireAnonymousSession() {
   if (error) throw error;
   return anonData.session;
 }
+
+export async function adminHardDeleteMenuItem(itemId: string, password: string) {
+  if (!supabase) throw new Error('Supabase 客户端未初始化');
+  const { error } = await supabase.rpc('admin_hard_delete_menu_item', {
+    p_item_id: itemId,
+    p_password: password,
+  });
+  if (error) throw error;
+}
+
+export async function adminHardDeleteMenuCategory(categoryId: string, password: string) {
+  if (!supabase) throw new Error('Supabase 客户端未初始化');
+  const { error } = await supabase.rpc('admin_hard_delete_menu_category', {
+    p_category_id: categoryId,
+    p_password: password,
+  });
+  if (error) throw error;
+}
