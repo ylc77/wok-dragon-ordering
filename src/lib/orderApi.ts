@@ -1,14 +1,31 @@
 import { supabase } from './supabase';
-import type { BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RestaurantTable, TableJoinResult, TableReentryRequest, TableSession, TableSessionState } from './types';
+import type { BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RestaurantTable, TableEntryState, TableJoinResult, TableReentryRequest, TableSession, TableSessionState } from './types';
 
 function requireClient() {
   if (!supabase) throw new Error('Supabase is not configured.');
   return supabase;
 }
 
-export async function joinTableSession(qrToken: string): Promise<TableJoinResult> {
+export async function fetchTableEntryState(qrToken: string): Promise<TableEntryState> {
   const client = requireClient();
-  const { data, error } = await client.rpc('join_table_session', { p_qr_token: qrToken });
+  const { data, error } = await client.rpc('get_table_entry_state', { p_qr_token: qrToken });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('Table entry state was not returned.');
+  return row as TableEntryState;
+}
+
+export async function enterTableSession(
+  qrToken: string,
+  expectedSessionId: string,
+  requireEmpty: boolean,
+): Promise<TableJoinResult> {
+  const client = requireClient();
+  const { data, error } = await client.rpc('enter_table_session', {
+    p_qr_token: qrToken,
+    p_expected_session_id: expectedSessionId,
+    p_require_empty: requireEmpty,
+  });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) throw new Error('Table session was not returned.');

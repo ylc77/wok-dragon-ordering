@@ -56,8 +56,18 @@ export type TableJoinResult = {
 
 export type TableSessionState = TableJoinResult & {
   session_status: 'active' | 'closed';
+  closed_at: string | null;
   bill_request_status: 'none' | 'requested' | 'handled';
   bill_payment_method: BillPaymentMethod | null;
+};
+
+export type TableEntryState = {
+  active_session_id: string;
+  table_id: string;
+  table_number: number;
+  participant_count: number;
+  unfinished_order_count: number;
+  is_occupied: boolean;
 };
 
 export type RestaurantTable = {

@@ -2070,7 +2070,7 @@ function TableCard({
         </div>
         {reentryRequests.length ? (
           <div className="table-reentry-admin">
-            <strong>重新开桌请求</strong>
+            <strong>加入桌台请求</strong>
             {reentryRequests.map((request) => (
               <div key={request.id}>
                 <span>{new Date(request.requested_at).toLocaleString('zh-CN')}</span>

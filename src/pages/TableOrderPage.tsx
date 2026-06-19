@@ -8,10 +8,11 @@ import { hasSupabaseConfig } from '../lib/supabase';
 import { getLocalizedField } from '../lib/localized';
 import {
   addCartItem,
+  enterTableSession,
   fetchCart,
   fetchLatestTableReentryRequest,
   fetchSessionOrders,
-  joinTableSession,
+  fetchTableEntryState,
   removeCartItem,
   requestBill,
   requestTableReentry,
@@ -21,7 +22,7 @@ import {
   subscribeToTableReentryRequest,
   updateCartItemQuantity,
 } from '../lib/orderApi';
-import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, TableReentryRequest, TableSessionState } from '../lib/types';
+import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
 import { LanguageSwitch } from '../components/LanguageSwitch';
 
 export function TableOrderPage() {
@@ -41,6 +42,8 @@ export function TableOrderPage() {
   const [requestingBill, setRequestingBill] = useState(false);
   const [billOrders, setBillOrders] = useState<Order[]>([]);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [entryState, setEntryState] = useState<TableEntryState | null>(null);
+  const [enteringSession, setEnteringSession] = useState(false);
   const [reentryRequest, setReentryRequest] = useState<TableReentryRequest | null>(null);
   const [requestingReentry, setRequestingReentry] = useState(false);
   const cartRefreshSequence = useRef(0);
@@ -74,6 +77,7 @@ export function TableOrderPage() {
       setCart([]);
       setBillOpen(false);
       setPaymentOpen(false);
+      setEntryState(await fetchTableEntryState(qrToken));
     } else if (includeCart) {
       await refreshCart(sessionId);
     }
@@ -97,16 +101,20 @@ export function TableOrderPage() {
 
         await requireAnonymousSession();
         const savedSession = readSavedTableSession(qrToken);
-        let sessionId = savedSession?.session_id;
+        let restored: TableSessionState | null = null;
+        let sessionId = savedSession?.session_id ?? null;
 
-        if (!sessionId) {
-          const joined = await joinTableSession(qrToken);
-          sessionId = joined.session_id;
-          saveTableSession(qrToken, joined);
+        if (sessionId) {
+          restored = await resumeTableSession(sessionId, qrToken);
         }
 
-        let restored = await resumeTableSession(sessionId, qrToken);
-        if (savedSession && restored.session_status === 'closed') {
+        if (restored?.session_status === 'closed' && isClosedSessionExpired(restored.closed_at)) {
+          clearSavedTableSession(qrToken);
+          restored = null;
+          sessionId = null;
+        }
+
+        if (restored?.session_status === 'closed' && sessionId) {
           const latestReentry = await fetchLatestTableReentryRequest(sessionId);
           if (latestReentry?.status === 'approved') {
             const approvedSession = await resumeTableSession(latestReentry.target_session_id, qrToken);
@@ -122,12 +130,15 @@ export function TableOrderPage() {
           }
         }
         if (cancelled) return;
+        const nextEntryState = restored?.session_status === 'active' ? null : await fetchTableEntryState(qrToken);
+        if (cancelled) return;
         setSessionInfo(restored);
-        setSessionEnded(restored.session_status === 'closed');
+        setSessionEnded(restored?.session_status === 'closed');
+        setEntryState(nextEntryState);
         const [menuGroups] = await Promise.all([
           menuPromise,
-          refreshOrders(sessionId),
-          restored.session_status === 'active' ? refreshCart(sessionId) : Promise.resolve([]),
+          restored ? refreshOrders(restored.session_id) : Promise.resolve([]),
+          restored?.session_status === 'active' ? refreshCart(restored.session_id) : Promise.resolve([]),
         ]);
         if (cancelled) return;
         setGroups(menuGroups);
@@ -173,6 +184,45 @@ export function TableOrderPage() {
     setBillOrders(nextOrders);
     setMessage(null);
   }, [qrToken, sessionInfo]);
+
+  async function activateSession(joined: { session_id: string; table_id: string; table_number: number }) {
+    saveTableSession(qrToken, joined);
+    const nextSession = await resumeTableSession(joined.session_id, qrToken);
+    const [nextCart, nextOrders] = await Promise.all([
+      fetchCart(joined.session_id),
+      fetchSessionOrders(joined.session_id),
+    ]);
+    setSessionInfo(nextSession);
+    setSessionEnded(false);
+    setEntryState(null);
+    setReentryRequest(null);
+    setCart(nextCart);
+    setBillOrders(nextOrders);
+    setMessage(null);
+  }
+
+  async function enterCurrentSession() {
+    if (!entryState) return;
+    try {
+      setEnteringSession(true);
+      setMessage(null);
+      const joined = await enterTableSession(
+        qrToken,
+        entryState.active_session_id,
+        !entryState.is_occupied,
+      );
+      await activateSession(joined);
+    } catch (err) {
+      setMessage(getErrorMessage(err));
+      try {
+        setEntryState(await fetchTableEntryState(qrToken));
+      } catch {
+        // Preserve the original transaction error if refreshing the entry state also fails.
+      }
+    } finally {
+      setEnteringSession(false);
+    }
+  }
 
   useEffect(() => {
     if (!reentryRequest?.id || reentryRequest.status !== 'pending') return;
@@ -324,6 +374,30 @@ export function TableOrderPage() {
     }
   }
 
+  if (!sessionInfo && entryState) {
+    return (
+      <main className="order-shell session-ended-shell">
+        <section className="session-ended-card table-entry-card">
+          <ShoppingBag size={34} />
+          <h1>{t('order.entryTitle', { table: entryState.table_number })}</h1>
+          <p>{t(entryState.is_occupied ? 'order.entryOccupied' : 'order.entryIdle', { table: entryState.table_number })}</p>
+          {message ? <p className="bill-dialog-warning" role="alert">{message}</p> : null}
+          <button
+            className="primary-button stretch"
+            type="button"
+            disabled={enteringSession}
+            onClick={enterCurrentSession}
+          >
+            {enteringSession
+              ? t('order.enteringTable')
+              : t(entryState.is_occupied ? 'order.joinCurrentTable' : 'order.startOrdering')}
+          </button>
+          <LanguageSwitch />
+        </section>
+      </main>
+    );
+  }
+
   if (sessionEnded && sessionInfo) {
     return (
       <main className="order-shell session-ended-shell">
@@ -331,6 +405,9 @@ export function TableOrderPage() {
           <ReceiptText size={34} />
           <h1>{t('order.sessionEndedTitle')}</h1>
           <p>{t('order.sessionEnded')}</p>
+          {entryState ? (
+            <p>{t(entryState.is_occupied ? 'order.reentryOccupied' : 'order.reentryIdle')}</p>
+          ) : null}
           {reentryRequest?.status === 'pending' ? (
             <p className="reentry-request-status" role="status">{t('order.reentryPending')}</p>
           ) : null}
@@ -344,7 +421,9 @@ export function TableOrderPage() {
             disabled={requestingReentry || reentryRequest?.status === 'pending'}
             onClick={sendReentryRequest}
           >
-            {requestingReentry ? t('order.requestingReentry') : t('order.requestReentry')}
+            {requestingReentry
+              ? t('order.requestingReentry')
+              : t(entryState?.is_occupied ? 'order.requestJoinCurrentTable' : 'order.requestNewDining')}
           </button>
           <LanguageSwitch />
         </section>
@@ -756,4 +835,21 @@ function readSavedTableSession(qrToken: string): SavedTableSession | null {
 
 function saveTableSession(qrToken: string, session: SavedTableSession) {
   window.localStorage.setItem(tableSessionStorageKey(qrToken), JSON.stringify(session));
+}
+
+function clearSavedTableSession(qrToken: string) {
+  window.localStorage.removeItem(tableSessionStorageKey(qrToken));
+}
+
+function isClosedSessionExpired(closedAt: string | null) {
+  if (!closedAt) return false;
+  return Date.now() - new Date(closedAt).getTime() >= 24 * 60 * 60 * 1000;
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+  return String(error);
 }
