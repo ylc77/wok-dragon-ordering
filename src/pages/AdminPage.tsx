@@ -491,7 +491,128 @@ function Dashboard({
           </div>
         )}
       </div>
+
+      <DailyStats syncVersion={syncVersion} onMessage={onMessage} />
     </AdminSection>
+  );
+}
+
+function DailyStats({
+  syncVersion,
+  onMessage,
+}: {
+  syncVersion: number;
+  onMessage: (value: string | null) => void;
+}) {
+  interface DailyRow {
+    date: string;
+    orderCount: number;
+    revenue: number;
+    paidCount: number;
+    posCount: number;
+    cashCount: number;
+  }
+
+  const [rows, setRows] = useState<DailyRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void load();
+  }, [syncVersion]);
+
+  async function load() {
+    if (!supabase) return;
+    setLoading(true);
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select('created_at, total_price, status, payment_method')
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const map = new Map<string, DailyRow>();
+      const now = new Date();
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        map.set(key, { date: key, orderCount: 0, revenue: 0, paidCount: 0, posCount: 0, cashCount: 0 });
+      }
+
+      for (const order of data ?? []) {
+        const key = (order.created_at as string).slice(0, 10);
+        const row = map.get(key);
+        if (!row) continue;
+        row.orderCount++;
+        if (order.status === 'paid') {
+          row.paidCount++;
+          row.revenue += Number(order.total_price ?? 0);
+        }
+        if (order.payment_method === 'pos') row.posCount++;
+        else if (order.payment_method === 'cash') row.cashCount++;
+      }
+
+      setRows([...map.values()]);
+    } catch (err) {
+      onMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const totalRevenue = rows.reduce((sum, r) => sum + r.revenue, 0);
+  const totalOrders = rows.reduce((sum, r) => sum + r.orderCount, 0);
+
+  return (
+    <div className="admin-panel-card">
+      <div className="section-title-row compact">
+        <div>
+          <h2>最近 30 天统计</h2>
+          <p>合计 {totalOrders} 笔订单，已付款营收 {formatPrice(totalRevenue)}</p>
+        </div>
+      </div>
+      {loading ? (
+        <p className="admin-message" style={{ color: 'var(--color-muted, #70747a)' }}>加载中…</p>
+      ) : rows.length === 0 ? (
+        <div className="admin-empty-state">
+          <BarChart3 size={28} />
+          <strong>暂无数据</strong>
+        </div>
+      ) : (
+        <div className="daily-stats-table-wrap">
+          <table className="daily-stats-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th className="num">订单数</th>
+                <th className="num">已付款</th>
+                <th className="num">营收</th>
+                <th className="num">POS</th>
+                <th className="num">现金</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.date} className={row.orderCount === 0 ? 'zero-row' : ''}>
+                  <td>{row.date}</td>
+                  <td className="num">{row.orderCount || '-'}</td>
+                  <td className="num">{row.paidCount || '-'}</td>
+                  <td className="num">{row.revenue > 0 ? formatPrice(row.revenue) : '-'}</td>
+                  <td className="num">{row.posCount || '-'}</td>
+                  <td className="num">{row.cashCount || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1280,6 +1401,7 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
   const initializedSessionIdsRef = useRef<Set<string>>(new Set());
   const expandedNewOrderIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
+  const [printConfirmOrder, setPrintConfirmOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     void load({ initial: !initializedRef.current });
@@ -1377,7 +1499,7 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
     }
   }
 
-  async function printKitchenTicket(order: Order) {
+  async function doPrintKitchenTicket(order: Order) {
     const printWindow = window.open('', '_blank', 'width=420,height=720');
     if (!printWindow) {
       onMessage('浏览器阻止了打印窗口，请允许此网站打开弹窗后重试');
@@ -1395,6 +1517,10 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       printWindow.close();
       onMessage(formatUnknownError(err));
     }
+  }
+
+  function printKitchenTicket(order: Order) {
+    setPrintConfirmOrder(order);
   }
 
   function toggleAutoPrint() {
@@ -1808,6 +1934,50 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
           下一页
         </button>
       </nav>
+      {printConfirmOrder ? (
+        <div className="print-confirm-overlay" onClick={() => setPrintConfirmOrder(null)}>
+          <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h2>确认打印厨房小票</h2>
+            <div className="print-confirm-meta">
+              <span>订单 <strong>#{printConfirmOrder.order_number}</strong></span>
+              <span>桌号 <strong>{printConfirmOrder.restaurant_tables?.table_number ?? '—'}</strong></span>
+              <span>{new Date(printConfirmOrder.created_at).toLocaleString('zh-CN')}</span>
+              {printConfirmOrder.kitchen_printed_at ? (
+                <span className="print-confirm-warning">⚠ 此订单已打印过，将标记为重打</span>
+              ) : null}
+            </div>
+            <div className="print-confirm-items">
+              {printConfirmOrder.order_items?.map((item, i) => (
+                <div key={i} className="print-confirm-item">
+                  <strong>{item.quantity} × {item.item_name_zh || item.item_name_en || item.item_name_el}</strong>
+                  {item.note ? <small>备注：{item.note}</small> : null}
+                </div>
+              ))}
+            </div>
+            <div className="print-confirm-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setPrintConfirmOrder(null)}
+              >
+                取消
+              </button>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => {
+                  const order = printConfirmOrder;
+                  setPrintConfirmOrder(null);
+                  void doPrintKitchenTicket(order);
+                }}
+              >
+                <Printer size={16} />
+                确认打印
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AdminSection>
   );
 }
