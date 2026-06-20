@@ -85,3 +85,11 @@ export async function adminHardDeleteMenuCategory(categoryId: string, password: 
   });
   if (error) throw error;
 }
+
+export async function adminSetDeletePassword(password: string) {
+  if (!supabase) throw new Error('Supabase 客户端未初始化');
+  const { error } = await supabase.rpc('admin_set_delete_password', {
+    p_password: password || null,
+  });
+  if (error) throw error;
+}

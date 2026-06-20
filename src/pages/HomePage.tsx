@@ -63,6 +63,40 @@ export function HomePage() {
   const heroItem = featuredItems.find((item) => Boolean(item.image_url));
   const heroImageUrl = settings?.hero_image_url?.trim() || heroItem?.image_url;
 
+  const featuredSection = featuredItems.length === 0 ? null : (
+    <section className="home-menu-preview">
+      <div className="section-title-row">
+        <div>
+          <h2>{t('home.featuredTitle')}</h2>
+          <p>{t('common.priceNote')}</p>
+        </div>
+        <Link className="secondary-button" to="/menu">{t('home.menuCta')}</Link>
+      </div>
+      <div className="home-menu-list">
+        {featuredItems.map((item) => <MenuCard item={item} lang={lang} key={item.id} />)}
+      </div>
+    </section>
+  );
+
+  const categoriesSection = groups.length === 0 ? null : (
+    <section className="home-category-preview">
+      <div className="section-title-row">
+        <div>
+          <h2>{t('home.categoriesTitle')}</h2>
+          <p>{t('home.orderHint')}</p>
+        </div>
+      </div>
+      <div className="home-category-grid">
+        {groups.map((group) => (
+          <Link className="category-entry" to={`/menu#category-${group.id}`} key={group.id}>
+            <strong>{getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}</strong>
+            <span>{group.items.length}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+
   if (loading) {
     return (
       <main>
@@ -132,45 +166,8 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="home-menu-preview">
-        <div className="section-title-row">
-          <div>
-            <h2>{t('home.featuredTitle')}</h2>
-            <p>{t('common.priceNote')}</p>
-          </div>
-          <Link className="secondary-button" to="/menu">
-            {t('home.menuCta')}
-          </Link>
-        </div>
-        <div className="home-menu-list">
-          {featuredItems.map((item) => (
-            <MenuCard item={item} lang={lang} key={item.id} />
-          ))}
-        </div>
-      </section>
-
-      <section className="home-category-preview">
-        <div className="section-title-row">
-          <div>
-            <h2>{t('home.categoriesTitle')}</h2>
-            <p>{t('home.orderHint')}</p>
-          </div>
-        </div>
-        <div className="home-category-grid">
-          {groups.map((group) => (
-            <Link className="category-entry" to={`/menu#category-${group.id}`} key={group.id}>
-              <strong>
-                {getLocalizedField(lang, {
-                  zh: group.name_zh,
-                  en: group.name_en,
-                  el: group.name_el,
-                })}
-              </strong>
-              <span>{group.items.length}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {featuredSection}
+      {categoriesSection}
 
       <section className="info-band" id="contact">
         {address ? <div>
