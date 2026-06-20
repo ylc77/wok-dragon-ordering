@@ -150,26 +150,10 @@ export function TableOrderPage() {
           restored = await resumeTableSession(sessionId, qrToken);
         }
 
-        if (restored?.session_status === 'closed' && isClosedSessionExpired(restored.closed_at)) {
+        if (restored?.session_status === 'closed') {
           clearSavedTableSession(qrToken);
           restored = null;
           sessionId = null;
-        }
-
-        if (restored?.session_status === 'closed' && sessionId) {
-          const latestReentry = await fetchLatestTableReentryRequest(sessionId);
-          if (latestReentry?.status === 'approved') {
-            const approvedSession = await resumeTableSession(latestReentry.target_session_id, qrToken);
-            if (approvedSession.session_status === 'active') {
-              sessionId = approvedSession.session_id;
-              restored = approvedSession;
-              saveTableSession(qrToken, approvedSession);
-            } else {
-              setReentryRequest(latestReentry);
-            }
-          } else {
-            setReentryRequest(latestReentry);
-          }
         }
         if (cancelled) return;
         const nextEntryState = restored?.session_status === 'active' ? null : await fetchTableEntryState(qrToken);
@@ -479,25 +463,8 @@ export function TableOrderPage() {
           <ReceiptText size={34} />
           <h1>{t('order.sessionEndedTitle')}</h1>
           <p>{t('order.sessionEnded')}</p>
-          {entryState ? (
-            <p>{t(entryState.is_occupied ? 'order.reentryOccupied' : 'order.reentryIdle')}</p>
-          ) : null}
-          {reentryRequest?.status === 'pending' ? (
-            <p className="reentry-request-status" role="status">{t('order.reentryPending')}</p>
-          ) : null}
-          {reentryRequest?.status === 'rejected' || reentryRequest?.status === 'expired' ? (
-            <p className="reentry-request-status is-rejected" role="status">{t('order.reentryRejected')}</p>
-          ) : null}
-          {message ? <p className="bill-dialog-warning" role="alert">{message}</p> : null}
-          <button
-            className="primary-button stretch"
-            type="button"
-            disabled={requestingReentry || reentryRequest?.status === 'pending'}
-            onClick={sendReentryRequest}
-          >
-            {requestingReentry
-              ? t('order.requestingReentry')
-              : t(entryState?.is_occupied ? 'order.requestJoinCurrentTable' : 'order.requestNewDining')}
+          <button className="primary-button stretch" type="button" onClick={() => { clearSavedTableSession(qrToken); window.location.reload(); }}>
+            {t('order.startOrdering')}
           </button>
           <LanguageSwitch />
         </section>
