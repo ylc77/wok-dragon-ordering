@@ -111,7 +111,7 @@ export function MenuCard({
       <div>
         <div className="menu-card-title">
           <h3>{name}</h3>
-          <strong>{formatPrice(Number(item.price))}</strong>
+          <strong>{formatPrice(Number(item.price), lang)}</strong>
         </div>
         {description ? <p>{description}</p> : null}
         {action}

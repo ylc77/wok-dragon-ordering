@@ -17,8 +17,9 @@ export function getLocalizedField(
   return values.en || values.zh || '';
 }
 
-export function formatPrice(price: number) {
-  return new Intl.NumberFormat('el-GR', {
+export function formatPrice(price: number, lang?: Language) {
+  const locale = lang === 'el' ? 'el-GR' : 'en-GB';
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',
   }).format(price);
