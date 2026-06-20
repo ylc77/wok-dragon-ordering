@@ -1543,6 +1543,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   });
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
   const [printWarning, setPrintWarning] = useState<string | null>(null);
+  const [confirmingBillIds, setConfirmingBillIds] = useState<Set<string>>(new Set());
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
@@ -1645,6 +1646,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   }
 
   async function confirmBillPayment(request: BillRequest) {
+    setConfirmingBillIds((prev) => new Set(prev).add(request.id));
     setBillRequests((prev) => prev.filter((r) => r.id !== request.id));
     try {
       const result = await confirmBillAndCloseSession(request.session_id);
@@ -1652,6 +1654,12 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
     } catch (err) {
       setBillRequests((prev) => [request, ...prev]);
       onMessage(formatUnknownError(err));
+    } finally {
+      setConfirmingBillIds((prev) => {
+        const next = new Set(prev);
+        next.delete(request.id);
+        return next;
+      });
     }
     load();
   }
@@ -1861,9 +1869,9 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
                     <small>{request.payment_method === 'pos' ? 'POS 机支付' : '现金支付'} · 请求时间 {new Date(request.requested_at).toLocaleString('zh-CN')}</small>
                   </span>
                 </div>
-                <button className="primary-button" type="button" onClick={() => confirmBillPayment(request)}>
+                <button className="primary-button" type="button" disabled={confirmingBillIds.has(request.id)} onClick={() => confirmBillPayment(request)}>
                   <CheckCircle2 size={16} />
-                  确认已收款并清桌
+                  {confirmingBillIds.has(request.id) ? '处理中…' : '确认已收款并清桌'}
                 </button>
               </article>
             ))}
