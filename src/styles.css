@@ -4397,3 +4397,7 @@ body {
 @media (max-width: 768px) {
   .cat-table-head { display: none; }
 }
+.istat-blue { border-left-color: #2563eb; }
+.table-admin-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 1600px) { .table-admin-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .table-admin-grid { grid-template-columns: 1fr; } }

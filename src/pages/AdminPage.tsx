@@ -2385,21 +2385,32 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
     }
   }
 
-  const sessionByTable = useMemo(
-    () => new Map(sessions.map((session) => [session.table_id, session])),
-    [sessions],
-  );
+  const sessionByTable = useMemo(() => new Map(sessions.map((session) => [session.table_id, session])), [sessions]);
+
+  const tableStats = useMemo(() => ({
+    total: tables.length,
+    enabled: tables.filter((t) => t.is_active).length,
+    inUse: sessions.filter((s) => (s.participant_count ?? 0) > 0).length,
+    idle: tables.filter((t) => t.is_active).length - sessions.filter((s) => (s.participant_count ?? 0) > 0).length,
+  }), [tables, sessions]);
 
   return (
-    <AdminSection title="桌台二维码" onRefresh={load}>
-      <div className="admin-form-grid compact-create">
-        <TextField label="桌号" value={newNumber} type="number" onChange={(v) => setNewNumber(Number(v))} />
-        <TextField label="备注名称" value={newLabel} onChange={setNewLabel} />
-        <button className="primary-button" type="button" onClick={addTable}>
-          <Plus size={16} />
-          新增桌台
-        </button>
+    <AdminSection title="桌台管理" subtitle="管理桌号、二维码、点餐链接和清桌状态" onRefresh={load}>
+      {/* stats */}
+      <div className="item-stats-row">
+        <div className="istat"><span>桌台总数</span><strong>{tableStats.total}</strong></div>
+        <div className="istat istat-green"><span>启用桌台</span><strong>{tableStats.enabled}</strong></div>
+        <div className="istat istat-blue"><span>使用中</span><strong>{tableStats.inUse}</strong></div>
+        <div className="istat istat-gray"><span>空闲</span><strong>{Math.max(0, tableStats.idle)}</strong></div>
       </div>
+
+      {/* new table */}
+      <div className="item-toolbar" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px 14px', marginBottom: '14px' }}>
+        <TextField label="桌号" value={newNumber} type="number" onChange={(v) => setNewNumber(Number(v))} />
+        <TextField label="备注" value={newLabel} onChange={setNewLabel} />
+        <button className="primary-button" type="button" onClick={addTable}><Plus size={15} />新增桌台</button>
+      </div>
+
       <div className="table-admin-grid">
         {tables.map((table) => (
           <TableCard
@@ -2414,6 +2425,7 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
             onClose={closeSession}
             onApproveReentry={approveReentry}
             onRejectReentry={rejectReentry}
+            toast={toast}
           />
         ))}
       </div>
@@ -2422,27 +2434,13 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
 }
 
 function TableCard({
-  table,
-  session,
-  sessionOrders,
-  reentryRequests,
-  restaurantName,
-  onSave,
-  onRegenerate,
-  onClose,
-  onApproveReentry,
-  onRejectReentry,
+  table, session, sessionOrders, reentryRequests, restaurantName,
+  onSave, onRegenerate, onClose, onApproveReentry, onRejectReentry, toast,
 }: {
-  table: RestaurantTable;
-  session: TableSession | null;
-  sessionOrders: Order[];
-  reentryRequests: TableReentryRequest[];
-  restaurantName: string;
-  onSave: (table: RestaurantTable) => void;
-  onRegenerate: (tableId: string) => void;
-  onClose: (session: TableSession) => void;
-  onApproveReentry: (request: TableReentryRequest) => void;
-  onRejectReentry: (request: TableReentryRequest) => void;
+  table: RestaurantTable; session: TableSession | null; sessionOrders: Order[]; reentryRequests: TableReentryRequest[]; restaurantName: string;
+  onSave: (table: RestaurantTable) => void; onRegenerate: (tableId: string) => void; onClose: (session: TableSession) => void;
+  onApproveReentry: (request: TableReentryRequest) => void; onRejectReentry: (request: TableReentryRequest) => void;
+  toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
 }) {
   const [value, setValue] = useState<RestaurantTable>(table);
   const qrRef = useRef<HTMLDivElement | null>(null);
@@ -2560,6 +2558,10 @@ function TableCard({
           </button>
         </div>
         <div className="table-maintenance-actions">
+          <button className="maintenance-button" type="button" onClick={() => { navigator.clipboard.writeText(qrUrl).then(() => toast('链接已复制')).catch(() => toast('复制失败','error')); }}>
+            <Copy size={13} />
+            复制链接
+          </button>
           <button className="maintenance-button" type="button" onClick={downloadQrImage}>
             <Download size={13} />
             下载二维码
