@@ -4462,3 +4462,9 @@ body {
 .hif-mark { font-size: clamp(60px, 12vw, 100px); font-weight: 900; line-height: 1; margin-bottom: -20px; opacity: .15; position: relative; }
 .hero-image-fallback strong { font-size: clamp(18px, 4vw, 28px); font-weight: 900; position: relative; }
 .hero-image-fallback small { font-size: clamp(12px, 2vw, 16px); margin-top: 4px; opacity: .7; position: relative; }
+.hif-pattern { background: radial-gradient(circle at 20% 40%, rgba(255,255,255,.06) 0%, transparent 50%), radial-gradient(circle at 80% 60%, rgba(255,255,255,.04) 0%, transparent 40%); inset: 0; position: absolute; }
+.hif-sub { font-size: clamp(11px, 2vw, 14px); margin-top: 8px; opacity: .55; position: relative; }
+.menu-card-fallback { position: relative; }
+.menu-card-fallback::after { background: linear-gradient(180deg, transparent 0%, rgba(181,31,36,.03) 100%); content: ''; inset: 0; position: absolute; }
+.mcf-icon { font-size: 36px; position: relative; z-index: 1; }
+@media (max-width: 768px) { .mcf-icon { font-size: 26px; } }

@@ -128,7 +128,7 @@ function DishImage({ item, alt }: { item: MenuItem; alt: string }) {
   const [failed, setFailed] = useState(false);
 
   if (!item.image_url || failed) {
-    return <div className="menu-card-fallback" aria-hidden="true"><span>碗</span></div>;
+    return <div className="menu-card-fallback" aria-hidden="true"><span className="mcf-icon">碗</span></div>;
   }
 
   return <img src={item.image_url} alt={alt} width="118" height="118" loading="lazy" onError={() => setFailed(true)} />;
