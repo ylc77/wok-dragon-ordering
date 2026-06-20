@@ -109,9 +109,9 @@ export function MenuCard({
   });
 
   return (
-    <article className={`menu-card${!item.is_available ? ' sold-out' : ''}`}>
+    <article className={`menu-card${item.is_sold_out ? ' sold-out' : ''}`}>
       <DishImage item={item} alt={name} />
-      {!item.is_available ? <span className="sold-out-badge">{t('common.soldOut')}</span> : null}
+      {item.is_sold_out ? <span className="sold-out-badge">{t('common.soldOut')}</span> : null}
       <div>
         <div className="menu-card-title">
           <h3>{name}</h3>
