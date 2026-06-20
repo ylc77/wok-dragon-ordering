@@ -1365,11 +1365,18 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         </button>
       </div>
 
-      <details className="csv-format-hint">
-        <summary>CSV 格式说明</summary>
-        <pre>category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order</pre>
-        <small>模板文件: supabase/menu-import-template.csv</small>
-      </details>
+      <button
+        className="secondary-button"
+        type="button"
+        style={{ marginBottom: '10px' }}
+        onClick={() => {
+          const header = 'category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order';
+          downloadFile(header, 'menu-import-template.csv', 'text/csv;charset=utf-8');
+        }}
+      >
+        <Download size={14} />
+        下载 CSV 模板
+      </button>
 
       <div className="csv-import-panel">
         <label>
