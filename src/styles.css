@@ -1383,6 +1383,28 @@ button:disabled {
   font-weight: 800;
 }
 
+.csv-format-hint {
+  color: #6b7280;
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+
+.csv-format-hint summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.csv-format-hint pre {
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-size: 11.5px;
+  margin: 4px 0;
+  overflow-x: auto;
+  padding: 6px 8px;
+  white-space: pre;
+}
+
 .menu-management-tools,
 .bulk-action-bar,
 .csv-import-panel {

@@ -47,7 +47,7 @@ import type {
   TableSession,
 } from '../lib/types';
 
-type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'import' | 'system';
+type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'system';
 
 const emptySettings: Partial<RestaurantSettings> = {
   name_zh: '',
@@ -313,9 +313,6 @@ export function AdminPage() {
         <AdminNavButton icon={<Building2 size={17} />} active={tab === 'settings'} onClick={() => setTab('settings')}>
           餐馆信息设置
         </AdminNavButton>
-        <AdminNavButton icon={<Database size={17} />} active={tab === 'import'} onClick={() => setTab('import')}>
-          CSV 导入
-        </AdminNavButton>
         <AdminNavButton icon={<Settings2 size={17} />} active={tab === 'system'} onClick={() => setTab('system')}>
           系统设置
         </AdminNavButton>
@@ -353,7 +350,6 @@ export function AdminPage() {
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} /> : null}
-          {tab === 'import' ? <ImportGuide /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
         </section>
       </div>
@@ -1369,9 +1365,15 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         </button>
       </div>
 
+      <details className="csv-format-hint">
+        <summary>CSV 格式说明</summary>
+        <pre>category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order</pre>
+        <small>模板文件: supabase/menu-import-template.csv</small>
+      </details>
+
       <div className="csv-import-panel">
         <label>
-          CSV 导入预览
+          CSV 导入
           <input accept=".csv,text/csv" type="file" onChange={(event) => previewCsv(event.target.files?.[0] ?? null)} />
         </label>
         <button className="secondary-button" type="button" disabled={csvPreview.length === 0} onClick={importCsv}>
@@ -2610,17 +2612,6 @@ function wrapCanvasText(
   }
 
   if (line) ctx.fillText(line, x, currentY);
-}
-
-function ImportGuide() {
-  return (
-    <AdminSection title="CSV 导入模板">
-      <p>模板文件位于 `supabase/menu-import-template.csv`。导入后请映射到分类和菜品表。</p>
-      <pre className="csv-preview">
-category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order
-      </pre>
-    </AdminSection>
-  );
 }
 
 function SystemSettings({
