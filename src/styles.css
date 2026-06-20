@@ -68,10 +68,10 @@ button:disabled {
   align-items: center;
   color: #fff;
   display: flex;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   padding: 0 4px;
   text-decoration: none;
 }
@@ -1196,8 +1196,8 @@ button:disabled {
   flex-shrink: 0;
   gap: 4px;
   justify-content: flex-start;
-  padding: 20px 16px;
-  width: 200px;
+  padding: 20px 18px;
+  width: 220px;
 }
 
 .admin-nav-list {
@@ -1215,10 +1215,10 @@ button:disabled {
   border-radius: 8px;
   color: white;
   display: flex;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 800;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   text-align: left;
 }
 
