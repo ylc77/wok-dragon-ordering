@@ -438,7 +438,7 @@ function Dashboard({
       const { from, to } = localDayBounds(new Date());
       setSummary(await fetchAdminDashboardSummary(from, to));
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -589,7 +589,7 @@ function DailyStats({
 
       setRows([...map.values()]);
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     } finally {
       setLoading(false);
     }
@@ -607,7 +607,7 @@ function DailyStats({
         </div>
       </div>
       {loading ? (
-        <p className="admin-message" style={{ color: 'var(--color-muted, #70747a)' }}>加载中…</p>
+        <p className="admin-message admin-message-muted">加载中…</p>
       ) : rows.length === 0 ? (
         <div className="admin-empty-state">
           <BarChart3 size={28} />
@@ -682,7 +682,7 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
       setSettings((current) => ({ ...current, ...next }));
       onMessage(nextEnabled ? '已恢复全店接单' : '已暂停全店接单');
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -833,7 +833,7 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
       setDeleteTarget(null);
       load();
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : String(err));
+      setDeleteError(formatUnknownError(err));
     } finally {
       setDeleting(false);
     }
@@ -856,17 +856,17 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <h2>删除分类验证</h2>
-            <p style={{ color: '#dc2626', fontSize: '14px', marginBottom: '12px' }}>
+            <p className="dialog-warning-text">
               ⚠ 此操作将<strong>永久删除</strong>分类"{deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"。旗下菜品将变为"未分类"。
             </p>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 600, marginBottom: '6px' }}>请输入删除密码</label>
+            <div className="dialog-password-wrap">
+              <label className="dialog-password-label">请输入删除密码</label>
               <input type="password" className="text-field" value={deletePassword} onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }} placeholder="输入删除密码" autoFocus disabled={deleting} onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteCategory(); }} />
             </div>
-            {deleteError ? <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{deleteError}</p> : null}
+            {deleteError ? <p className="dialog-error-text">{deleteError}</p> : null}
             <div className="print-confirm-actions">
               <button className="secondary-button" type="button" onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>取消</button>
-              <button className="primary-button" type="button" onClick={() => void executeDeleteCategory()} disabled={deleting} style={{ background: deleting ? undefined : '#dc2626', borderColor: deleting ? undefined : '#dc2626' }}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
+              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} type="button" onClick={() => void executeDeleteCategory()} disabled={deleting}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
             </div>
           </div>
         </div>
@@ -1161,7 +1161,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       setDeleteTarget(null);
       load();
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : String(err));
+      setDeleteError(formatUnknownError(err));
     } finally {
       setDeleting(false);
     }
@@ -1201,7 +1201,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       setCsvPreview(parseMenuCsv(await file.text()));
     } catch (err) {
       setCsvPreview([]);
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -1221,7 +1221,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       } catch (err) {
         result.translationFailed += chunk.length;
         chunk.forEach(({ index }) => {
-          result.errors.push(`第 ${index + 2} 行翻译失败：${err instanceof Error ? err.message : String(err)}`);
+          result.errors.push(`第 ${index + 2} 行翻译失败：${formatUnknownError(err)}`);
         });
       }
     }
@@ -1288,7 +1288,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         result.success += 1;
       } catch (err) {
         result.failed += 1;
-        result.errors.push(`第 ${index + 2} 行：${err instanceof Error ? err.message : String(err)}`);
+        result.errors.push(`第 ${index + 2} 行：${formatUnknownError(err)}`);
       }
     }
 
@@ -1340,7 +1340,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       setDraft(await translateSingleMenuValue(draft));
       onMessage('自动翻译已补全缺失字段');
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     } finally {
       setTranslatingDraft(false);
     }
@@ -1495,11 +1495,11 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <h2>删除菜品验证</h2>
-            <p style={{ color: '#dc2626', fontSize: '14px', marginBottom: '12px' }}>
+            <p className="dialog-warning-text">
               ⚠ 此操作将<strong>永久删除</strong>{deleteTarget.ids.length} 个菜品。历史订单中的菜名快照不受影响。
             </p>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 600, marginBottom: '6px' }}>
+            <div className="dialog-password-wrap">
+              <label className="dialog-password-label">
                 请输入删除密码
               </label>
               <input
@@ -1514,11 +1514,11 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
               />
             </div>
             {deleteError ? (
-              <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{deleteError}</p>
+              <p className="dialog-error-text">{deleteError}</p>
             ) : null}
             <div className="print-confirm-actions">
               <button className="secondary-button" type="button" onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>取消</button>
-              <button className="primary-button" type="button" onClick={() => void executeDeleteItems()} disabled={deleting} style={{ background: deleting ? undefined : '#dc2626', borderColor: deleting ? undefined : '#dc2626' }}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
+              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} type="button" onClick={() => void executeDeleteItems()} disabled={deleting}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
             </div>
           </div>
         </div>
@@ -1632,7 +1632,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
         queueAutoPrint(insertedPendingOrders.filter((order) => !order.kitchen_printed_at));
       }
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -1642,7 +1642,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
       onMessage('订单状态已更新');
       load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -1823,7 +1823,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
       setDeleteTarget(null);
       load();
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : String(err));
+      setDeleteError(formatUnknownError(err));
     } finally {
       setDeleting(false);
     }
@@ -1897,7 +1897,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
         {printWarning ? (
           <span className="print-warning-banner">
             ⚠ {printWarning}
-            <button type="button" onClick={() => setPrintWarning(null)} style={{ background: 'none', border: 'none', color: '#92400e', cursor: 'pointer', fontWeight: 700, marginLeft: '8px' }}>×</button>
+            <button type="button" onClick={() => setPrintWarning(null)} className="print-warning-dismiss">×</button>
           </span>
         ) : null}
         <button
@@ -1945,7 +1945,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
           type="number"
           min="1"
           placeholder="快速跳转桌号"
-          style={{ width: '120px', border: '1px solid #dedfe1', borderRadius: '6px', padding: '6px 8px', fontSize: '13px' }}
+          className="table-jump-input"
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               const val = (event.target as HTMLInputElement).value;
@@ -2202,14 +2202,14 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <h2>删除订单验证</h2>
-            <p style={{ color: '#dc2626', fontSize: '14px', marginBottom: '12px' }}>
+            <p className="dialog-warning-text">
               ⚠ 此操作将<strong>永久删除</strong>{deleteTarget.ids.length} 张订单及关联数据，不可恢复。
             </p>
             <div className="print-confirm-meta">
               <span>{deleteTarget.label}</span>
             </div>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 600, marginBottom: '6px' }}>
+            <div className="dialog-password-wrap">
+              <label className="dialog-password-label">
                 请输入删除密码
               </label>
               <input
@@ -2224,7 +2224,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
               />
             </div>
             {deleteError ? (
-              <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{deleteError}</p>
+              <p className="dialog-error-text">{deleteError}</p>
             ) : null}
             <div className="print-confirm-actions">
               <button
@@ -2236,11 +2236,10 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
                 取消
               </button>
               <button
-                className="primary-button"
+                className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'}
                 type="button"
                 onClick={() => void executeDeleteOrders()}
                 disabled={deleting}
-                style={{ background: deleting ? undefined : '#dc2626', borderColor: deleting ? undefined : '#dc2626' }}
               >
                 <Trash2 size={16} />
                 {deleting ? '删除中…' : '确认永久删除'}
@@ -2406,7 +2405,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       setReentryRequests(reentryRows);
       setRestaurantName(settings?.name_zh || settings?.name_en || settings?.name_el || '餐馆');
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -2418,7 +2417,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       setNewLabel('');
       load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -2428,7 +2427,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       onMessage('桌台已保存');
       load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -2443,7 +2442,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       onMessage('二维码 token 已重新生成');
       load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -2470,7 +2469,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       onMessage(`已清桌，删除未提交购物车 ${result.deleted_cart_count} 条。`);
       load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -2480,7 +2479,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       onMessage(result.request_status === 'approved' ? '已批准该设备重新开桌。' : '目标会话已结束，请顾客重新发起请求。');
       await load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -2490,7 +2489,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
       onMessage('已拒绝该设备的重新开桌请求。');
       await load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     }
   }
 
@@ -2777,7 +2776,7 @@ function SystemHealthSection({
       const json = await res.json();
       setHealth(json);
     } catch (err) {
-      setCheckError(err instanceof Error ? err.message : String(err));
+      setCheckError(formatUnknownError(err));
     } finally {
       setLoading(false);
     }
@@ -2833,12 +2832,12 @@ function SystemHealthSection({
         </div>
       ) : null}
       {checkError ? (
-        <p className="admin-message" style={{ color: 'var(--color-danger, #dc2626)' }}>
+        <p className="admin-message admin-message-danger">
           健康检查失败: {checkError}
         </p>
       ) : null}
       {health?.error ? (
-        <p className="admin-message" style={{ color: 'var(--color-danger, #dc2626)' }}>
+        <p className="admin-message admin-message-danger">
           {health.error}
         </p>
       ) : null}
@@ -2947,7 +2946,7 @@ function DataBackupSection() {
     } catch (err) {
       setMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : String(err),
+        text: formatUnknownError(err),
       });
     } finally {
       setExporting(false);
@@ -3174,7 +3173,7 @@ function ItemRow({
       setValue(await translateSingleMenuValue(value));
       onMessage('自动翻译已补全缺失字段');
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : String(err));
+      onMessage(formatUnknownError(err));
     } finally {
       setTranslating(false);
     }
