@@ -4556,3 +4556,9 @@ textarea { min-height: 100px; padding: 10px 12px; resize: vertical; }
   .settings-brand-grid { grid-template-columns: 1fr; }
   .settings-hero-preview-wrap { max-height: 200px; }
 }
+.field-label { color: #374151; display: flex; flex-direction: column; font-size: 13px; font-weight: 600; gap: 6px; width: 100%; }
+.field-input { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; color: #111827; font-size: 14px; height: 42px; outline: none; padding: 0 12px; transition: border-color .15s, box-shadow .15s; width: 100%; }
+.field-input:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(185,28,28,.12); }
+textarea.text-field { border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-size: 14px; min-height: 110px; outline: none; padding: 10px 12px; resize: vertical; width: 100%; }
+textarea.text-field:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(185,28,28,.12); }
+.settings-grid-2 .field-label, .settings-grid-3 .field-label { width: 100%; }

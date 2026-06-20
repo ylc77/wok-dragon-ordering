@@ -3049,9 +3049,9 @@ function TextField({
   type?: string;
 }) {
   return (
-    <label>
+    <label className="field-label">
       {label}
-      <input value={value ?? ''} type={type} onChange={(event) => onChange(event.target.value)} />
+      <input className="field-input" value={value ?? ''} type={type} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
