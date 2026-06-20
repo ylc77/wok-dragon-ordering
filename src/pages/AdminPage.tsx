@@ -1952,13 +1952,15 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
       {printWarning ? <p className="print-warning-banner">⚠ {printWarning}<button type="button" onClick={() => setPrintWarning(null)} className="print-warning-dismiss">×</button></p> : null}
 
       {/* ─ 批量操作 ─ */}
-      {selectedOrderIds.size > 0 ? (
         <div className="bulk-action-bar">
-          <strong>已选 {selectedOrderIds.size} 张订单</strong>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={filteredOrders.length > 0 && filteredOrders.every((o) => selectedOrderIds.has(o.id))} onChange={(e) => { if (e.target.checked) setSelectedOrderIds(new Set(filteredOrders.map((o) => o.id))); else setSelectedOrderIds(new Set()); }} />
+            全选
+          </label>
+          <strong>已选 {selectedOrderIds.size} 张</strong>
           <button className="danger-inline" type="button" disabled={selectedOrderIds.size === 0} onClick={() => promptDeleteOrders(Array.from(selectedOrderIds), `批量删除 ${selectedOrderIds.size} 张订单`)}><Trash2 size={14} /> 批量删除</button>
-          <button className="secondary-button" type="button" onClick={() => setSelectedOrderIds(new Set())}>取消</button>
+          {selectedOrderIds.size > 0 ? <button className="secondary-button" type="button" onClick={() => setSelectedOrderIds(new Set())}>取消</button> : null}
         </div>
-      ) : null}
 
       {/* ─ 订单列表 ─ */}
       <div className="order-list-new">

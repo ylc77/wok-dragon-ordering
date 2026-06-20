@@ -1339,7 +1339,7 @@ button:disabled {
 }
 
 .admin-content {
-  max-width: 1280px;
+  max-width: 1400px;
   min-width: 0;
   padding: 28px;
   width: 100%;
@@ -4092,8 +4092,8 @@ body {
 .stat-card.accent-green { border-left: 4px solid #16a34a; }
 .stat-card.accent-gray { border-left: 4px solid #9ca3af; }
 
-.tool-card { flex: 0 0 auto; gap: 8px; min-width: 130px; }
-.tool-row { align-items: center; cursor: pointer; display: flex; font-size: 13px; font-weight: 600; gap: 6px; }
+.tool-card { flex: 0 0 auto; gap: 10px; min-height: 80px; min-width: 140px; }
+.tool-row { align-items: center; cursor: pointer; display: flex; font-size: 13px; font-weight: 600; gap: 8px; }
 .tool-row input { accent-color: var(--accent); }
 
 .auto-print-chip, .sound-chip { display: none; }
@@ -4118,7 +4118,7 @@ body {
 }
 .order-card-row + .order-card-row { border-top: 1px solid #f3f4f6; }
 .ocr-left { display: flex; flex-direction: column; gap: 6px; }
-.ocr-table { font-size: 19px; font-weight: 800; }
+.ocr-table { font-size: 21px; font-weight: 800; }
 .ocr-number { color: #6b7280; font-size: 14px; }
 .ocr-time { color: #9ca3af; font-size: 12.5px; }
 .ocr-status { border-radius: 5px; color: #fff; display: inline-block; font-size: 13px; font-weight: 700; padding: 4px 12px; width: fit-content; }
