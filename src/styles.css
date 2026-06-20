@@ -68,14 +68,12 @@ button:disabled {
   align-items: center;
   color: #fff;
   display: flex;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
-  gap: 6px;
-  margin-bottom: 6px;
-  overflow: hidden;
-  padding: 0 4px;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 2px 6px;
   text-decoration: none;
-  white-space: nowrap;
 }
 
 .brand-mark {
@@ -1198,8 +1196,8 @@ button:disabled {
   flex-shrink: 0;
   gap: 2px;
   justify-content: space-between;
-  padding: 12px 10px;
-  width: 110px;
+  padding: 16px 14px;
+  width: 180px;
 }
 
 .admin-nav-list {
@@ -1216,10 +1214,10 @@ button:disabled {
   border-radius: 6px;
   color: rgba(255,255,255,.7);
   display: flex;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 700;
-  gap: 7px;
-  padding: 7px 8px;
+  gap: 10px;
+  padding: 10px 12px;
   text-align: left;
   transition: background .15s, color .15s;
 }
