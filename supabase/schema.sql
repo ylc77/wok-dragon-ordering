@@ -703,11 +703,11 @@ begin
   if not exists (
     select 1
     from table_sessions s
-    join table_session_participants p on p.session_id = s.id
+    join table_session_participants tsp on tsp.session_id = s.id
     where s.id = p_session_id
       and s.status = 'active'
       and s.bill_request_status = 'none'
-      and p.user_id = v_user_id
+      and tsp.user_id = v_user_id
   ) then
     raise exception 'not a participant of this active table session';
   end if;
@@ -764,11 +764,11 @@ begin
   into v_session_id
   from cart_items ci
   join table_sessions s on s.id = ci.session_id
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   where ci.id = p_cart_item_id
     and s.status = 'active'
     and s.bill_request_status = 'none'
-    and p.user_id = v_user_id;
+    and tsp.user_id = v_user_id;
 
   if v_session_id is null then
     raise exception 'cart item is not available for this user';
@@ -803,11 +803,11 @@ begin
   into v_session_id
   from cart_items ci
   join table_sessions s on s.id = ci.session_id
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   where ci.id = p_cart_item_id
     and s.status = 'active'
     and s.bill_request_status = 'none'
-    and p.user_id = v_user_id;
+    and tsp.user_id = v_user_id;
 
   if v_session_id is null then
     raise exception 'cart item is not available for this user';
@@ -840,11 +840,11 @@ begin
   into v_session_id
   from cart_items ci
   join table_sessions s on s.id = ci.session_id
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   where ci.id = p_cart_item_id
     and s.status = 'active'
     and s.bill_request_status = 'none'
-    and p.user_id = v_user_id;
+    and tsp.user_id = v_user_id;
 
   if v_session_id is null then
     raise exception 'cart item is not available for this user';
@@ -902,11 +902,11 @@ begin
   select s.table_id
   into v_table_id
   from table_sessions s
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   where s.id = p_session_id
     and s.status = 'active'
     and s.bill_request_status = 'none'
-    and p.user_id = v_user_id
+    and tsp.user_id = v_user_id
   for update of s;
 
   if v_table_id is null then
@@ -1547,12 +1547,12 @@ begin
   select s.table_id
   into v_table_id
   from table_sessions s
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   join restaurant_tables t on t.id = s.table_id
   where s.id = p_closed_session_id
     and s.status = 'closed'
     and s.closed_at > now() - interval '24 hours'
-    and p.user_id = v_user_id
+    and tsp.user_id = v_user_id
     and t.qr_token = p_qr_token
     and t.is_active = true;
 
@@ -1846,9 +1846,9 @@ begin
     s.bill_payment_method
   from table_sessions s
   join restaurant_tables t on t.id = s.table_id
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   where s.id = p_session_id
-    and p.user_id = v_user_id
+    and tsp.user_id = v_user_id
     and t.qr_token = p_qr_token
     and t.is_active = true;
 
@@ -1897,10 +1897,10 @@ begin
   into v_table_id, v_table_number
   from table_sessions s
   join restaurant_tables t on t.id = s.table_id
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   where s.id = p_session_id
     and s.status = 'active'
-    and p.user_id = v_user_id
+    and tsp.user_id = v_user_id
   for update of s;
 
   if v_table_id is null then

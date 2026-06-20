@@ -74,12 +74,12 @@ begin
   into v_existing_id, v_existing_qty
   from cart_items ci
   join table_sessions s on s.id = ci.session_id
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   where ci.session_id = p_session_id
     and ci.menu_item_id = p_menu_item_id
     and s.status = 'active'
     and s.bill_request_status = 'none'
-    and p.user_id = v_user_id
+    and tsp.user_id = v_user_id
     and coalesce(ci.note, '') = coalesce(p_note, '');
 
   if v_existing_id is not null then
@@ -146,11 +146,11 @@ begin
   into v_session_id
   from cart_items ci
   join table_sessions s on s.id = ci.session_id
-  join table_session_participants p on p.session_id = s.id
+  join table_session_participants tsp on tsp.session_id = s.id
   where ci.id = p_cart_item_id
     and s.status = 'active'
     and s.bill_request_status = 'none'
-    and p.user_id = v_user_id;
+    and tsp.user_id = v_user_id;
 
   if v_session_id is null then
     raise exception 'cart item is not available for this user';
