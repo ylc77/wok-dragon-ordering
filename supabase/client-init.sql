@@ -2627,3 +2627,6 @@ on conflict do nothing;
 insert into public.restaurant_tables (table_number, label, is_active)
 select generate_series(1, 10), 'Table ' || generate_series(1, 10), true
 where not exists (select 1 from public.restaurant_tables);
+
+-- 菜单分类封面图
+alter table public.menu_categories add column if not exists image_url text;

@@ -785,7 +785,7 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
   async function saveCategory(category: Partial<MenuCategory>) {
     if (!supabase) return;
     const isNew = !category.id;
-    const payload = { name_zh: category.name_zh ?? '', name_en: category.name_en ?? '', name_el: category.name_el ?? '', sort_order: Number(category.sort_order ?? 0), is_active: Boolean(category.is_active) };
+    const payload = { name_zh: category.name_zh ?? '', name_en: category.name_en ?? '', name_el: category.name_el ?? '', image_url: category.image_url || null, sort_order: Number(category.sort_order ?? 0), is_active: Boolean(category.is_active) };
     const { error } = category.id ? await supabase.from('menu_categories').update(payload).eq('id', category.id) : await supabase.from('menu_categories').insert(payload);
     if (error) onMessage(error.message); else toast(isNew ? '分类已创建' : '分类已保存');
     if (!error) { setDraft(emptyCategory); setShowNewForm(false); setEditingId(null); load(); }
