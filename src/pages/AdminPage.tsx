@@ -687,66 +687,99 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
 
   return (
     <AdminSection title="餐馆信息" subtitle="管理餐馆名称、地址、营业时间、联系方式、外卖平台和收款方式" onRefresh={load}>
-      <section className={`ordering-control-card ${settings.ordering_enabled === false ? 'is-paused' : ''}`}>
+      {/* ── 接单状态 ── */}
+      <div className="settings-card ordering-status">
         <div>
-          {settings.ordering_enabled === false ? <PauseCircle size={24} /> : <PlayCircle size={24} />}
+          {settings.ordering_enabled === false ? <PauseCircle size={26} /> : <PlayCircle size={26} />}
           <span>
             <strong>{settings.ordering_enabled === false ? '全店已暂停接单' : '全店正在接单'}</strong>
             <small>{settings.ordering_enabled === false && settings.ordering_paused_at ? `暂停于 ${new Date(settings.ordering_paused_at).toLocaleString('zh-CN')}` : '顾客可以正常加菜并提交订单'}</small>
           </span>
         </div>
-        <button className={settings.ordering_enabled === false ? 'primary-button' : 'danger-inline'} type="button" onClick={toggleOrdering}>
+        <button className={settings.ordering_enabled === false ? 'primary-button' : 'settings-danger-btn'} type="button" onClick={toggleOrdering}>
           {settings.ordering_enabled === false ? <PlayCircle size={16} /> : <PauseCircle size={16} />}
           {settings.ordering_enabled === false ? '恢复接单' : '暂停接单'}
         </button>
-      </section>
-      <div className="admin-language-panels">
-        <section><h3>简体中文</h3><div className="admin-form-grid">
-          <TextField label="餐馆名称" value={settings.name_zh} onChange={(v) => setSettings({ ...settings, name_zh: v })} />
-          <TextField label="地址" value={settings.address_zh} onChange={(v) => setSettings({ ...settings, address_zh: v })} />
-          <TextField label="营业时间" value={settings.opening_hours_zh} onChange={(v) => setSettings({ ...settings, opening_hours_zh: v })} />
-          <label>餐馆介绍<textarea className="text-field" rows={3} value={settings.intro_zh ?? ''} onChange={(e) => setSettings({ ...settings, intro_zh: e.target.value })} /></label>
-        </div></section>
-        <section><h3>English</h3><div className="admin-form-grid">
-          <TextField label="Restaurant name" value={settings.name_en} onChange={(v) => setSettings({ ...settings, name_en: v })} />
-          <TextField label="Address" value={settings.address_en} onChange={(v) => setSettings({ ...settings, address_en: v })} />
-          <TextField label="Opening hours" value={settings.opening_hours_en} onChange={(v) => setSettings({ ...settings, opening_hours_en: v })} />
-          <label>Introduction<textarea className="text-field" rows={3} value={settings.intro_en ?? ''} onChange={(e) => setSettings({ ...settings, intro_en: e.target.value })} /></label>
-        </div></section>
-        <section><h3>Ελληνικά</h3><div className="admin-form-grid">
-          <TextField label="Όνομα" value={settings.name_el} onChange={(v) => setSettings({ ...settings, name_el: v })} />
-          <TextField label="Διεύθυνση" value={settings.address_el} onChange={(v) => setSettings({ ...settings, address_el: v })} />
-          <TextField label="Ωράριο" value={settings.opening_hours_el} onChange={(v) => setSettings({ ...settings, opening_hours_el: v })} />
-          <label>Παρουσίαση<textarea className="text-field" rows={3} value={settings.intro_el ?? ''} onChange={(e) => setSettings({ ...settings, intro_el: e.target.value })} /></label>
-        </div></section>
       </div>
-      <div className="admin-form-panel">
-        <h3>联系方式与平台</h3>
-        <div className="admin-form-grid">
-        <SettingsImageField label="Logo 图片链接" value={settings.logo_url} onChange={(v) => setSettings({ ...settings, logo_url: v })} uploadType="logo" toast={toast} tip="推荐 512×512 或 600×200，PNG/WebP，透明背景更好" />
-        <SettingsImageField label="首页主图链接" value={settings.hero_image_url} onChange={(v) => setSettings({ ...settings, hero_image_url: v })} uploadType="hero" toast={toast} tip="推荐 1600×900 或 1920×1080，16:9 横向图，主体居中，系统自动压缩为 WebP" />
-        <TextField label="电话" value={settings.phone} onChange={(v) => setSettings({ ...settings, phone: v })} />
-        <TextField label="WhatsApp 链接" value={settings.whatsapp_url} onChange={(v) => setSettings({ ...settings, whatsapp_url: v })} />
-        <TextField label="Instagram 链接" value={settings.instagram_url} onChange={(v) => setSettings({ ...settings, instagram_url: v })} />
-        <TextField label="Google Maps 链接" value={settings.map_url} onChange={(v) => setSettings({ ...settings, map_url: v })} />
-        <TextField label="Wolt 外卖链接" value={settings.wolt_url} onChange={(v) => setSettings({ ...settings, wolt_url: v })} />
-        <TextField label="efood 外卖链接" value={settings.efood_url} onChange={(v) => setSettings({ ...settings, efood_url: v })} />
-        <TextField label="Box 外卖链接" value={settings.box_url} onChange={(v) => setSettings({ ...settings, box_url: v })} />
+
+      {/* ── 基础信息 ── */}
+      <div className="settings-card">
+        <div className="settings-card-head"><h3>基础信息</h3><p className="settings-card-desc">餐馆名称、地址、营业时间和简介会显示在前台页面。</p></div>
+        <div className="admin-language-panels">
+          <section><h4>简体中文</h4>
+            <TextField label="餐馆名称" value={settings.name_zh} onChange={(v) => setSettings({ ...settings, name_zh: v })} />
+            <TextField label="地址" value={settings.address_zh} onChange={(v) => setSettings({ ...settings, address_zh: v })} />
+            <TextField label="营业时间" value={settings.opening_hours_zh} onChange={(v) => setSettings({ ...settings, opening_hours_zh: v })} />
+            <label>餐馆介绍<textarea className="text-field" rows={4} style={{ minHeight: '110px' }} value={settings.intro_zh ?? ''} onChange={(e) => setSettings({ ...settings, intro_zh: e.target.value })} /></label>
+          </section>
+          <section><h4>English</h4>
+            <TextField label="Restaurant name" value={settings.name_en} onChange={(v) => setSettings({ ...settings, name_en: v })} />
+            <TextField label="Address" value={settings.address_en} onChange={(v) => setSettings({ ...settings, address_en: v })} />
+            <TextField label="Opening hours" value={settings.opening_hours_en} onChange={(v) => setSettings({ ...settings, opening_hours_en: v })} />
+            <label>Introduction<textarea className="text-field" rows={4} style={{ minHeight: '110px' }} value={settings.intro_en ?? ''} onChange={(e) => setSettings({ ...settings, intro_en: e.target.value })} /></label>
+          </section>
+          <section><h4>Ελληνικά</h4>
+            <TextField label="Όνομα" value={settings.name_el} onChange={(v) => setSettings({ ...settings, name_el: v })} />
+            <TextField label="Διεύθυνση" value={settings.address_el} onChange={(v) => setSettings({ ...settings, address_el: v })} />
+            <TextField label="Ωράριο" value={settings.opening_hours_el} onChange={(v) => setSettings({ ...settings, opening_hours_el: v })} />
+            <label>Παρουσίαση<textarea className="text-field" rows={4} style={{ minHeight: '110px' }} value={settings.intro_el ?? ''} onChange={(e) => setSettings({ ...settings, intro_el: e.target.value })} /></label>
+          </section>
         </div>
       </div>
-      <div className="admin-form-panel">
-        <h3>顾客付款方式</h3>
-        <p className="muted">至少保留一种。关闭后，顾客结账弹窗不会显示该选项。</p>
-        <div className="settings-checkbox-row">
-          <label className="checkbox-label"><input type="checkbox" checked={settings.accept_pos_payment !== false} onChange={(event) => setSettings({ ...settings, accept_pos_payment: event.target.checked })} />刷卡 / POS</label>
-          <label className="checkbox-label"><input type="checkbox" checked={settings.accept_cash_payment !== false} onChange={(event) => setSettings({ ...settings, accept_cash_payment: event.target.checked })} />现金</label>
+
+      {/* ── 品牌图片 ── */}
+      <div className="settings-card">
+        <div className="settings-card-head"><h3>品牌图片</h3><p className="settings-card-desc">上传餐馆 Logo 和首页主图，用于前台导航栏、首页 Hero 和品牌展示。</p></div>
+        <div className="settings-brand-grid">
+          <div className="settings-brand-col">
+            <h4>Logo</h4>
+            <SettingsImageField label="Logo 图片链接" value={settings.logo_url} onChange={(v) => setSettings({ ...settings, logo_url: v })} uploadType="logo" toast={toast} />
+            <div className="settings-brand-preview">{settings.logo_url ? <img src={settings.logo_url} alt="Logo" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : <span className="settings-preview-empty">暂无 Logo</span>}</div>
+            <p className="settings-image-tip">推荐 512×512 或 600×200，PNG/WebP，透明背景更好。系统自动压缩为 WebP。</p>
+          </div>
+          <div className="settings-brand-col">
+            <h4>首页主图</h4>
+            <SettingsImageField label="首页主图链接" value={settings.hero_image_url} onChange={(v) => setSettings({ ...settings, hero_image_url: v })} uploadType="hero" toast={toast} />
+            <div className="settings-hero-preview-wrap">{settings.hero_image_url ? <img src={settings.hero_image_url} alt="Hero" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : <span className="settings-preview-empty">暂无首页图</span>}</div>
+            <p className="settings-image-tip">推荐 1600×900 或 1920×1080，16:9 横向图。适合餐厅环境、招牌菜、温暖用餐氛围。系统自动压缩为 WebP。</p>
+          </div>
         </div>
       </div>
+
+      {/* ── 联系方式 ── */}
+      <div className="settings-card">
+        <div className="settings-card-head"><h3>联系方式</h3></div>
+        <div className="settings-grid-2">
+          <TextField label="电话" value={settings.phone} onChange={(v) => setSettings({ ...settings, phone: v })} />
+          <TextField label="WhatsApp 链接" value={settings.whatsapp_url} onChange={(v) => setSettings({ ...settings, whatsapp_url: v })} />
+          <TextField label="Instagram 链接" value={settings.instagram_url} onChange={(v) => setSettings({ ...settings, instagram_url: v })} />
+          <TextField label="Google Maps 链接" value={settings.map_url} onChange={(v) => setSettings({ ...settings, map_url: v })} />
+        </div>
+      </div>
+
+      {/* ── 外卖平台 ── */}
+      <div className="settings-card">
+        <div className="settings-card-head"><h3>外卖平台</h3><p className="settings-card-desc">填写后前台会显示对应外卖平台入口，留空则不显示。</p></div>
+        <div className="settings-grid-3">
+          <TextField label="Wolt 外卖链接" value={settings.wolt_url} onChange={(v) => setSettings({ ...settings, wolt_url: v })} />
+          <TextField label="efood 外卖链接" value={settings.efood_url} onChange={(v) => setSettings({ ...settings, efood_url: v })} />
+          <TextField label="Box 外卖链接" value={settings.box_url} onChange={(v) => setSettings({ ...settings, box_url: v })} />
+        </div>
+      </div>
+
+      {/* ── 付款方式 ── */}
+      <div className="settings-card">
+        <div className="settings-card-head"><h3>顾客付款方式</h3><p className="settings-card-desc">至少保留一种。关闭后，顾客结账弹窗不会显示该选项。</p></div>
+        <div className="settings-payment-options">
+          <label className={`settings-payment-label${settings.accept_pos_payment !== false ? ' selected' : ''}`}><input type="checkbox" checked={settings.accept_pos_payment !== false} onChange={(e) => setSettings({ ...settings, accept_pos_payment: e.target.checked })} />💳 刷卡 / POS</label>
+          <label className={`settings-payment-label${settings.accept_cash_payment !== false ? ' selected' : ''}`}><input type="checkbox" checked={settings.accept_cash_payment !== false} onChange={(e) => setSettings({ ...settings, accept_cash_payment: e.target.checked })} />💵 现金</label>
+        </div>
+      </div>
+
+      {/* ── 保存栏 ── */}
       <div className="settings-save-bar">
-        <button className="primary-button" type="button" onClick={save} style={{ minWidth: '160px', minHeight: '40px', fontSize: '15px' }}>
-          <Save size={16} />
-          保存
-        </button>
+        <span className="settings-save-hint">修改后请点击保存</span>
+        <button className="primary-button" type="button" onClick={save} style={{ minWidth: '160px', minHeight: '44px', fontSize: '15px' }}><Save size={16} />保存</button>
       </div>
     </AdminSection>
   );
