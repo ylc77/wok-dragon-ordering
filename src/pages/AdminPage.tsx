@@ -320,7 +320,7 @@ export function AdminPage() {
         </header>
         <section className="admin-content">
           {message ? <p className="admin-message">{message}</p> : null}
-          {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} onOpenOrders={() => setTab('orders')} /> : null}
+          {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} onOpenOrders={() => setTab('orders')} setTab={setTab} /> : null}
           {tab === 'orders' ? <OrderManager syncVersion={syncVersion} onMessage={setMessage} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} /> : null}
           {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} /> : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} /> : null}
@@ -387,10 +387,12 @@ function Dashboard({
   onMessage,
   onOpenOrders,
   syncVersion,
+  setTab,
 }: {
   onMessage: (value: string | null) => void;
   onOpenOrders: () => void;
   syncVersion: number;
+  setTab: (tab: AdminTab) => void;
 }) {
   const [summary, setSummary] = useState<AdminDashboardSummary>({
     today_order_count: 0,
@@ -432,35 +434,53 @@ function Dashboard({
     } catch { /* silent */ }
   }
 
+  const avgPerOrder = summary.today_order_count > 0 ? Math.round(Number(summary.today_revenue) / summary.today_order_count) : 0;
+
   return (
-    <AdminSection title="经营概览" onRefresh={load}>
-      <div className="dashboard-grid">
-        <div className="summary-tile urgent">
-          <span>今日订单数量</span>
+    <AdminSection title="经营概览" subtitle="查看今日订单、营业额、桌台状态和热销菜品" onRefresh={load}>
+      {/* ─ 核心指标 ─ */}
+      <div className="dash-stat-grid">
+        <div className="dash-stat accent-red">
+          <span>今日订单</span>
           <strong>{summary.today_order_count}</strong>
         </div>
-        <div className="summary-tile">
-          <span>今日营业额（已付款）</span>
+        <div className="dash-stat accent-green">
+          <span>今日营业额</span>
           <strong>{formatPrice(Number(summary.today_revenue))}</strong>
         </div>
-        <div className="summary-tile">
+        <div className="dash-stat accent-orange">
           <span>待处理订单</span>
           <strong>{summary.pending_count}</strong>
         </div>
-        <div className={`summary-tile${tableStatuses.active > 0 ? ' active' : ''}`}>
-          <span>当前使用中桌台</span>
+        <div className="dash-stat accent-blue">
+          <span>使用中桌台</span>
           <strong>{tableStatuses.active}</strong>
         </div>
-        <div className={`summary-tile${tableStatuses.billPending > 0 ? ' urgent' : ''}`}>
+        <div className="dash-stat accent-yellow">
           <span>待付款桌台</span>
           <strong>{tableStatuses.billPending}</strong>
         </div>
-        <div className={`summary-tile${tableStatuses.joinRequests > 0 ? ' urgent' : ''}`}>
+        <div className="dash-stat accent-purple">
           <span>待处理加入请求</span>
           <strong>{tableStatuses.joinRequests}</strong>
         </div>
+        {summary.today_order_count > 0 ? (
+          <div className="dash-stat accent-teal">
+            <span>平均客单价</span>
+            <strong>{formatPrice(avgPerOrder)}</strong>
+          </div>
+        ) : null}
       </div>
 
+      {/* ─ 快捷操作 ─ */}
+      <div className="dash-quick-actions">
+        <button className="quick-action-btn" onClick={() => setTab('orders')}><ClipboardList size={16} />查看订单</button>
+        <button className="quick-action-btn" onClick={() => setTab('items')}><UtensilsCrossed size={16} />管理菜品</button>
+        <button className="quick-action-btn" onClick={() => setTab('tables')}><QrCode size={16} />管理桌台</button>
+        <button className="quick-action-btn" onClick={() => setTab('settings')}><Building2 size={16} />餐馆设置</button>
+      </div>
+
+      {/* ─ 热销菜品 ─ */}
       <div className="admin-panel-card">
         <div className="section-title-row compact">
           <div>
@@ -468,8 +488,7 @@ function Dashboard({
             <p>不统计已取消订单，按销量排序。</p>
           </div>
           <button className="secondary-button" type="button" onClick={onOpenOrders}>
-            <ClipboardList size={16} />
-            查看全部历史订单
+            <ClipboardList size={16} />查看全部历史订单
           </button>
         </div>
         {summary.hot_items.length === 0 ? (
@@ -481,8 +500,8 @@ function Dashboard({
         ) : (
           <div className="hot-item-list">
             {summary.hot_items.map((item, index) => (
-              <div key={item.name}>
-                <span>{index + 1}</span>
+              <div key={item.name} className={index < 3 ? 'top-three' : ''}>
+                <span className="hot-rank">{index + 1}</span>
                 <strong>{item.name}</strong>
                 <em>{item.quantity} 份</em>
                 <b>{formatPrice(item.total)}</b>
@@ -2879,17 +2898,22 @@ function DataBackupSection() {
 
 function AdminSection({
   title,
+  subtitle,
   children,
   onRefresh,
 }: {
   title: string;
+  subtitle?: string;
   children: ReactNode;
   onRefresh?: () => void;
 }) {
   return (
     <section>
       <div className="admin-section-header">
-        <h1>{title}</h1>
+        <div>
+          <h1>{title}</h1>
+          {subtitle ? <p className="admin-section-subtitle">{subtitle}</p> : null}
+        </div>
         {onRefresh ? (
           <button className="secondary-button" onClick={onRefresh} type="button">
             <RefreshCw size={16} />

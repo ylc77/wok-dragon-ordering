@@ -1346,10 +1346,89 @@ button:disabled {
 }
 
 .admin-section-header {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   justify-content: space-between;
   margin-bottom: 22px;
+}
+.admin-section-subtitle {
+  color: #6b7280;
+  font-size: 13.5px;
+  margin: 4px 0 0;
+}
+
+/* ── 仪表盘 ── */
+.dash-stat-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  margin-bottom: 16px;
+}
+.dash-stat {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #d1d5db;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  min-height: 80px;
+  padding: 18px 20px;
+}
+.dash-stat span { color: #6b7280; font-size: 13px; font-weight: 600; }
+.dash-stat strong { font-size: 28px; font-weight: 900; }
+.dash-stat.accent-red { border-left-color: #dc2626; }
+.dash-stat.accent-green { border-left-color: #16a34a; }
+.dash-stat.accent-orange { border-left-color: #f59e0b; }
+.dash-stat.accent-blue { border-left-color: #2563eb; }
+.dash-stat.accent-yellow { border-left-color: #eab308; }
+.dash-stat.accent-purple { border-left-color: #8b5cf6; }
+.dash-stat.accent-teal { border-left-color: #14b8a6; }
+
+.dash-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.quick-action-btn {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+  padding: 8px 14px;
+  transition: all .15s;
+}
+.quick-action-btn:hover { background: #f3f4f6; border-color: var(--accent); color: var(--accent); }
+
+.hot-rank {
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 50%;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+.hot-item-list .top-three .hot-rank { background: var(--accent); color: #fff; }
+
+@media (max-width: 1024px) {
+  .dash-stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .dash-stat-grid { grid-template-columns: 1fr; }
+  .dash-stat { min-height: 64px; padding: 14px 16px; }
+  .dash-stat strong { font-size: 24px; }
+  .dash-quick-actions { gap: 6px; }
+  .quick-action-btn { flex: 1 1 45%; justify-content: center; }
 }
 
 .admin-form-grid {
