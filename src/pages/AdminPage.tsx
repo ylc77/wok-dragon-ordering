@@ -472,10 +472,6 @@ function Dashboard({
           <span>待处理订单</span>
           <strong>{summary.pending_count}</strong>
         </div>
-        <div className="summary-tile">
-          <span>制作中订单</span>
-          <strong>{summary.preparing_count}</strong>
-        </div>
         <div className={`summary-tile${tableStatuses.active > 0 ? ' active' : ''}`}>
           <span>当前使用中桌台</span>
           <strong>{tableStatuses.active}</strong>
@@ -1980,7 +1976,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
           <ClipboardList size={16} />
           全部 {stats.total_orders}
         </button>
-        {(Object.keys(statusLabels) as OrderStatus[]).map((status) => (
+        {(Object.keys(statusLabels) as OrderStatus[]).filter((s) => s !== 'preparing' && s !== 'served').map((status) => (
           <button
             className={statusFilter === status ? 'selected' : ''}
             type="button"
@@ -2039,7 +2035,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
                 </label>
                 <div className="session-status-counts">
                   {(Object.keys(statusLabels) as OrderStatus[])
-                    .filter((status) => group.statusCounts[status] > 0)
+                    .filter((status) => group.statusCounts[status] > 0 && status !== 'preparing' && status !== 'served')
                     .map((status) => (
                       <span className="order-status-badge" key={status}>
                         {statusIcons[status]}
@@ -2119,7 +2115,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
                         {order.kitchen_printed_at ? '重新打印厨房小票' : '打印厨房小票'}
                       </button>
                       {(Object.keys(statusLabels) as OrderStatus[])
-                        .filter((status) => status !== 'paid' || order.status === 'paid')
+                        .filter((status) => status !== 'paid' && status !== 'preparing' && status !== 'served' || (order.status === 'paid' && status === 'paid'))
                         .map((status) => (
                         <button
                           className={order.status === status ? 'selected' : ''}
