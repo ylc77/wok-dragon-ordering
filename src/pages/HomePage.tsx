@@ -115,31 +115,19 @@ export function HomePage() {
             {settings?.logo_url ? <img className="brand-logo" src={settings.logo_url} alt="" /> : <span className="brand-mark">餐</span>}
             <strong>{name}</strong>
           </div>
-          <h1>{name}</h1>
-          <p>{t('home.subtitle')}</p>
+          <h1>{name || 'Wok Dragon'}</h1>
+          <p>{intro || t('home.subtitle')}</p>
           <div className="hero-actions">
-            <Link className="primary-button" to="/menu">
-              <UtensilsCrossed size={18} />
-              {t('home.menuCta')}
-            </Link>
-            {settings?.map_url ? (
-              <a className="secondary-button" href={settings.map_url} target="_blank" rel="noreferrer">
-                <MapPin size={18} />
-                {t('common.viewMap')}
-              </a>
-            ) : null}
+            <Link className="primary-button" to="/menu"><UtensilsCrossed size={18} />{t('home.menuCta')}</Link>
+            {settings?.map_url ? <a className="secondary-button" href={settings.map_url} target="_blank" rel="noreferrer"><MapPin size={18} />{t('common.viewMap')}</a> : null}
           </div>
           <p className="muted">{t('home.orderHint')}</p>
           {error ? <p className="error-text">{error}</p> : null}
         </div>
         <div className="hero-media">
           {heroImageUrl ? (
-            <img src={heroImageUrl} alt={heroItem ? getLocalizedField(lang, {
-              zh: heroItem.name_zh,
-              en: heroItem.name_en,
-              el: heroItem.name_el,
-            }) : name} />
-          ) : <div className="hero-image-fallback" aria-hidden="true">餐</div>}
+            <img src={heroImageUrl} alt={name} />
+          ) : <div className="hero-image-fallback" aria-hidden="true"><span>Wok Dragon</span><small>Express</small></div>}
         </div>
       </section>
 
@@ -149,61 +137,48 @@ export function HomePage() {
           <p>{intro || t('home.introText')}</p>
         </div>
         <div className="home-info-cards">
-          {address ? <div>
-            <span><MapPin size={15} /> {t('common.address')}</span>
-            <strong>{address}</strong>
-          </div> : null}
-          {hours ? <div>
-            <span><Clock3 size={15} /> {t('common.openingHours')}</span>
-            <strong>{hours}</strong>
-          </div> : null}
-          {settings?.phone ? (
-            <div>
-              <span><Phone size={15} /> {t('common.phone')}</span>
-              <a href={`tel:${settings.phone}`}>{settings.phone}</a>
-            </div>
-          ) : null}
+          {address ? <div><span><MapPin size={15} /> {t('common.address')}</span><strong>{address}</strong></div> : null}
+          {hours ? <div><span><Clock3 size={15} /> {t('common.openingHours')}</span><strong>{hours}</strong></div> : null}
+          {settings?.phone ? <div><span><Phone size={15} /> {t('common.phone')}</span><a href={`tel:${settings.phone}`}>{settings.phone}</a></div> : null}
         </div>
       </section>
 
       {featuredSection}
+
+      <section className="home-order-guide">
+        <h2>{lang === 'el' ? 'Παραγγελία από το τραπέζι' : 'Order from your table'}</h2>
+        <div className="order-steps">
+          <div className="order-step"><span>1</span><strong>{lang === 'el' ? 'Σαρώστε το QR' : 'Scan QR code'}</strong><p>{lang === 'el' ? 'Στο τραπέζι σας' : 'On your table'}</p></div>
+          <div className="order-step"><span>2</span><strong>{lang === 'el' ? 'Επιλέξτε πιάτα' : 'Choose dishes'}</strong><p>{lang === 'el' ? 'Από το μενού' : 'From the menu'}</p></div>
+          <div className="order-step"><span>3</span><strong>{lang === 'el' ? 'Στείλτε παραγγελία' : 'Send order'}</strong><p>{lang === 'el' ? 'Καλή όρεξη!' : 'Enjoy!'}</p></div>
+        </div>
+      </section>
+
       {categoriesSection}
 
       <section className="info-band" id="contact">
-        {address ? <div>
-          <span>{t('common.address')}</span>
-          <strong>{address}</strong>
-        </div> : null}
-        {hours ? <div>
-          <span>{t('common.openingHours')}</span>
-          <strong>{hours}</strong>
-        </div> : null}
+        {address ? <div><span>{t('common.address')}</span><strong>{address}</strong></div> : null}
+        {hours ? <div><span>{t('common.openingHours')}</span><strong>{hours}</strong></div> : null}
         <div className="contact-actions">
           <span>{t('nav.contact')}</span>
           {settings?.phone ? <a href={`tel:${settings.phone}`}>{settings.phone}</a> : null}
           {settings?.whatsapp_url ? <a className="outline-button" href={settings.whatsapp_url} target="_blank" rel="noreferrer"><MessageCircle size={15} />WhatsApp</a> : null}
           {settings?.instagram_url ? <a className="outline-button" href={settings.instagram_url} target="_blank" rel="noreferrer"><Instagram size={15} />Instagram</a> : null}
-          {settings?.map_url ? (
-            <a className="outline-button" href={settings.map_url} target="_blank" rel="noreferrer">
-              <MapPin size={15} />
-              {t('common.viewMap')}
-            </a>
-          ) : null}
+          {settings?.map_url ? <a className="outline-button" href={settings.map_url} target="_blank" rel="noreferrer"><MapPin size={15} />{t('common.viewMap')}</a> : null}
         </div>
         <div className="platforms">
           <span>{t('common.delivery')}</span>
-          <div>
-            {deliveryLinks.length ? (
-              deliveryLinks.map((link) => <PlatformButton label={link.label} url={link.url} key={link.label} />)
-            ) : (
-              <span className="delivery-placeholder">{t('home.deliveryUnavailable')}</span>
-            )}
-          </div>
+          <div>{deliveryLinks.length ? deliveryLinks.map((link) => <PlatformButton label={link.label} url={link.url} key={link.label} />) : <span className="delivery-placeholder">{t('home.deliveryUnavailable')}</span>}</div>
         </div>
       </section>
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '12px' }}>
-        <LanguageSwitch />
-      </div>
+
+      <footer className="site-footer">
+        <strong>{name || 'Wok Dragon'}</strong>
+        {address ? <p>{address}</p> : null}
+        <small>© {new Date().getFullYear()}</small>
+      </footer>
+
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '12px' }}><LanguageSwitch /></div>
     </main>
   );
 }
