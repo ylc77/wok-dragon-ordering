@@ -1530,7 +1530,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [tableFilter, setTableFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today');
+  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | '7days' | 'all' | 'custom'>('today');
   const [customDate, setCustomDate] = useState(dateToKey(new Date().toISOString()));
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -1557,6 +1557,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   const expandedNewOrderIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
   const [printConfirmOrder, setPrintConfirmOrder] = useState<Order | null>(null);
+  const [orderSearch, setOrderSearch] = useState('');
 
   useEffect(() => {
     void load({ initial: !initializedRef.current });
@@ -1858,300 +1859,157 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
 
   return (
     <AdminSection title="订单管理" onRefresh={load}>
+      {/* ─ 结账提醒 ─ */}
       {billRequests.length ? (
-        <section className="bill-request-alerts" aria-label="请求结账">
-          <div className="bill-request-alerts-head">
-            <strong>请求结账</strong>
-            <span>{billRequests.length} 桌</span>
-          </div>
-          <div className="bill-request-list">
-            {billRequests.map((request) => (
-              <article key={request.id}>
-                <div>
-                  {request.payment_method === 'pos' ? <CreditCard size={20} /> : <Banknote size={20} />}
-                  <span>
-                    <strong>{request.table_number} 号桌请求结账</strong>
-                    <small>{request.payment_method === 'pos' ? 'POS 机支付' : '现金支付'} · 请求时间 {new Date(request.requested_at).toLocaleString('zh-CN')}</small>
-                  </span>
-                </div>
-                <button className="primary-button" type="button" disabled={confirmingBillIds.has(request.id)} onClick={() => confirmBillPayment(request)}>
-                  <CheckCircle2 size={16} />
-                  {confirmingBillIds.has(request.id) ? '处理中…' : '确认已收款并清桌'}
-                </button>
-              </article>
-            ))}
-          </div>
-          <p>该桌结账后将关闭当前点餐会话，下一批顾客扫码会进入新会话。</p>
+        <section className="bill-alerts-new">
+          {billRequests.map((request) => (
+            <div className="bill-alert-item" key={request.id}>
+              <span>
+                {request.payment_method === 'pos' ? <CreditCard size={18} /> : <Banknote size={18} />}
+                <strong>{request.table_number} 号桌</strong> 请求结账 · {request.payment_method === 'pos' ? 'POS' : '现金'}
+              </span>
+              <button className="primary-button" type="button" disabled={confirmingBillIds.has(request.id)} onClick={() => confirmBillPayment(request)}>
+                {confirmingBillIds.has(request.id) ? '处理中…' : '确认收款并清桌'}
+              </button>
+            </div>
+          ))}
         </section>
       ) : null}
-      <div className="order-tools-row">
-        <label className={autoPrintEnabled ? 'auto-print-toggle enabled' : 'auto-print-toggle'}>
-          <input checked={autoPrintEnabled} type="checkbox" onChange={toggleAutoPrint} />
-          <span>
-            <strong>启用自动打印厨房小票</strong>
-            <small>仅打印 Realtime 收到且尚未打印的新 pending 订单</small>
-          </span>
-        </label>
-        {printWarning ? (
-          <span className="print-warning-banner">
-            ⚠ {printWarning}
-            <button type="button" onClick={() => setPrintWarning(null)} className="print-warning-dismiss">×</button>
-          </span>
-        ) : null}
-        <button
-          className={soundEnabled ? 'sound-toggle enabled' : 'sound-toggle'}
-          type="button"
-          onClick={() => {
-            const next = !soundEnabled;
-            onSoundEnabledChange(next);
-            if (next) {
-              playOrderNotification();
-              onMessage('声音提醒已启用');
-            } else {
-              onMessage('声音提醒已关闭');
-            }
-          }}
-        >
-          {soundEnabled ? '声音提醒已启用' : '启用声音提醒'}
-        </button>
-        <label>
-          日期
-          <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value as 'today' | 'all' | 'custom')}>
-            <option value="today">今日订单</option>
-            <option value="all">全部日期</option>
-            <option value="custom">指定日期</option>
-          </select>
-        </label>
-        {dateFilter === 'custom' ? (
-          <label>
-            选择日期
-            <input value={customDate} type="date" onChange={(event) => setCustomDate(event.target.value)} />
+
+      {/* ─ 筛选卡片 ─ */}
+      <div className="order-filter-card">
+        <div className="order-filter-row">
+          {(Object.keys(statusLabels) as OrderStatus[]).filter((s) => s !== 'preparing' && s !== 'served').map((status) => (
+            <button key={status} className={`filter-chip${statusFilter === status ? ' active' : ''}`} onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)}>
+              {statusLabels[status]} {statusCounts[status]}
+            </button>
+          ))}
+          <button className={`filter-chip${statusFilter === 'all' ? ' active' : ''}`} onClick={() => setStatusFilter('all')}>全部 {stats.total_orders}</button>
+        </div>
+        <div className="order-filter-row">
+          <label className="filter-label">
+            日期
+            <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as typeof dateFilter)}>
+              <option value="today">今日</option>
+              <option value="yesterday">昨日</option>
+              <option value="7days">近7天</option>
+              <option value="all">全部</option>
+              <option value="custom">指定日期</option>
+            </select>
           </label>
-        ) : null}
-        <label>
-          桌号
-          <select value={tableFilter} onChange={(event) => setTableFilter(event.target.value)}>
-            <option value="all">全部桌号</option>
-            {tableOptions.map((tableNumber) => (
-              <option value={tableNumber} key={tableNumber}>
-                {tableNumber} 号桌
-              </option>
-            ))}
-          </select>
-        </label>
-        <input
-          type="number"
-          min="1"
-          placeholder="快速跳转桌号"
-          className="table-jump-input"
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              const val = (event.target as HTMLInputElement).value;
-              if (val) setTableFilter(val);
-              else setTableFilter('all');
-            }
-          }}
-        />
+          {dateFilter === 'custom' ? <input value={customDate} type="date" onChange={(e) => setCustomDate(e.target.value)} className="filter-input" /> : null}
+          <label className="filter-label">
+            桌号
+            <select value={tableFilter} onChange={(e) => setTableFilter(e.target.value)}>
+              <option value="all">全部</option>
+              {tableOptions.map((n) => <option value={n} key={n}>{n} 号桌</option>)}
+            </select>
+          </label>
+          <input type="number" min="1" placeholder="跳转桌号" className="filter-input" style={{ width: '90px' }} onKeyDown={(e) => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value; setTableFilter(v || 'all'); } }} />
+          <input className="filter-input" placeholder="搜索桌号/订单号/菜名…" style={{ flex: 1 }} value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} />
+        </div>
       </div>
 
-      <div className="order-summary-grid">
-        <div className="summary-tile urgent">
+      {/* ─ 统计卡片 ─ */}
+      <div className="order-stats-row">
+        <div className="stat-card">
+          <span>今日订单</span>
+          <strong>{stats.total_orders}</strong>
+        </div>
+        <div className="stat-card accent-red">
           <span>待处理</span>
           <strong>{statusCounts.pending}</strong>
         </div>
-        <div className="summary-tile">
-          <span>进行中</span>
-          <strong>{activeOrders}</strong>
+        <div className="stat-card accent-green">
+          <span>今日营业额</span>
+          <strong>{formatPrice(Number(stats.paid_total))}</strong>
         </div>
-        <div className="summary-tile">
-          <span>已付款金额</span>
-          <strong>{formatPrice(paidTotal)}</strong>
+        <div className="stat-card accent-gray">
+          <span>已取消</span>
+          <strong>{statusCounts.cancelled}</strong>
         </div>
-      </div>
-
-      <div className="status-filter-bar" aria-label="订单状态筛选">
-        <button
-          className={statusFilter === 'all' ? 'selected' : ''}
-          type="button"
-          onClick={() => setStatusFilter('all')}
-        >
-          <ClipboardList size={16} />
-          全部 {stats.total_orders}
+        <label className="auto-print-chip">
+          <input checked={autoPrintEnabled} type="checkbox" onChange={toggleAutoPrint} />
+          自动打印
+        </label>
+        <button className={soundEnabled ? 'sound-chip on' : 'sound-chip'} onClick={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); onMessage(n ? '声音提醒已启用' : '声音提醒已关闭'); }}>
+          {soundEnabled ? '🔔 有声' : '🔕 静音'}
         </button>
-        {(Object.keys(statusLabels) as OrderStatus[]).filter((s) => s !== 'preparing' && s !== 'served').map((status) => (
-          <button
-            className={statusFilter === status ? 'selected' : ''}
-            type="button"
-            onClick={() => setStatusFilter(status)}
-            key={status}
-          >
-            {statusIcons[status]}
-            {statusLabels[status]} {statusCounts[status]}
-          </button>
+      </div>
+      {printWarning ? <p className="print-warning-banner">⚠ {printWarning}<button type="button" onClick={() => setPrintWarning(null)} className="print-warning-dismiss">×</button></p> : null}
+
+      {/* ─ 批量操作 ─ */}
+      {selectedOrderIds.size > 0 ? (
+        <div className="bulk-action-bar">
+          <strong>已选 {selectedOrderIds.size} 张订单</strong>
+          <button className="danger-inline" type="button" disabled={selectedOrderIds.size === 0} onClick={() => promptDeleteOrders(Array.from(selectedOrderIds), `批量删除 ${selectedOrderIds.size} 张订单`)}><Trash2 size={14} /> 批量删除</button>
+          <button className="secondary-button" type="button" onClick={() => setSelectedOrderIds(new Set())}>取消</button>
+        </div>
+      ) : null}
+
+      {/* ─ 订单列表 ─ */}
+      <div className="order-list-new">
+        {groupedOrders.length === 0 ? (
+          <div className="admin-empty-state"><BarChart3 size={32} /><strong>暂无订单</strong></div>
+        ) : groupedOrders.map((group) => (
+          <article className={`order-card-new${group.isClosed ? ' closed' : ''}`} key={group.sessionId}>
+            {group.orders.map((order) => {
+              const borderColor = { pending: '#dc2626', preparing: '#2563eb', served: '#16a34a', paid: '#16a34a', cancelled: '#9ca3af' }[order.status] || '#6b7280';
+              const s = order.status;
+              return (
+                <div className={`order-card-row status-${s}`} key={order.id} style={{ borderLeftColor: borderColor }}>
+                  <div className="ocr-left">
+                    <span className="ocr-table">{group.tableNumber ? `${group.tableNumber} 号桌` : '—'}</span>
+                    <span className="ocr-number">#{order.order_number}</span>
+                    <span className="ocr-time">{new Date(order.created_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="ocr-status" style={{ background: borderColor }}>{statusLabels[s]}</span>
+                    {order.payment_method ? <span className="ocr-pay">{order.payment_method === 'pos' ? '💳 刷卡' : '💵 现金'}</span> : null}
+                  </div>
+                  <div className="ocr-items">
+                    {(order.order_items ?? []).map((item) => (
+                      <div key={item.id} className="ocr-item">
+                        <b>×{item.quantity}</b> {item.item_name_zh || item.item_name_en || item.item_name_el}
+                        {item.note ? <small> · {item.note}</small> : null}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="ocr-right">
+                    <strong className="ocr-price">{formatPrice(Number(order.total_price))}</strong>
+                    <div className="ocr-actions">
+                      {(s === 'pending' || s === 'preparing') ? (
+                        <>
+                          {s === 'pending' ? <button className="mini-btn primary" onClick={() => changeStatus(order.id, 'preparing')}>接单</button> : null}
+                          <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
+                          <button className="mini-btn danger" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
+                        </>
+                      ) : s === 'paid' ? (
+                        <>
+                          <span className="ocr-paid-label">✓ 已收款</span>
+                          <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
+                        </>
+                      ) : (
+                        <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
+                      )}
+                      <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `删除订单 #${order.order_number}`)}><Trash2 size={13} /></button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </article>
         ))}
       </div>
 
-      <div className="bulk-action-bar">
-        <label className="checkbox-label">
-          <input
-            checked={filteredOrders.length > 0 && filteredOrders.every((order) => selectedOrderIds.has(order.id))}
-            type="checkbox"
-            onChange={(event) => toggleVisibleOrders(event.target.checked)}
-          />
-          选择当前筛选订单
-        </label>
-        <strong>已选择 {selectedOrderIds.size} 张订单</strong>
-        <button
-          className="danger-inline"
-          type="button"
-          disabled={selectedOrderIds.size === 0}
-          onClick={() => promptDeleteOrders(Array.from(selectedOrderIds), `批量删除 ${selectedOrderIds.size} 张订单`)}
-        >
-          <Trash2 size={15} />
-          批量删除订单
-        </button>
-      </div>
+      {/* ─ 分页 ─ */}
+      {totalPages > 1 ? (
+        <nav className="order-pagination">
+          <button className="secondary-button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>上一页</button>
+          <span>{page} / {totalPages} · {totalSessions} 个会话</span>
+          <button className="secondary-button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>下一页</button>
+        </nav>
+      ) : null}
 
-      <div className="order-admin-list">
-        {groupedOrders.length === 0 ? (
-          <div className="admin-empty-state">
-            <ClipboardList size={28} />
-            <strong>当前没有这个状态的订单</strong>
-            <span>新订单会自动刷新显示在这里。</span>
-          </div>
-        ) : null}
-        {groupedOrders.map((group) => {
-          const groupIsNew = group.orders.some((order) => newOrderIds.has(order.id));
-          const groupSelected = group.orders.every((order) => selectedOrderIds.has(order.id));
-          return (
-          <article className={`admin-order session-order status-${group.primaryStatus} ${groupIsNew ? 'is-new' : ''}`} key={group.sessionId}>
-            <div className="admin-order-head">
-              <div>
-                <label className="checkbox-label order-select">
-                  <input
-                    checked={groupSelected}
-                    type="checkbox"
-                    onChange={(event) => toggleSessionSelection(group.orders, event.target.checked)}
-                  />
-                  选择整桌总单
-                </label>
-                <div className="session-status-counts">
-                  {(Object.keys(statusLabels) as OrderStatus[])
-                    .filter((status) => group.statusCounts[status] > 0 && status !== 'preparing' && status !== 'served')
-                    .map((status) => (
-                      <span className="order-status-badge" key={status}>
-                        {statusIcons[status]}
-                        {statusLabels[status]} {group.statusCounts[status]}
-                      </span>
-                    ))}
-                  {groupIsNew ? <span className="new-order-badge">新加餐</span> : null}
-                </div>
-                <h3>
-                  {group.tableNumber ? `${group.tableNumber} 号桌` : '未知桌台'}
-                </h3>
-                <p>
-                  共 {group.orders.length} 批 · 最近加餐 {new Date(group.newestAt).toLocaleString('zh-CN')}
-                </p>
-              </div>
-              <strong className="order-total">{formatPrice(group.total)}</strong>
-            </div>
-            <div className="admin-order-items session-order-items">
-              {group.items.map((item) => (
-                <div key={item.key}>
-                  <span className="order-item-name">
-                    <b>×{item.quantity}</b>
-                    {item.item_name_zh || item.item_name_en || item.item_name_el}
-                  </span>
-                  <span className="order-item-note">{item.note ? `备注：${item.note}` : ''}</span>
-                  <strong>{formatPrice(Number(item.line_total))}</strong>
-                </div>
-              ))}
-            </div>
-            <details
-              className="order-batches"
-              open={expandedSessionIds.has(group.sessionId)}
-              onToggle={(event) => setSessionExpanded(group.sessionId, event.currentTarget.open)}
-            >
-              <summary>
-                <span><ChevronDown size={17} />加餐明细</span>
-                <strong>{group.orders.length} 批</strong>
-              </summary>
-              <div className="order-batch-list">
-                {group.orders.map((order) => (
-                  <section className={`order-batch status-${order.status} ${newOrderIds.has(order.id) ? 'is-new' : ''}`} key={order.id}>
-                    <div className="order-batch-head">
-                      <div>
-                        <label className="checkbox-label order-select">
-                          <input
-                            checked={selectedOrderIds.has(order.id)}
-                            type="checkbox"
-                            onChange={(event) => toggleOrderSelection(order.id, event.target.checked)}
-                          />
-                          选择批次
-                        </label>
-                        <span className="order-status-badge">
-                          {statusIcons[order.status]}
-                          {statusLabels[order.status]}
-                        </span>
-                        {newOrderIds.has(order.id) ? <span className="new-order-badge">新加餐</span> : null}
-                        <h4>订单 #{order.order_number}</h4>
-                        <p>{new Date(order.created_at).toLocaleString('zh-CN')}</p>
-                      </div>
-                      <strong>{formatPrice(Number(order.total_price))}</strong>
-                    </div>
-                    <div className="admin-order-items order-batch-items">
-                      {(order.order_items ?? []).map((item) => (
-                        <div key={item.id}>
-                          <span className="order-item-name">
-                            <b>×{item.quantity}</b>
-                            {item.item_name_zh || item.item_name_en || item.item_name_el}
-                          </span>
-                          <span className="order-item-note">{item.note ? `备注：${item.note}` : ''}</span>
-                          <strong>{formatPrice(Number(item.line_total))}</strong>
-                        </div>
-                      ))}
-                    </div>
-                    <footer className="order-action-row">
-                      <button type="button" onClick={() => printKitchenTicket(order)}>
-                        <Printer size={15} />
-                        {order.kitchen_printed_at ? '重新打印厨房小票' : '打印厨房小票'}
-                      </button>
-                      {(Object.keys(statusLabels) as OrderStatus[])
-                        .filter((status) => status !== 'paid' && status !== 'preparing' && status !== 'served' || (order.status === 'paid' && status === 'paid'))
-                        .map((status) => (
-                        <button
-                          className={order.status === status ? 'selected' : ''}
-                          disabled={order.status === status}
-                          key={status}
-                          onClick={() => changeStatus(order.id, status)}
-                          type="button"
-                        >
-                          {statusIcons[status]}
-                          {statusLabels[status]}
-                        </button>
-                      ))}
-                      <button className="danger-inline" type="button" onClick={() => promptDeleteOrders([order.id], `删除订单 #${order.order_number}`)}>
-                        <Trash2 size={15} />
-                        删除订单
-                      </button>
-                    </footer>
-                  </section>
-                ))}
-              </div>
-            </details>
-          </article>
-          );
-        })}
-      </div>
-      <nav className="order-pagination" aria-label="订单分页">
-        <button className="secondary-button" type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(current - 1, 1))}>
-          上一页
-        </button>
-        <span>第 {page} / {totalPages} 页 · 共 {totalSessions} 桌用餐记录</span>
-        <button className="secondary-button" type="button" disabled={page >= totalPages} onClick={() => setPage((current) => Math.min(current + 1, totalPages))}>
-          下一页
-        </button>
-      </nav>
+      {/* ─ 打印确认弹窗 ─ */}
       {printConfirmOrder ? (
         <div className="print-confirm-overlay" onClick={() => setPrintConfirmOrder(null)}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
@@ -2159,89 +2017,36 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
             <div className="print-confirm-meta">
               <span>订单 <strong>#{printConfirmOrder.order_number}</strong></span>
               <span>桌号 <strong>{printConfirmOrder.restaurant_tables?.table_number ?? '—'}</strong></span>
-              <span>{new Date(printConfirmOrder.created_at).toLocaleString('zh-CN')}</span>
-              {printConfirmOrder.kitchen_printed_at ? (
-                <span className="print-confirm-warning">⚠ 此订单已打印过，将标记为重打</span>
-              ) : null}
+              {printConfirmOrder.kitchen_printed_at ? <span className="print-confirm-warning">⚠ 重打</span> : null}
             </div>
             <div className="print-confirm-items">
               {printConfirmOrder.order_items?.map((item, i) => (
-                <div key={i} className="print-confirm-item">
-                  <strong>{item.quantity} × {item.item_name_zh || item.item_name_en || item.item_name_el}</strong>
-                  {item.note ? <small>备注：{item.note}</small> : null}
-                </div>
+                <div key={i} className="print-confirm-item"><strong>{item.quantity} × {item.item_name_zh || item.item_name_en || item.item_name_el}</strong>{item.note ? <small>备注：{item.note}</small> : null}</div>
               ))}
             </div>
             <div className="print-confirm-actions">
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => setPrintConfirmOrder(null)}
-              >
-                取消
-              </button>
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => {
-                  const order = printConfirmOrder;
-                  setPrintConfirmOrder(null);
-                  void doPrintKitchenTicket(order);
-                }}
-              >
-                <Printer size={16} />
-                确认打印
-              </button>
+              <button className="secondary-button" onClick={() => setPrintConfirmOrder(null)}>取消</button>
+              <button className="primary-button" onClick={() => { const o = printConfirmOrder; setPrintConfirmOrder(null); void doPrintKitchenTicket(o); }}><Printer size={16} />确认打印</button>
             </div>
           </div>
         </div>
       ) : null}
+
+      {/* ─ 删除确认弹窗 ─ */}
       {deleteDialogOpen && deleteTarget ? (
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <h2>删除订单验证</h2>
-            <p className="dialog-warning-text">
-              ⚠ 此操作将<strong>永久删除</strong>{deleteTarget.ids.length} 张订单及关联数据，不可恢复。
-            </p>
-            <div className="print-confirm-meta">
-              <span>{deleteTarget.label}</span>
-            </div>
+            <p className="dialog-warning-text">⚠ 此操作将<strong>永久删除</strong>{deleteTarget.ids.length} 张订单及关联数据，不可恢复。</p>
+            <div className="print-confirm-meta"><span>{deleteTarget.label}</span></div>
             <div className="dialog-password-wrap">
-              <label className="dialog-password-label">
-                请输入删除密码
-              </label>
-              <input
-                type="password"
-                className="text-field"
-                value={deletePassword}
-                onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }}
-                placeholder="输入删除密码"
-                autoFocus
-                disabled={deleting}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteOrders(); }}
-              />
+              <label className="dialog-password-label">请输入删除密码</label>
+              <input type="password" className="text-field" value={deletePassword} onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }} placeholder="输入删除密码" autoFocus disabled={deleting} onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteOrders(); }} />
             </div>
-            {deleteError ? (
-              <p className="dialog-error-text">{deleteError}</p>
-            ) : null}
+            {deleteError ? <p className="dialog-error-text">{deleteError}</p> : null}
             <div className="print-confirm-actions">
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }}
-                disabled={deleting}
-              >
-                取消
-              </button>
-              <button
-                className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'}
-                type="button"
-                onClick={() => void executeDeleteOrders()}
-                disabled={deleting}
-              >
-                <Trash2 size={16} />
-                {deleting ? '删除中…' : '确认永久删除'}
-              </button>
+              <button className="secondary-button" onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>取消</button>
+              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} onClick={() => void executeDeleteOrders()} disabled={deleting}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
             </div>
           </div>
         </div>
@@ -2335,9 +2140,20 @@ function localDayBounds(value: Date) {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-function orderDateBounds(filter: 'today' | 'all' | 'custom', customDate: string) {
+function orderDateBounds(filter: 'today' | 'yesterday' | '7days' | 'all' | 'custom', customDate: string) {
   if (filter === 'all') return { from: null, to: null };
   if (filter === 'custom') return localDayBounds(new Date(`${customDate}T00:00:00`));
+  if (filter === 'yesterday') {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return localDayBounds(d);
+  }
+  if (filter === '7days') {
+    const to = new Date();
+    const from = new Date(); from.setDate(from.getDate() - 6);
+    from.setHours(0, 0, 0, 0);
+    to.setHours(23, 59, 59, 999);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }
   return localDayBounds(new Date());
 }
 
