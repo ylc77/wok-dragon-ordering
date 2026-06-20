@@ -13,16 +13,20 @@ export function HomePage() {
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getRestaurantSettings().then(setSettings).catch((err) => setError(err.message));
-    getPublicMenu()
-      .then((menuGroups) => {
-        setGroups(menuGroups.filter((group) => group.items.length > 0).slice(0, 8));
-        setFeaturedItems(menuGroups.flatMap((group) => group.items).slice(0, 4));
-      })
-      .catch((err) => setError(err.message));
+    document.title = 'Wok Dragon';
+    Promise.all([
+      getRestaurantSettings().then(setSettings).catch((err) => setError(err.message)),
+      getPublicMenu()
+        .then((menuGroups) => {
+          setGroups(menuGroups.filter((group) => group.items.length > 0).slice(0, 8));
+          setFeaturedItems(menuGroups.flatMap((group) => group.items).slice(0, 4));
+        })
+        .catch((err) => setError(err.message)),
+    ]).finally(() => setLoading(false));
     return subscribeToRestaurantSettings(setSettings);
   }, []);
 
@@ -57,6 +61,16 @@ export function HomePage() {
   ].filter((link) => Boolean(link.url?.trim()));
   const heroItem = featuredItems.find((item) => Boolean(item.image_url));
   const heroImageUrl = settings?.hero_image_url?.trim() || heroItem?.image_url;
+
+  if (loading) {
+    return (
+      <main>
+        <section className="hero-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '40vh' }}>
+          <p style={{ color: 'var(--color-muted)', fontSize: '18px' }}>{t('common.loading')}</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main>

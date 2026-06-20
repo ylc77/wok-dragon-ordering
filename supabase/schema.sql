@@ -696,6 +696,10 @@ begin
     raise exception 'quantity must be greater than zero';
   end if;
 
+  if p_quantity > 99 then
+    raise exception 'quantity cannot exceed 99';
+  end if;
+
   if not exists (
     select 1
     from table_sessions s
@@ -750,6 +754,10 @@ begin
 
   if p_quantity is null or p_quantity <= 0 then
     raise exception 'quantity must be greater than zero';
+  end if;
+
+  if p_quantity > 99 then
+    raise exception 'quantity cannot exceed 99';
   end if;
 
   select ci.session_id
@@ -1038,6 +1046,8 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_current_status text;
 begin
   if not (select private.is_staff()) then
     raise exception 'admin or staff role is required';
@@ -1047,17 +1057,30 @@ begin
     raise exception 'invalid order status';
   end if;
 
-  if exists (select 1 from orders where id = p_order_id and status = 'paid') then
-    raise exception 'paid orders cannot be changed';
-  end if;
-
-  update orders
-  set status = p_status
+  select status into v_current_status from orders
   where id = p_order_id and deleted_at is null;
 
   if not found then
     raise exception 'order not found';
   end if;
+
+  -- paid 订单不可修改
+  if v_current_status = 'paid' then
+    raise exception 'paid orders cannot be changed';
+  end if;
+
+  -- cancelled 订单不可恢复
+  if v_current_status = 'cancelled' then
+    raise exception 'cancelled orders cannot be restored';
+  end if;
+
+  -- 只允许从 pending 或 preparing 取消
+  if p_status = 'cancelled' and v_current_status not in ('pending', 'preparing') then
+    raise exception 'only pending or preparing orders can be cancelled';
+  end if;
+
+  update orders set status = p_status
+  where id = p_order_id and deleted_at is null;
 end;
 $$;
 

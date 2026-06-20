@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, getRestaurantSettings, requireAnonymousSession } from '../lib/menuApi';
 import { hasSupabaseConfig } from '../lib/supabase';
-import { getLocalizedField } from '../lib/localized';
+import { formatPrice, getLocalizedField } from '../lib/localized';
 import {
   addCartItem,
   enterTableSession,
@@ -641,7 +641,7 @@ export function TableOrderPage() {
                     })
                   : line.menu_item_id}
               </strong>
-              <strong className="cart-line-subtotal">{formatCartPrice(Number(line.unit_price) * line.quantity)}</strong>
+              <strong className="cart-line-subtotal">{formatPrice(Number(line.unit_price) * line.quantity)}</strong>
               <div className="cart-controls">
                 <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, line.quantity - 1)}>
                   <Minus size={15} />
@@ -659,7 +659,7 @@ export function TableOrderPage() {
         })}
         <div className="cart-total">
           <span>{t('order.selectedCount', { count: cartSummary.totalQuantity })}</span>
-          <strong>{formatCartPrice(cartSummary.totalPrice)}</strong>
+          <strong>{formatPrice(cartSummary.totalPrice)}</strong>
         </div>
         <button
           className="primary-button stretch"
@@ -706,7 +706,7 @@ export function TableOrderPage() {
                         })}
                         {item.note ? <small>{item.note}</small> : null}
                       </span>
-                      <strong>{formatCartPrice(Number(item.line_total))}</strong>
+                      <strong>{formatPrice(Number(item.line_total))}</strong>
                     </div>
                   ))}
                 </section>
@@ -714,7 +714,7 @@ export function TableOrderPage() {
             </div>
             <div className="bill-grand-total">
               <span>{t('order.amountDue')}</span>
-              <strong>{formatCartPrice(billSummary.totalPrice)}</strong>
+              <strong>{formatPrice(billSummary.totalPrice)}</strong>
             </div>
             {!cartSummary.isEmpty ? <p className="bill-dialog-warning" role="alert">{t('order.billCartPending')}</p> : null}
             <button
@@ -751,7 +751,7 @@ export function TableOrderPage() {
             </div>
             <div className="payment-total">
               <span>{t('order.amountDue')}</span>
-              <strong>{formatCartPrice(billSummary.totalPrice)}</strong>
+              <strong>{formatPrice(billSummary.totalPrice)}</strong>
             </div>
             <p>{t('order.choosePayment')}</p>
             <div className="bill-payment-options">
@@ -794,7 +794,7 @@ export function TableOrderPage() {
         disabled={cartSummary.isEmpty}
         aria-label={t('order.cartBarSummary', {
           count: cartSummary.totalQuantity,
-          total: formatCartPrice(cartSummary.totalPrice),
+          total: formatPrice(cartSummary.totalPrice),
         })}
         onClick={() => setCartOpen(true)}
       >
@@ -802,7 +802,7 @@ export function TableOrderPage() {
           <ShoppingBag size={18} />
           {t('order.cartBarSummary', {
             count: cartSummary.totalQuantity,
-            total: formatCartPrice(cartSummary.totalPrice),
+            total: formatPrice(cartSummary.totalPrice),
           })}
         </span>
       </button>
@@ -842,10 +842,6 @@ function formatOrderTime(value: string, lang: Language) {
   }).format(new Date(value));
 }
 
-function formatCartPrice(price: number) {
-  return `€${price.toFixed(2)}`;
-}
-
 function DishQuantityControl({
   item,
   line,
@@ -880,7 +876,7 @@ function DishQuantityControl({
         <Minus size={15} />
       </button>
       <strong>{line.quantity}</strong>
-      <button type="button" disabled={increaseDisabled} onClick={() => onChange(line, line.quantity + 1)}>
+      <button type="button" disabled={increaseDisabled || line.quantity >= 99} onClick={() => onChange(line, line.quantity + 1)}>
         <Plus size={15} />
       </button>
     </div>

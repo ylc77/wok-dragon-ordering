@@ -1633,8 +1633,9 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
     try {
       const isReprint = Boolean(order.kitchen_printed_at);
       await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, isReprint, new Date().toISOString()));
+      printWindow.close();
       await markOrderKitchenPrinted(order.id);
-      onMessage(isReprint ? `订单 #${order.order_number} 已打开重打小票` : `订单 #${order.order_number} 已打开厨房小票`);
+      onMessage(isReprint ? `订单 #${order.order_number} 已重打厨房小票` : `订单 #${order.order_number} 厨房小票已打印`);
       load();
     } catch (err) {
       printWindow.close();
