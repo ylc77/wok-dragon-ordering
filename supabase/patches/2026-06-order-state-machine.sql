@@ -44,19 +44,22 @@ begin
 end;
 $$;
 
--- 2. 加菜上限：add_cart_item
-create or replace function public.add_cart_item(p_session_id uuid, p_menu_item_id uuid, p_quantity int, p_note text default null)
-returns void
+-- 2. 加菜上限：add_cart_item（仅加上限检查，不改变逻辑）
+create or replace function public.add_cart_item(
+  p_session_id uuid,
+  p_menu_item_id uuid,
+  p_quantity int,
+  p_note text default null
+)
+returns uuid
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
   v_user_id uuid := auth.uid();
-  v_existing_id uuid;
-  v_existing_qty int;
-  v_unit_price numeric(10,2);
-  v_total_qty int;
+  v_price numeric(10, 2);
+  v_cart_item_id uuid;
 begin
   if v_user_id is null then
     raise exception 'anonymous sign-in is required';
@@ -70,52 +73,41 @@ begin
     raise exception 'quantity cannot exceed 99';
   end if;
 
-  select ci.id, ci.quantity
-  into v_existing_id, v_existing_qty
-  from cart_items ci
-  join table_sessions s on s.id = ci.session_id
-  join table_session_participants tsp on tsp.session_id = s.id
-  where ci.session_id = p_session_id
-    and ci.menu_item_id = p_menu_item_id
-    and s.status = 'active'
-    and s.bill_request_status = 'none'
-    and tsp.user_id = v_user_id
-    and coalesce(ci.note, '') = coalesce(p_note, '');
-
-  if v_existing_id is not null then
-    v_total_qty := v_existing_qty + p_quantity;
-    if v_total_qty > 99 then
-      raise exception 'quantity cannot exceed 99';
-    end if;
-    update cart_items
-    set quantity = v_total_qty,
-        updated_at = now()
-    where id = v_existing_id;
-    update table_sessions
-    set cart_version = cart_version + 1,
-        cart_updated_at = now()
-    where id = p_session_id;
-    return;
+  if not exists (
+    select 1
+    from table_sessions s
+    join table_session_participants tsp on tsp.session_id = s.id
+    where s.id = p_session_id
+      and s.status = 'active'
+      and s.bill_request_status = 'none'
+      and tsp.user_id = v_user_id
+  ) then
+    raise exception 'not a participant of this active table session';
   end if;
 
-  select mi.price
-  into v_unit_price
-  from menu_items mi
-  where mi.id = p_menu_item_id
-    and mi.is_available = true
-    and mi.deleted_at is null;
+  select price
+  into v_price
+  from menu_items
+  where id = p_menu_item_id
+    and is_available = true;
 
-  if v_unit_price is null then
-    raise exception 'menu item is not available';
+  if v_price is null then
+    raise exception 'menu item is unavailable';
   end if;
 
   insert into cart_items (session_id, menu_item_id, added_by, quantity, note, unit_price)
-  values (p_session_id, p_menu_item_id, v_user_id, p_quantity, p_note, v_unit_price);
+  values (p_session_id, p_menu_item_id, v_user_id, p_quantity, nullif(trim(coalesce(p_note, '')), ''), v_price)
+  on conflict (session_id, menu_item_id, (coalesce(note, ''::text))) do update
+    set quantity = cart_items.quantity + excluded.quantity,
+        updated_at = now()
+  returning id into v_cart_item_id;
 
   update table_sessions
   set cart_version = cart_version + 1,
       cart_updated_at = now()
   where id = p_session_id;
+
+  return v_cart_item_id;
 end;
 $$;
 
