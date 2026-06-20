@@ -70,9 +70,9 @@ begin
 end;
 $$;
 
--- 3. 更新 confirm_bill_and_close_session 加入审计
+-- 3. 更新 confirm_bill_and_close_session 加入审计（仅加审计日志，不改逻辑）
 create or replace function public.confirm_bill_and_close_session(p_session_id uuid)
-returns void
+returns table(paid_order_count int, deleted_cart_count int)
 language plpgsql
 security definer
 set search_path = public
@@ -80,48 +80,64 @@ as $$
 declare
   v_table_id uuid;
   v_status text;
-  v_bill_request_status text;
-  v_bill_payment_method text;
-  v_order_ids uuid[];
-  v_table_number int;
+  v_bill_status text;
+  v_payment_method text;
+  v_paid_count int := 0;
+  v_deleted_count int := 0;
+  v_now timestamptz := now();
 begin
   if not (select private.is_staff()) then
     raise exception 'admin or staff role is required';
   end if;
 
   select s.table_id, s.status, s.bill_request_status, s.bill_payment_method
-  into v_table_id, v_status, v_bill_request_status, v_bill_payment_method
-  from table_sessions s where s.id = p_session_id for update;
+  into v_table_id, v_status, v_bill_status, v_payment_method
+  from table_sessions s
+  where s.id = p_session_id
+  for update;
 
-  if not found or v_status <> 'active' then
-    raise exception 'active table session not found';
+  if not found then
+    raise exception 'table session not found';
   end if;
 
-  select array_agg(o.id) into v_order_ids
-  from orders o
-  where o.session_id = p_session_id
-    and o.deleted_at is null
-    and o.status in ('pending', 'preparing', 'served');
+  if v_status <> 'active' then
+    raise exception 'table session is already closed';
+  end if;
+
+  if v_bill_status <> 'requested' or v_payment_method not in ('pos', 'cash') then
+    raise exception 'a valid bill request is required';
+  end if;
 
   update orders
   set status = 'paid',
       payment_status = 'paid',
-      payment_method = v_bill_payment_method,
-      paid_at = now()
-  where id = any(v_order_ids);
+      payment_method = v_payment_method,
+      paid_at = v_now,
+      updated_at = v_now
+  where session_id = p_session_id
+    and status <> 'cancelled';
+  get diagnostics v_paid_count = row_count;
+
+  delete from cart_items
+  where session_id = p_session_id;
+  get diagnostics v_deleted_count = row_count;
 
   update table_sessions
-  set status = 'closed', closed_at = now(),
-      bill_request_status = case when v_bill_request_status = 'requested' then 'handled' else v_bill_request_status end,
-      bill_handled_at = now()
+  set bill_request_status = 'handled',
+      bill_handled_at = v_now,
+      status = 'closed',
+      closed_at = v_now,
+      cart_version = cart_version + 1,
+      cart_updated_at = v_now
   where id = p_session_id;
 
-  select t.table_number into v_table_number
-  from restaurant_tables t where t.id = v_table_id;
+  perform private.ensure_active_table_session(v_table_id);
 
   insert into audit_logs (actor_id, action, target_type, target_id, detail)
   values (auth.uid(), 'confirm_payment', 'session', p_session_id,
-    'table ' || coalesce(v_table_number::text, '?') || ', orders: ' || array_to_string(v_order_ids, ','));
+    'paid ' || v_paid_count || ' orders, deleted ' || v_deleted_count || ' cart items');
+
+  return query select v_paid_count, v_deleted_count;
 end;
 $$;
 
