@@ -15,7 +15,7 @@ export function MenuPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = 'Menu - Wok Dragon';
+    document.title = 'Menu';
     getPublicMenu()
       .then(setGroups)
       .catch((err) => setError(err.message))

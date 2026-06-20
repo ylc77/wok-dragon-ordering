@@ -18,7 +18,6 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = 'Wok Dragon';
     Promise.all([
       getRestaurantSettings().then(setSettings).catch((err) => setError(err.message)),
       getPublicMenu()
@@ -38,6 +37,9 @@ export function HomePage() {
         el: settings.name_el,
       })
     : t('home.title');
+
+  useEffect(() => { document.title = name || 'Restaurant'; }, [name]);
+
   const address = settings
     ? pickLocalized(lang, {
         zh: settings.address_zh,
@@ -115,7 +117,7 @@ export function HomePage() {
             {settings?.logo_url ? <img className="brand-logo" src={settings.logo_url} alt="" /> : <span className="brand-mark">餐</span>}
             <strong>{name}</strong>
           </div>
-          <h1>{name || 'Wok Dragon'}</h1>
+          <h1>{name || t('home.title')}</h1>
           <p>{intro || t('home.subtitle')}</p>
           <div className="hero-actions">
             <Link className="primary-button" to="/menu"><UtensilsCrossed size={18} />{t('home.menuCta')}</Link>
@@ -127,7 +129,7 @@ export function HomePage() {
         <div className="hero-media">
           {heroImageUrl ? (
             <img src={heroImageUrl} alt={name} />
-          ) : <div className="hero-image-fallback" aria-hidden="true"><div className="hif-inner"><span className="hif-mark">火</span><strong>Wok Dragon</strong><small>Express</small><span className="hif-sub">{lang === 'el' ? 'Γρήγορο Wok · Ζεστή Φιλοξενία' : 'Fast Wok · Warm Hospitality'}</span></div></div>}
+          ) : <div className="hero-image-fallback" aria-hidden="true"><div className="hif-inner"><span className="hif-mark">餐</span><strong>{name || t('home.title')}</strong><span className="hif-sub">{t('home.subtitle')}</span></div></div>}
         </div>
       </section>
 
@@ -179,7 +181,7 @@ export function HomePage() {
       </section>
 
       <footer className="site-footer">
-        <strong>{name || 'Wok Dragon'}</strong>
+        <strong>{name || t('home.title')}</strong>
         {address ? <p>{address}</p> : null}
         <small>© {new Date().getFullYear()}</small>
       </footer>

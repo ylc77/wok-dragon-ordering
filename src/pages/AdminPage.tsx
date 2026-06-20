@@ -299,8 +299,8 @@ export function AdminPage() {
     <main className="admin-shell">
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/">
-          <span className="admin-brand-mark">龙</span>
-          <span>Wok Dragon</span>
+          <span className="admin-brand-mark">餐</span>
+          <span>后台管理</span>
         </Link>
         <nav className="admin-nav-list">
           <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>仪表盘</AdminNavButton>
@@ -317,7 +317,7 @@ export function AdminPage() {
       </aside>
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <strong>Wok Dragon 后台</strong>
+          <strong>餐馆后台管理</strong>
           <div>
             <span className={`realtime-dot ${realtimeStatus}`} title={realtimeStatus === 'connected' ? '实时连接正常' : realtimeStatus === 'connecting' ? '连接中' : '连接中断'} />
             <span className="admin-clock">{new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>

@@ -1,5 +1,5 @@
--- Wok Dragon Express / 龙城酒楼 schema.
--- Run this before supabase/seed.sql.
+-- Restaurant QR ordering system - client initialization schema.
+-- Run this to set up a new restaurant database.
 
 create extension if not exists pgcrypto;
 create schema if not exists private;
