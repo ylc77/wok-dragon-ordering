@@ -1937,13 +1937,17 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
           <span>已取消</span>
           <strong>{statusCounts.cancelled}</strong>
         </div>
-        <label className="auto-print-chip">
-          <input checked={autoPrintEnabled} type="checkbox" onChange={toggleAutoPrint} />
-          自动打印
-        </label>
-        <button className={soundEnabled ? 'sound-chip on' : 'sound-chip'} onClick={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); showToast(n ? '声音提醒已开启' : '声音提醒已关闭'); }}>
-          {soundEnabled ? '🔔 有声' : '🔕 静音'}
-        </button>
+        <div className="stat-card tool-card">
+          <span>提醒设置</span>
+          <label className="tool-row">
+            <input checked={autoPrintEnabled} type="checkbox" onChange={toggleAutoPrint} />
+            自动打印
+          </label>
+          <label className="tool-row">
+            <input checked={soundEnabled} type="checkbox" onChange={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); showToast(n ? '声音提醒已开启' : '声音提醒已关闭'); }} />
+            {soundEnabled ? '🔔 有声' : '🔕 静音'}
+          </label>
+        </div>
       </div>
       {printWarning ? <p className="print-warning-banner">⚠ {printWarning}<button type="button" onClick={() => setPrintWarning(null)} className="print-warning-dismiss">×</button></p> : null}
 
