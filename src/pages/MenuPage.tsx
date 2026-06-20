@@ -47,6 +47,7 @@ export function MenuPage() {
       {!loading && groups.length === 0 ? <p className="muted">{t('common.empty')}</p> : null}
 
       <div className="menu-layout">
+        {visibleGroups.length > 1 ? (
         <aside className="menu-category-rail">
           {visibleGroups.map((group) => (
               <a href={`#category-${group.id}`} key={group.id}>
@@ -58,6 +59,7 @@ export function MenuPage() {
               </a>
             ))}
         </aside>
+        ) : null}
         <div className="menu-list-column">
           {visibleGroups.map((group) =>
             group.items.length ? (

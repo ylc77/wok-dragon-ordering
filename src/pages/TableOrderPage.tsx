@@ -651,6 +651,7 @@ export function TableOrderPage() {
                       el: item.name_el,
                     })
                   : line.menu_item_id}
+                {item?.is_sold_out ? <span className="cart-soldout-mark">{t('common.soldOut')}</span> : null}
               </strong>
               <strong className="cart-line-subtotal">{formatPrice(Number(line.unit_price) * line.quantity)}</strong>
               <div className="cart-controls">
