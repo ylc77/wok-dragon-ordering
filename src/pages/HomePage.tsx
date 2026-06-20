@@ -127,7 +127,7 @@ export function HomePage() {
         <div className="hero-media">
           {heroImageUrl ? (
             <img src={heroImageUrl} alt={name} />
-          ) : <div className="hero-image-fallback" aria-hidden="true"><span>Wok Dragon</span><small>Express</small></div>}
+          ) : <div className="hero-image-fallback" aria-hidden="true"><span className="hif-mark">火</span><strong>Wok Dragon</strong><small>Express</small></div>}
         </div>
       </section>
 

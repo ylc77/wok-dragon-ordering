@@ -4456,3 +4456,9 @@ body {
   .order-step { min-width: 90px; padding: 14px 10px; }
   .hero-image-fallback { min-height: 220px; }
 }
+.menu-card-fallback { align-items: center; background: linear-gradient(135deg, #fef2f2 0%, #faf5f3 100%); border-radius: 8px; color: #d4a5a5; display: flex; font-size: 32px; justify-content: center; }
+.hero-image-fallback { overflow: hidden; position: relative; }
+.hero-image-fallback::before { background: radial-gradient(circle at 70% 30%, rgba(255,255,255,.08) 0%, transparent 60%); content: ''; inset: 0; position: absolute; }
+.hif-mark { font-size: clamp(60px, 12vw, 100px); font-weight: 900; line-height: 1; margin-bottom: -20px; opacity: .15; position: relative; }
+.hero-image-fallback strong { font-size: clamp(18px, 4vw, 28px); font-weight: 900; position: relative; }
+.hero-image-fallback small { font-size: clamp(12px, 2vw, 16px); margin-top: 4px; opacity: .7; position: relative; }
