@@ -1059,6 +1059,9 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     setItems((itemResult.data ?? []) as MenuItem[]);
   }
 
+  const [itemPage, setItemPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return items.filter((item) => {
@@ -1072,10 +1075,18 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     });
   }, [items, categoryFilter, searchTerm]);
 
+  const totalItemPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  const pagedItems = useMemo(
+    () => filteredItems.slice((itemPage - 1) * ITEMS_PER_PAGE, itemPage * ITEMS_PER_PAGE),
+    [filteredItems, itemPage],
+  );
+
   const selectedItems = useMemo(
     () => items.filter((item) => selectedIds.has(item.id)),
     [items, selectedIds],
   );
+
+  useEffect(() => { setItemPage(1); }, [categoryFilter, searchTerm]);
 
   function toggleSelect(itemId: string, checked: boolean) {
     setSelectedIds((current) => {
@@ -1441,7 +1452,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         <div className="item-table-head" aria-hidden="true">
           <span>选择</span><span>菜品</span><span>分类</span><span>价格</span><span>状态</span><span>操作</span>
         </div>
-        {filteredItems.map((item) => (
+        {pagedItems.map((item) => (
           <ItemRow
             item={item}
             categories={categories}
@@ -1461,6 +1472,14 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
           </div>
         ) : null}
       </div>
+
+      {totalItemPages > 1 ? (
+        <nav className="item-pagination">
+          <button className="secondary-button" type="button" disabled={itemPage <= 1} onClick={() => setItemPage((p) => p - 1)}>上一页</button>
+          <span>{itemPage} / {totalItemPages}（共 {filteredItems.length} 个菜品）</span>
+          <button className="secondary-button" type="button" disabled={itemPage >= totalItemPages} onClick={() => setItemPage((p) => p + 1)}>下一页</button>
+        </nav>
+      ) : null}
 
       {deleteDialogOpen && deleteTarget ? (
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>

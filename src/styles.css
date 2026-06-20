@@ -1546,6 +1546,19 @@ button:disabled {
   gap: 10px;
 }
 
+.item-pagination {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.item-pagination span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
 .item-table .admin-row {
   margin-bottom: 0;
 }
