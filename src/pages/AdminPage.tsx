@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
-import { adminHardDeleteMenuCategory, adminHardDeleteMenuItem, getRestaurantSettings } from '../lib/menuApi';
+import { adminHardDeleteMenuCategory, adminHardDeleteMenuItem, getRestaurantSettings, uploadMenuItemImage, validateImageFile } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { downloadFile, exportRowsToCSV, exportRowsToJSON, fetchAllTableData, generateBackupFilename } from '../lib/dataExport';
 import {
@@ -1457,7 +1457,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
       {/* - 新增菜品表单（可折叠） - */}
       {showNewForm ? (
         <div className="item-new-form">
-          <ItemForm value={draft} categories={categories} onChange={setDraft} />
+          <ItemForm value={draft} categories={categories} onChange={setDraft} onToast={toast} />
           <div className="item-new-form-actions">
             <button className="secondary-button" type="button" disabled={translatingDraft} onClick={autoTranslateDraft}>
               {translatingDraft ? '翻译中…' : '自动翻译'}
@@ -1545,6 +1545,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
             onSave={saveItem}
             onDuplicate={duplicateItem}
             onDelete={(target) => promptDeleteItems([target.id], `删除菜品"${target.name_zh || target.name_en || target.name_el}"`)}
+            toast={toast}
             key={item.id}
           />
         ))}
@@ -3049,23 +3050,12 @@ function CategoryForm({
 }
 
 function ItemRow({
-  item,
-  categories,
-  selected,
-  onSelect,
-  onMessage,
-  onSave,
-  onDuplicate,
-  onDelete,
+  item, categories, selected, onSelect, onMessage, onSave, onDuplicate, onDelete, toast,
 }: {
-  item: MenuItem;
-  categories: MenuCategory[];
-  selected: boolean;
-  onSelect: (checked: boolean) => void;
-  onMessage: (value: string | null) => void;
-  onSave: (item: Partial<MenuItem>) => void;
-  onDuplicate: (item: MenuItem) => void;
-  onDelete: (item: MenuItem) => void;
+  item: MenuItem; categories: MenuCategory[]; selected: boolean;
+  onSelect: (checked: boolean) => void; onMessage: (value: string | null) => void;
+  onSave: (item: Partial<MenuItem>) => void; onDuplicate: (item: MenuItem) => void; onDelete: (item: MenuItem) => void;
+  toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
 }) {
   const [value, setValue] = useState<Partial<MenuItem>>(item);
   const [translating, setTranslating] = useState(false);
@@ -3109,7 +3099,7 @@ function ItemRow({
       </div>
       {editing ? (
         <div className="item-row-editor">
-          <ItemForm value={value} categories={categories} onChange={setValue} />
+          <ItemForm value={value} categories={categories} onChange={setValue} onToast={toast} />
           <div className="admin-row-actions">
             <button className="secondary-button" type="button" disabled={translating} onClick={autoTranslate}>
               {translating ? '正在翻译...' : '自动翻译'}
@@ -3123,14 +3113,13 @@ function ItemRow({
 }
 
 function ItemForm({
-  value,
-  categories,
-  onChange,
+  value, categories, onChange, onToast,
 }: {
-  value: Partial<MenuItem>;
-  categories: MenuCategory[];
+  value: Partial<MenuItem>; categories: MenuCategory[];
   onChange: (value: Partial<MenuItem>) => void;
+  onToast?: (msg: string, type?: 'success' | 'error' | 'warning') => void;
 }) {
+  const [uploading, setUploading] = useState(false);
   return (
     <div className="item-editor-grid">
       <div className="item-editor-core">
@@ -3146,7 +3135,25 @@ function ItemForm({
         </select>
       </label>
       <TextField label="价格" value={value.price} type="number" onChange={(v) => onChange({ ...value, price: Number(v) })} />
-      <TextField label="图片 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
+      <div className="item-image-field">
+        <TextField label="图片 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
+        {value.image_url ? <img src={value.image_url} alt="" className="item-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
+        <label className="item-upload-btn">
+          <Upload size={14} />{uploading ? '上传中…' : '上传图片'}
+          <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => {
+            const file = e.target.files?.[0]; if (!file) return;
+            const err = validateImageFile(file);
+            if (err) { onToast?.(err, 'warning'); return; }
+            setUploading(true);
+            try {
+              const url = await uploadMenuItemImage(file, value.id);
+              onChange({ ...value, image_url: url });
+              onToast?.('图片上传成功');
+            } catch { onToast?.('图片上传失败，请重试', 'error'); }
+            finally { setUploading(false); }
+          }} />
+        </label>
+      </div>
       <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
       <div className="item-status-select">
         <span className="field-label">状态</span>

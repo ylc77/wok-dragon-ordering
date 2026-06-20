@@ -93,3 +93,24 @@ export async function adminSetDeletePassword(password: string) {
   });
   if (error) throw error;
 }
+
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_SIZE = 3 * 1024 * 1024;
+
+export function validateImageFile(file: File): string | null {
+  if (!ALLOWED_TYPES.includes(file.type)) return '仅支持 jpg、png、webp 图片';
+  if (file.size > MAX_SIZE) return '图片太大，请压缩后上传（最大 3MB）';
+  return null;
+}
+
+export async function uploadMenuItemImage(file: File, itemId?: string): Promise<string> {
+  if (!supabase) throw new Error('Supabase 客户端未初始化');
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const ts = Date.now();
+  const prefix = itemId || 'new';
+  const path = `menu-items/${prefix}-${ts}.${ext}`;
+  const { error, data } = await supabase.storage.from('menu-images').upload(path, file, { upsert: false });
+  if (error) throw error;
+  const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(data.path);
+  return urlData.publicUrl;
+}
