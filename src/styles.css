@@ -1383,29 +1383,65 @@ button:disabled {
   font-weight: 800;
 }
 
-.csv-format-hint {
-  color: #6b7280;
-  font-size: 12.5px;
-  margin-bottom: 10px;
+/* ── 菜品管理：顶部工具栏 ── */
+
+.item-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.csv-format-hint summary {
-  cursor: pointer;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.csv-format-hint pre {
-  background: #f3f4f6;
-  border-radius: 4px;
-  font-size: 11.5px;
-  margin: 4px 0;
-  overflow-x: auto;
+.item-toolbar select {
+  border: 1px solid #dedfe1;
+  border-radius: 6px;
+  font-size: 13px;
+  max-width: 140px;
   padding: 6px 8px;
-  white-space: pre;
 }
 
-.menu-management-tools,
+.item-toolbar .search-input-wrap {
+  flex: 1;
+  max-width: 220px;
+  min-width: 140px;
+}
+
+.item-toolbar .search-input-wrap input {
+  font-size: 13px;
+  padding: 6px 8px 6px 30px;
+}
+
+.item-toolbar button {
+  white-space: nowrap;
+}
+
+/* ── 新增菜品表单（折叠面板） ── */
+
+.item-new-form {
+  background: #fafbfc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 16px;
+}
+
+.item-new-form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ── CSV 导入面板 ── */
+
+.csv-import-panel {
+  background: #fafbfc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+}
+
 .bulk-action-bar,
 .csv-import-panel {
   align-items: end;
@@ -1428,7 +1464,6 @@ button:disabled {
   margin-bottom: 0;
 }
 
-.menu-management-tools label,
 .csv-import-panel label {
   color: #4a4a4a;
   display: grid;
@@ -1438,8 +1473,6 @@ button:disabled {
   min-width: 220px;
 }
 
-.menu-management-tools select,
-.menu-management-tools input,
 .bulk-action-bar input,
 .csv-import-panel input,
 .order-tools-row input {
@@ -2970,7 +3003,6 @@ body {
   margin: 0;
 }
 
-.menu-management-tools,
 .bulk-action-bar,
 .csv-import-panel,
 .order-tools-row,

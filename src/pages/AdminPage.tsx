@@ -207,6 +207,7 @@ export function AdminPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
   const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const [syncVersion, setSyncVersion] = useState(0);
 
   useEffect(() => {
@@ -345,7 +346,7 @@ export function AdminPage() {
         <section className="admin-content">
           {message ? <p className="admin-message">{message}</p> : null}
           {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} onOpenOrders={() => setTab('orders')} /> : null}
-          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} onMessage={setMessage} /> : null}
+          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} onMessage={setMessage} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} /> : null}
           {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} /> : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} /> : null}
@@ -796,7 +797,7 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
     setDeleteError(null);
     try {
       await adminHardDeleteMenuCategory(deleteTarget.id, deletePassword);
-      onMessage(`已永久删除分类”${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}”`);
+      onMessage(`已永久删除分类"${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"`);
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
       load();
@@ -1037,6 +1038,8 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
 
   useEffect(() => {
     load();
@@ -1314,105 +1317,124 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
 
   return (
     <AdminSection title="菜品管理" onRefresh={load}>
-      <div className="menu-management-tools">
-        <label>
-          按分类筛选
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-            <option value="all">全部分类</option>
-            {categories.map((category) => (
-              <option value={category.id} key={category.id}>
-                {category.name_zh || category.name_en || category.name_el}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          搜索菜名
-          <span className="search-input-wrap">
-            <Search size={16} />
-            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="中文 / English / Ελληνικά" />
-          </span>
-        </label>
+      {/* 顶部工具栏 */}
+      <div className="item-toolbar">
+        <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+          <option value="all">全部分类</option>
+          {categories.map((category) => (
+            <option value={category.id} key={category.id}>
+              {category.name_zh || category.name_en || category.name_el}
+            </option>
+          ))}
+        </select>
+        <span className="search-input-wrap">
+          <Search size={16} />
+          <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="搜索…" />
+        </span>
+        <button className="secondary-button" type="button" onClick={() => setShowNewForm((v) => !v)}>
+          <Plus size={15} />
+          {showNewForm ? '收起' : '新增'}
+        </button>
+        <button className="secondary-button" type="button" onClick={() => { setShowCsvImport((v) => !v); }}>
+          <Upload size={15} />
+          {showCsvImport ? '收起' : '导入'}
+        </button>
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => {
+            const header = 'category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order';
+            downloadFile(header, 'menu-import-template.csv', 'text/csv;charset=utf-8');
+          }}
+        >
+          <Download size={15} />
+          模板
+        </button>
         <button className="secondary-button" type="button" onClick={exportCsv}>
-          <Download size={16} />
-          导出 CSV
+          <Download size={15} />
+          导出
         </button>
       </div>
 
-      <div className="bulk-action-bar">
-        <label className="checkbox-label">
-          <input
-            checked={filteredItems.length > 0 && filteredItems.every((item) => selectedIds.has(item.id))}
-            type="checkbox"
-            onChange={(event) => toggleSelectVisible(event.target.checked)}
-          />
-          选择当前筛选结果
-        </label>
-        <strong>已选择 {selectedItems.length} 个菜品</strong>
-        <input value={bulkPrice} type="number" min="0" step="0.01" placeholder="新价格" onChange={(event) => setBulkPrice(event.target.value)} />
-        <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={bulkUpdatePrice}>
-          批量改价
-        </button>
-        <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(true)}>
-          批量上架
-        </button>
-        <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>
-          批量下架
-        </button>
-        <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => promptDeleteItems(Array.from(selectedIds), `批量删除 ${selectedIds.size} 个菜品`)}>
-          <Trash2 size={15} />
-          批量删除
-        </button>
-      </div>
-
-      <button
-        className="secondary-button"
-        type="button"
-        style={{ marginBottom: '10px' }}
-        onClick={() => {
-          const header = 'category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order';
-          downloadFile(header, 'menu-import-template.csv', 'text/csv;charset=utf-8');
-        }}
-      >
-        <Download size={14} />
-        下载 CSV 模板
-      </button>
-
-      <div className="csv-import-panel">
-        <label>
-          CSV 导入
-          <input accept=".csv,text/csv" type="file" onChange={(event) => previewCsv(event.target.files?.[0] ?? null)} />
-        </label>
-        <button className="secondary-button" type="button" disabled={csvPreview.length === 0} onClick={importCsv}>
-          <Upload size={16} />
-          确认导入
-        </button>
-        <span>预览 {csvPreview.length} 条</span>
-        {csvResult ? (
-          <strong>
-            成功 {csvResult.success} 条，失败 {csvResult.failed} 条，翻译失败 {csvResult.translationFailed} 条
-          </strong>
-        ) : null}
-      </div>
-      {csvResult?.errors.length ? (
-        <div className="csv-error-box">
-          {csvResult.errors.slice(0, 8).map((error) => (
-            <p key={error}>{error}</p>
-          ))}
+      {/* - 新增菜品表单（可折叠） - */}
+      {showNewForm ? (
+        <div className="item-new-form">
+          <ItemForm value={draft} categories={categories} onChange={setDraft} />
+          <div className="item-new-form-actions">
+            <button className="secondary-button" type="button" disabled={translatingDraft} onClick={autoTranslateDraft}>
+              {translatingDraft ? '翻译中…' : '自动翻译'}
+            </button>
+            <button className="primary-button" type="button" onClick={() => { void saveItem(draft).then(() => setShowNewForm(false)); }}>
+              <Plus size={15} />
+              保存
+            </button>
+          </div>
         </div>
       ) : null}
-      {csvPreview.length > 0 ? (
-        <div className="csv-preview-table">
-          {csvPreview.slice(0, 8).map((row, index) => (
-            <div key={`${row.name_zh}-${index}`}>
-              <strong>{row.name_zh || row.name_en || row.name_el}</strong>
-              <span>{row.category_zh || row.category_en || row.category_el}</span>
-              <b>{row.price}</b>
+
+      {/* - CSV 导入面板（可折叠） - */}
+      {showCsvImport ? (
+        <div className="csv-import-panel">
+          <label>
+            选择 CSV 文件
+            <input accept=".csv,text/csv" type="file" onChange={(event) => previewCsv(event.target.files?.[0] ?? null)} />
+          </label>
+          <button className="primary-button" type="button" disabled={csvPreview.length === 0} onClick={importCsv}>
+            <Upload size={15} />
+            确认导入
+          </button>
+          {csvPreview.length > 0 ? <span>预览 {csvPreview.length} 条</span> : null}
+          {csvResult ? (
+            <strong className={csvResult.failed > 0 ? 'csv-result-warn' : 'csv-result-ok'}>
+              成功 {csvResult.success} / 失败 {csvResult.failed}
+              {csvResult.translationFailed > 0 ? ` / 翻译失败 ${csvResult.translationFailed}` : ''}
+            </strong>
+          ) : null}
+          {csvResult?.errors.length ? (
+            <div className="csv-error-box">
+              {csvResult.errors.slice(0, 8).map((error) => (
+                <p key={error}>{error}</p>
+              ))}
             </div>
-          ))}
+          ) : null}
+          {csvPreview.length > 0 ? (
+            <div className="csv-preview-table">
+              {csvPreview.slice(0, 8).map((row, index) => (
+                <div key={`${row.name_zh}-${index}`}>
+                  <strong>{row.name_zh || row.name_en || row.name_el}</strong>
+                  <span>{row.category_zh || row.category_en || row.category_el}</span>
+                  <b>{row.price}</b>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
+      {/* - 批量操作（仅在选中时显示） - */}
+      {selectedIds.size > 0 ? (
+        <div className="bulk-action-bar">
+          <label className="checkbox-label">
+            <input
+              checked={filteredItems.length > 0 && filteredItems.every((item) => selectedIds.has(item.id))}
+              type="checkbox"
+              onChange={(event) => toggleSelectVisible(event.target.checked)}
+            />
+            全选
+          </label>
+          <strong>已选 {selectedItems.length} 项</strong>
+          <input value={bulkPrice} type="number" min="0" step="0.01" placeholder="新价格" onChange={(event) => setBulkPrice(event.target.value)} />
+          <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={bulkUpdatePrice}>批量改价</button>
+          <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(true)}>上架</button>
+          <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>下架</button>
+          <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => promptDeleteItems(Array.from(selectedIds), `批量删除 ${selectedIds.size} 个菜品`)}>
+            <Trash2 size={14} /> 删除
+          </button>
+          <button className="secondary-button" type="button" onClick={() => setSelectedIds(new Set())}>取消选择</button>
+        </div>
+      ) : null}
+
+      {/* - 菜品列表 - */}
       <div className="admin-table item-table">
         <div className="item-table-head" aria-hidden="true">
           <span>选择</span><span>菜品</span><span>分类</span><span>价格</span><span>状态</span><span>操作</span>
@@ -1426,20 +1448,18 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
             onMessage={onMessage}
             onSave={saveItem}
             onDuplicate={duplicateItem}
-            onDelete={(target) => promptDeleteItems([target.id], `删除菜品”${target.name_zh || target.name_en || target.name_el}”`)}
+            onDelete={(target) => promptDeleteItems([target.id], `删除菜品"${target.name_zh || target.name_en || target.name_el}"`)}
             key={item.id}
           />
         ))}
+        {filteredItems.length === 0 ? (
+          <div className="admin-empty-state" style={{ padding: '24px' }}>
+            <UtensilsCrossed size={24} />
+            <strong>没有匹配的菜品</strong>
+          </div>
+        ) : null}
       </div>
-      <h3>新增菜品</h3>
-      <ItemForm value={draft} categories={categories} onChange={setDraft} />
-      <button className="secondary-button" type="button" disabled={translatingDraft} onClick={autoTranslateDraft}>
-        {translatingDraft ? '正在翻译...' : '自动翻译'}
-      </button>
-      <button className="primary-button" type="button" onClick={() => saveItem(draft)}>
-        <Plus size={16} />
-        新增菜品
-      </button>
+
       {deleteDialogOpen && deleteTarget ? (
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
@@ -1476,7 +1496,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   );
 }
 
-function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | null) => void; syncVersion: number }) {
+function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChange }: { onMessage: (value: string | null) => void; syncVersion: number; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -1490,7 +1510,6 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
   const [stats, setStats] = useState<AdminOrderStats>({
     total_orders: 0, pending: 0, preparing: 0, served: 0, paid: 0, cancelled: 0, paid_total: 0,
   });
-  const [soundEnabled, setSoundEnabled] = useState(false);
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -1828,9 +1847,14 @@ function OrderManager({ onMessage, syncVersion }: { onMessage: (value: string | 
           className={soundEnabled ? 'sound-toggle enabled' : 'sound-toggle'}
           type="button"
           onClick={() => {
-            setSoundEnabled(true);
-            playOrderNotification();
-            onMessage('声音提醒已启用');
+            const next = !soundEnabled;
+            onSoundEnabledChange(next);
+            if (next) {
+              playOrderNotification();
+              onMessage('声音提醒已启用');
+            } else {
+              onMessage('声音提醒已关闭');
+            }
           }}
         >
           {soundEnabled ? '声音提醒已启用' : '启用声音提醒'}
