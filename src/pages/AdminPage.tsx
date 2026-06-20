@@ -3188,8 +3188,9 @@ function ItemRow({
         </div>
         <span>{category?.name_zh || category?.name_en || '未分类'}</span>
         <strong>{formatPrice(Number(item.price))}</strong>
-        <span className={item.is_available ? 'availability-badge active' : 'availability-badge'}>{item.is_available ? '上架' : '下架'}</span>
-        {item.is_sold_out ? <span className="availability-badge sold-out">售罄</span> : null}
+        <span className={`availability-badge${item.is_sold_out ? ' sold-out' : item.is_available ? ' active' : ''}`}>
+          {item.is_sold_out ? '售罄' : item.is_available ? '上架' : '下架'}
+        </span>
         <div className="item-row-actions">
           <button type="button" onClick={() => setEditing((open) => !open)}><Pencil size={14} />编辑</button>
           <button type="button" onClick={() => onDuplicate(item)}><Copy size={14} />复制</button>
