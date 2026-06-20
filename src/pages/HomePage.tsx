@@ -178,7 +178,6 @@ export function HomePage() {
         <small>© {new Date().getFullYear()}</small>
       </footer>
 
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '12px' }}><LanguageSwitch /></div>
     </main>
   );
 }

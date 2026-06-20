@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LanguageSwitch } from '../components/LanguageSwitch';
 import { getPublicMenu } from '../lib/menuApi';
 import { formatPrice, getLocalizedField } from '../lib/localized';
 import type { Language, MenuGroup, MenuItem } from '../lib/types';
@@ -79,9 +78,6 @@ export function MenuPage() {
             ) : null,
           )}
         </div>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '12px' }}>
-        <LanguageSwitch />
       </div>
     </main>
   );

@@ -1,14 +1,14 @@
 import { useTranslation } from 'react-i18next';
 
 export function LanguageSwitch({ className = 'icon-text-button' }: { className?: string }) {
-  const { t, i18n } = useTranslation();
-  const nextLanguage = i18n.language === 'el' ? 'en' : 'el';
-  const label = nextLanguage === 'en' ? t('common.switchToEnglish') : t('common.switchToGreek');
+  const { i18n } = useTranslation();
+  const current = i18n.language?.startsWith('el') ? 'el' : 'en';
+  const next = current === 'el' ? 'en' : 'el';
 
   return (
-    <button className={className} type="button" aria-label={label} title={label} onClick={() => i18n.changeLanguage(nextLanguage)}>
-      {nextLanguage === 'en' ? <BritishFlag /> : <GreekFlag />}
-      <span>{nextLanguage.toUpperCase()}</span>
+    <button className={className} type="button" title={next === 'en' ? 'English' : 'Ελληνικά'} onClick={() => i18n.changeLanguage(next)}>
+      {current === 'el' ? <GreekFlag /> : <BritishFlag />}
+      <span>{current.toUpperCase()}</span>
     </button>
   );
 }
