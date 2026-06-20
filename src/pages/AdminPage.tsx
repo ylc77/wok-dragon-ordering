@@ -1645,13 +1645,15 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   }
 
   async function confirmBillPayment(request: BillRequest) {
+    setBillRequests((prev) => prev.filter((r) => r.id !== request.id));
     try {
       const result = await confirmBillAndCloseSession(request.session_id);
       onMessage(`已付款并清桌：${result.paid_order_count} 张订单已结清，${result.deleted_cart_count} 条未提交购物车已清空`);
-      load();
     } catch (err) {
+      setBillRequests((prev) => [request, ...prev]);
       onMessage(formatUnknownError(err));
     }
+    load();
   }
 
   async function doPrintKitchenTicket(order: Order) {
