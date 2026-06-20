@@ -94,23 +94,52 @@ export async function adminSetDeletePassword(password: string) {
   if (error) throw error;
 }
 
+import { compressImageToWebp } from './imageCompress';
+
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_SIZE = 3 * 1024 * 1024;
+const MAX_SIZE = 10 * 1024 * 1024; // 10MB before compression
 
 export function validateImageFile(file: File): string | null {
   if (!ALLOWED_TYPES.includes(file.type)) return '仅支持 jpg、png、webp 图片';
-  if (file.size > MAX_SIZE) return '图片太大，请压缩后上传（最大 3MB）';
+  if (file.size > MAX_SIZE) return '图片太大（最大 10MB），请先缩小再上传';
   return null;
 }
 
-export async function uploadMenuItemImage(file: File, itemId?: string): Promise<string> {
+async function uploadCompressed(
+  file: File,
+  bucket: string,
+  path: string,
+  compressType: 'menuItem' | 'category' | 'logo' | 'hero',
+): Promise<string> {
   if (!supabase) throw new Error('Supabase 客户端未初始化');
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const ts = Date.now();
-  const prefix = itemId || 'new';
-  const path = `menu-items/${prefix}-${ts}.${ext}`;
-  const { error, data } = await supabase.storage.from('menu-images').upload(path, file, { upsert: false });
+
+  let blob: Blob = file;
+  try {
+    blob = await compressImageToWebp(file, compressType);
+  } catch {
+    // 压缩失败，使用原图
+  }
+
+  const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' });
+  const { error, data } = await supabase.storage.from(bucket).upload(path, webpFile, { upsert: true, contentType: 'image/webp' });
   if (error) throw error;
-  const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(data.path);
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
   return urlData.publicUrl;
+}
+
+export async function uploadMenuItemImage(file: File, itemId?: string): Promise<string> {
+  const prefix = itemId || 'temp';
+  const path = `menu-items/${prefix}-${Date.now()}.webp`;
+  return uploadCompressed(file, 'menu-images', path, 'menuItem');
+}
+
+export async function uploadCategoryImage(file: File, categoryId?: string): Promise<string> {
+  const prefix = categoryId || 'temp';
+  const path = `menu-categories/${prefix}-${Date.now()}.webp`;
+  return uploadCompressed(file, 'menu-images', path, 'category');
+}
+
+export async function uploadRestaurantImage(file: File, type: 'logo' | 'hero'): Promise<string> {
+  const path = `restaurant/${type}-${Date.now()}.webp`;
+  return uploadCompressed(file, 'menu-images', path, type);
 }

@@ -35,6 +35,7 @@ export type MenuCategory = {
   name_zh: string;
   name_en: string | null;
   name_el: string | null;
+  image_url?: string | null;
   sort_order: number;
   is_active: boolean;
   deleted_at?: string | null;
