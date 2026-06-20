@@ -757,99 +757,126 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [catSearch, setCatSearch] = useState('');
+  const [catStatusFilter, setCatStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   async function load() {
     if (!supabase) return;
-    const { data, error } = await supabase
-      .from('menu_categories')
-      .select('*')
-      .is('deleted_at', null)
-      .order('sort_order');
+    const { data, error } = await supabase.from('menu_categories').select('*').is('deleted_at', null).order('sort_order');
     if (error) onMessage(error.message);
     setCategories((data ?? []) as MenuCategory[]);
   }
 
   async function saveCategory(category: Partial<MenuCategory>) {
     if (!supabase) return;
-    const payload = {
-      name_zh: category.name_zh ?? '',
-      name_en: category.name_en ?? '',
-      name_el: category.name_el ?? '',
-      sort_order: Number(category.sort_order ?? 0),
-      is_active: Boolean(category.is_active),
-    };
-    const { error } = category.id
-      ? await supabase.from('menu_categories').update(payload).eq('id', category.id)
-      : await supabase.from('menu_categories').insert(payload);
-    if (error) onMessage(error.message); else toast('分类已保存');
-    if (!error) {
-      setDraft(emptyCategory);
-      load();
-    }
+    const isNew = !category.id;
+    const payload = { name_zh: category.name_zh ?? '', name_en: category.name_en ?? '', name_el: category.name_el ?? '', sort_order: Number(category.sort_order ?? 0), is_active: Boolean(category.is_active) };
+    const { error } = category.id ? await supabase.from('menu_categories').update(payload).eq('id', category.id) : await supabase.from('menu_categories').insert(payload);
+    if (error) onMessage(error.message); else toast(isNew ? '分类已创建' : '分类已保存');
+    if (!error) { setDraft(emptyCategory); setShowNewForm(false); setEditingId(null); load(); }
   }
 
   function promptDeleteCategory(category: MenuCategory) {
-    // 先检查旗下是否有菜品
     if (!supabase) return;
-    supabase
-      .from('menu_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('category_id', category.id)
-      .is('deleted_at', null)
-      .then(({ count, error: countError }) => {
-        if (countError) {
-          onMessage(countError.message);
-          return;
-        }
-        if ((count ?? 0) > 0) {
-          onMessage(`该分类下还有 ${count} 个菜品，请先移动或删除菜品后再删除分类。`);
-          return;
-        }
-        setDeleteTarget(category);
-        setDeletePassword('');
-        setDeleteError(null);
-        setDeleteDialogOpen(true);
-      });
+    setDeleteTarget(category); setDeletePassword(''); setDeleteError(null); setDeleteDialogOpen(true);
   }
 
   async function executeDeleteCategory() {
     if (!deleteTarget) return;
-    if (!deletePassword.trim()) {
-      setDeleteError('请输入删除密码');
-      return;
-    }
-    setDeleting(true);
-    setDeleteError(null);
+    if (!deletePassword.trim()) { setDeleteError('请输入删除密码'); return; }
+    setDeleting(true); setDeleteError(null);
     try {
       await adminHardDeleteMenuCategory(deleteTarget.id, deletePassword);
-      toast(`已永久删除分类"${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"`);
-      setDeleteDialogOpen(false);
-      setDeleteTarget(null);
-      load();
-    } catch (err) {
-      setDeleteError(formatUnknownError(err));
-    } finally {
-      setDeleting(false);
-    }
+      toast(`已删除分类"${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"`);
+      setDeleteDialogOpen(false); setDeleteTarget(null); load();
+    } catch (err) { setDeleteError(formatUnknownError(err)); }
+    finally { setDeleting(false); }
   }
 
+  const filteredCategories = useMemo(() => {
+    const kw = catSearch.toLowerCase();
+    return categories.filter((c) => {
+      if (catStatusFilter === 'active' && !c.is_active) return false;
+      if (catStatusFilter === 'inactive' && c.is_active) return false;
+      if (kw && ![c.name_zh, c.name_en, c.name_el].some((v) => v?.toLowerCase().includes(kw))) return false;
+      return true;
+    });
+  }, [categories, catSearch, catStatusFilter]);
+
+  const catStats = useMemo(() => ({
+    total: categories.length,
+    active: categories.filter((c) => c.is_active).length,
+    inactive: categories.filter((c) => !c.is_active).length,
+  }), [categories]);
+
   return (
-    <AdminSection title="菜单分类" onRefresh={load}>
-      <div className="admin-table">
-        {categories.map((category) => (
-          <CategoryRow category={category} onSave={saveCategory} onDelete={promptDeleteCategory} key={category.id} />
-        ))}
+    <AdminSection title="菜单分类" subtitle="管理菜单分类名称、多语言显示、排序和启用状态" onRefresh={load}>
+      {/* ─ 统计卡片 ─ */}
+      <div className="item-stats-row">
+        <div className="istat"><span>分类总数</span><strong>{catStats.total}</strong></div>
+        <div className="istat istat-green"><span>已启用</span><strong>{catStats.active}</strong></div>
+        <div className="istat istat-gray"><span>已禁用</span><strong>{catStats.inactive}</strong></div>
       </div>
-      <h3>新增分类</h3>
-      <CategoryForm value={draft} onChange={setDraft} />
-      <button className="primary-button" type="button" onClick={() => saveCategory(draft)}>
-        <Plus size={16} />
-        新增分类
-      </button>
+
+      {/* ─ 工具栏 ─ */}
+      <div className="item-toolbar">
+        <span className="search-input-wrap"><Search size={16} /><input value={catSearch} onChange={(e) => setCatSearch(e.target.value)} placeholder="搜索分类…" /></span>
+        <select value={catStatusFilter} onChange={(e) => setCatStatusFilter(e.target.value as typeof catStatusFilter)}>
+          <option value="all">全部状态</option><option value="active">已启用</option><option value="inactive">已禁用</option>
+        </select>
+        {!showNewForm ? (
+          <button className="primary-button" type="button" onClick={() => { setShowNewForm(true); setDraft(emptyCategory); }}>
+            <Plus size={15} />新增分类
+          </button>
+        ) : null}
+      </div>
+
+      {/* ─ 新增表单 ─ */}
+      {showNewForm ? (
+        <div className="item-new-form">
+          <CategoryForm value={draft} onChange={setDraft} />
+          <div className="item-new-form-actions">
+            <button className="secondary-button" type="button" onClick={() => { setShowNewForm(false); setDraft(emptyCategory); }}>取消</button>
+            <button className="primary-button" type="button" onClick={() => saveCategory(draft)}><Plus size={15} />创建分类</button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ─ 分类列表 ─ */}
+      <div className="admin-table">
+        <div className="item-table-head" aria-hidden="true"><span>中文名</span><span>英文名</span><span>希腊语</span><span>排序</span><span>状态</span><span>操作</span></div>
+        {filteredCategories.map((c) => (
+          <div className="admin-row" key={c.id}>
+            {editingId === c.id ? (
+              <>
+                <CategoryForm value={{ ...c }} onChange={(v) => setCategories((prev) => prev.map((x) => x.id === c.id ? { ...x, ...v } : x))} />
+                <div className="admin-row-actions">
+                  <button className="primary-button" type="button" onClick={() => saveCategory(categories.find((x) => x.id === c.id) ?? c)}>保存修改</button>
+                  <button className="secondary-button" type="button" onClick={() => setEditingId(null)}>取消</button>
+                </div>
+              </>
+            ) : (
+              <div className="item-row-summary">
+                <span><strong>{c.name_zh || '未填写'}</strong></span>
+                <span>{c.name_en || <span className="item-name-el">未填写</span>}</span>
+                <span className="item-name-el">{c.name_el || '未填写'}</span>
+                <span>{c.sort_order}</span>
+                <span className={`availability-badge${c.is_active ? ' active' : ''}`}>{c.is_active ? '启用' : '禁用'}</span>
+                <div className="item-row-actions">
+                  <button type="button" onClick={() => setEditingId(c.id)}><Pencil size={14} />编辑</button>
+                  <button className="danger-text" type="button" onClick={() => promptDeleteCategory(c)}><Trash2 size={14} />删除</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {filteredCategories.length === 0 ? <div className="admin-empty-state"><strong>没有匹配的分类</strong></div> : null}
+      </div>
+
       {deleteDialogOpen && deleteTarget ? (
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
