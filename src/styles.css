@@ -848,17 +848,19 @@ button:disabled {
 }
 
 .brand-logo {
-  width: 42px;
-  height: 42px;
   flex: 0 0 auto;
-  border-radius: 12px;
+  height: 44px;
+  max-width: 150px;
+  min-width: 42px;
   object-fit: contain;
+  border-radius: 10px;
   background: #fff;
 }
 
 .hero-brand-lockup .brand-logo {
-  width: 48px;
-  height: 48px;
+  height: 60px;
+  max-width: 200px;
+  min-width: 56px;
 }
 
 .settings-checkbox-row {
@@ -4525,3 +4527,4 @@ body {
   .settings-grid-2, .settings-grid-3 { grid-template-columns: 1fr; }
   .settings-payment-label { min-width: 140px; padding: 12px 16px; }
 }
+@media (max-width: 900px) { .brand-logo { height: 36px; max-width: 100px; min-width: 32px; } .hero-brand-lockup .brand-logo { height: 48px; max-width: 140px; min-width: 44px; } }
