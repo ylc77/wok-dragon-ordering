@@ -1399,11 +1399,13 @@ button:disabled {
   border-radius: 8px;
   cursor: pointer;
   display: inline-flex;
+  flex: 1;
   font-size: 14px;
   font-weight: 600;
   gap: 8px;
-  min-height: 38px;
-  padding: 8px 18px;
+  justify-content: center;
+  min-height: 40px;
+  padding: 10px 20px;
   transition: all .15s;
 }
 .quick-action-btn:hover { background: #f3f4f6; border-color: var(--accent); color: var(--accent); }
