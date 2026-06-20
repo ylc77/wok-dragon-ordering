@@ -76,7 +76,7 @@ function PublicShell() {
           <nav className={`nav-links ${mobileNavOpen ? 'is-open' : ''}`} aria-label={t('nav.primary')}>
             <NavLink to="/" end>{t('nav.home')}</NavLink>
             <NavLink to="/menu">{t('nav.menu')}</NavLink>
-            <Link to="/#contact">{t('nav.contact')}</Link>
+            <a href="/#contact">{t('nav.contact')}</a>
           </nav>
           <div className="site-header-actions">
           <LanguageSwitch />

@@ -131,6 +131,12 @@ export function HomePage() {
         </div>
       </section>
 
+      <section className="home-selling-points">
+        <div className="selling-point"><span className="sp-icon">🔥</span><strong>{lang === 'el' ? 'Γρήγορο Wok' : 'Fast Wok'}</strong><p>{lang === 'el' ? 'Φρέσκα υλικά, γρήγορη προετοιμασία' : 'Fresh ingredients, quick preparation'}</p></div>
+        <div className="selling-point"><span className="sp-icon">🏠</span><strong>{lang === 'el' ? 'Φαγητό στο κατάστημα' : 'Dine-in & Takeaway'}</strong><p>{lang === 'el' ? 'Απολαύστε στο εστιατόριο ή πάρτε στο σπίτι' : 'Enjoy in our restaurant or take away'}</p></div>
+        <div className="selling-point"><span className="sp-icon">📱</span><strong>{lang === 'el' ? 'Παραγγελία QR' : 'QR Ordering'}</strong><p>{lang === 'el' ? 'Σαρώστε, επιλέξτε, παραγγείλτε' : 'Scan, choose, order from your table'}</p></div>
+      </section>
+
       <section className="home-intro">
         <div>
           <h2>{t('home.introTitle')}</h2>

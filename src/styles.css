@@ -4481,3 +4481,9 @@ body {
 @media (max-width: 768px) { .mcf-icon { height: 24px; width: 24px; } }
 .hero-media { background: transparent !important; }
 .hero-image-fallback { min-height: 520px; height: 100%; width: 100%; }
+.home-selling-points { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 auto 32px; max-width: 900px; padding: 0 20px; }
+.selling-point { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; flex: 1; min-width: 180px; padding: 24px 20px; text-align: center; }
+.sp-icon { font-size: 32px; display: block; margin-bottom: 10px; }
+.selling-point strong { display: block; font-size: 16px; margin-bottom: 4px; }
+.selling-point p { color: #6b7280; font-size: 13px; margin: 0; }
+@media (max-width: 768px) { .selling-point { min-width: 140px; padding: 16px 14px; } }
