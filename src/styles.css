@@ -3287,8 +3287,9 @@ body {
 
 .admin-content {
   margin: 0 auto;
-  max-width: 1500px;
-  padding: 26px;
+  max-width: 1400px;
+  padding: 24px 28px;
+  width: 100%;
 }
 
 .admin-section-header {
@@ -4424,3 +4425,4 @@ body {
   .mobile-cart-bar em { font-size: 13px; }
   .order-menu-groups { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 }
+@media (max-width: 768px) { .admin-content { padding: 20px 14px; } }
