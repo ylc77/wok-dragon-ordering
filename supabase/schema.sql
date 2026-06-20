@@ -1951,9 +1951,13 @@ begin
         bill_payment_method = p_payment_method
     where id = p_session_id;
   else
+    update bill_requests
+    set payment_method = p_payment_method
+    where id = v_request_id;
+
     update table_sessions
     set bill_request_status = 'requested',
-        bill_payment_method = v_existing_method,
+        bill_payment_method = p_payment_method,
         bill_requested_at = coalesce(bill_requested_at, now())
     where id = p_session_id;
   end if;
