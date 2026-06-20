@@ -205,6 +205,15 @@ export function AdminPage() {
   const [adminEmail, setAdminEmail] = useState('管理员');
   const [tab, setTab] = useState<AdminTab>('dashboard');
   const [message, setMessage] = useState<string | null>(null);
+  const [adminToast, setAdminToast] = useState<{ msg: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const adminToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showAdminToast(msg: string, type: 'success' | 'error' | 'warning' = 'success', duration = 2500) {
+    if (adminToastRef.current) clearTimeout(adminToastRef.current);
+    setAdminToast({ msg, type });
+    adminToastRef.current = setTimeout(() => setAdminToast(null), duration);
+  }
+
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
   const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -319,13 +328,14 @@ export function AdminPage() {
           </div>
         </header>
         <section className="admin-content">
-          {message ? <p className="admin-message">{message}</p> : null}
-          {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} onOpenOrders={() => setTab('orders')} setTab={setTab} /> : null}
-          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} onMessage={setMessage} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} /> : null}
-          {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} /> : null}
-          {tab === 'settings' ? <SettingsEditor onMessage={setMessage} /> : null}
-          {tab === 'categories' ? <CategoryEditor onMessage={setMessage} /> : null}
-          {tab === 'items' ? <ItemEditor onMessage={setMessage} /> : null}
+          {adminToast ? <div className={`admin-toast toast-${adminToast.type}`}>{adminToast.msg}</div> : null}
+          {message ? <p className="admin-message">{message}<button type="button" className="print-warning-dismiss" style={{marginLeft:8}} onClick={()=>setMessage(null)}>×</button></p> : null}
+          {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} /> : null}
+          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} /> : null}
+          {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : null}
+          {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} /> : null}
+          {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
+          {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
         </section>
       </div>
@@ -384,12 +394,10 @@ function AdminLogin({ onMessage, message }: { onMessage: (value: string | null) 
 }
 
 function Dashboard({
-  onMessage,
-  onOpenOrders,
-  syncVersion,
-  setTab,
+  onMessage, toast, onOpenOrders, syncVersion, setTab,
 }: {
   onMessage: (value: string | null) => void;
+  toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
   onOpenOrders: () => void;
   syncVersion: number;
   setTab: (tab: AdminTab) => void;
@@ -635,7 +643,7 @@ function DailyStats({
   );
 }
 
-function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => void }) {
+function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; }) {
   const [settings, setSettings] = useState<Partial<RestaurantSettings>>(emptySettings);
 
   useEffect(() => {
@@ -659,7 +667,7 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
     const { error } = settings.id
       ? await supabase.from('restaurant_settings').update(payload).eq('id', settings.id)
       : await supabase.from('restaurant_settings').insert(payload);
-    onMessage(error ? error.message : '餐馆信息已保存');
+    if (error) onMessage(error.message); else toast('餐馆信息已保存');
     if (!error) load();
   }
 
@@ -741,7 +749,7 @@ function SettingsEditor({ onMessage }: { onMessage: (value: string | null) => vo
   );
 }
 
-function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => void }) {
+function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; }) {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [draft, setDraft] = useState<Partial<MenuCategory>>(emptyCategory);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -777,7 +785,7 @@ function CategoryEditor({ onMessage }: { onMessage: (value: string | null) => vo
     const { error } = category.id
       ? await supabase.from('menu_categories').update(payload).eq('id', category.id)
       : await supabase.from('menu_categories').insert(payload);
-    onMessage(error ? error.message : '分类已保存');
+    if (error) onMessage(error.message); else toast('分类已保存');
     if (!error) {
       setDraft(emptyCategory);
       load();
@@ -1043,7 +1051,7 @@ async function translateSingleMenuValue<T extends MenuTranslationFields>(value: 
   return mergeMissingTranslations(value, translation ?? {});
 }
 
-function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }) {
+function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; }) {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [draft, setDraft] = useState<Partial<MenuItem>>(emptyItem);
@@ -1061,18 +1069,9 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   const [deleting, setDeleting] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
-  const [itemToast, setItemToast] = useState<string | null>(null);
-  const itemToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showItemToast(msg: string) {
-    if (itemToastRef.current) clearTimeout(itemToastRef.current);
-    setItemToast(msg);
-    itemToastRef.current = setTimeout(() => setItemToast(null), 2500);
-  }
 
   useEffect(() => {
     load();
-    return () => { if (itemToastRef.current) clearTimeout(itemToastRef.current); };
   }, []);
 
   async function load() {
@@ -1149,7 +1148,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   async function bulkUpdateAvailability(isAvailable: boolean) {
     if (!supabase || selectedIds.size === 0) return;
     const { error } = await supabase.from('menu_items').update({ is_available: isAvailable, is_sold_out: false }).in('id', Array.from(selectedIds));
-    if (error) onMessage(error.message); else showItemToast(`已批量${isAvailable ? '上架' : '下架'} ${selectedIds.size} 个菜品`);
+    if (error) onMessage(error.message); else toast(`已批量${isAvailable ? '上架' : '下架'} ${selectedIds.size} 个菜品`);
     if (!error) {
       setSelectedIds(new Set());
       load();
@@ -1159,7 +1158,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   async function bulkUpdateSoldOut(soldOut: boolean) {
     if (!supabase || selectedIds.size === 0) return;
     const { error } = await supabase.from('menu_items').update({ is_sold_out: soldOut, is_available: true }).in('id', Array.from(selectedIds));
-    if (error) onMessage(error.message); else showItemToast(`已标记${soldOut ? '售罄' : '有货'} ${selectedIds.size} 个菜品`);
+    if (error) onMessage(error.message); else toast(`已标记${soldOut ? '售罄' : '有货'} ${selectedIds.size} 个菜品`);
     if (!error) {
       setSelectedIds(new Set());
       load();
@@ -1185,7 +1184,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       for (const id of deleteTarget.ids) {
         await adminHardDeleteMenuItem(id, deletePassword);
       }
-      showItemToast(`已永久删除 ${deleteTarget.ids.length} 个菜品`);
+      toast(`已永久删除 ${deleteTarget.ids.length} 个菜品`);
       setSelectedIds(new Set());
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -1205,7 +1204,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       return;
     }
     const { error } = await supabase.from('menu_items').update({ price: nextPrice }).in('id', Array.from(selectedIds));
-    if (error) onMessage(error.message); else showItemToast(`已批量修改 ${selectedIds.size} 个菜品价格`);
+    if (error) onMessage(error.message); else toast(`已批量修改 ${selectedIds.size} 个菜品价格`);
     if (!error) {
       setBulkPrice('');
       setSelectedIds(new Set());
@@ -1346,7 +1345,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
     const { error } = item.id
       ? await supabase.from('menu_items').update(payload).eq('id', item.id)
       : await supabase.from('menu_items').insert(payload);
-    onMessage(error ? error.message : '菜品已保存');
+    if (error) onMessage(error.message); else toast('菜品已保存');
     if (!error) {
       setDraft(emptyItem);
       load();
@@ -1378,7 +1377,6 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
 
   return (
     <AdminSection title="菜品管理" subtitle="管理菜单菜品、价格、分类、图片和上下架状态" onRefresh={load}>
-      {itemToast ? <div className="order-toast">{itemToast}</div> : null}
       {/* ─ 统计卡片 ─ */}
       <div className="item-stats-row">
         <div className="istat"><span>菜品总数</span><strong>{itemStats.total}</strong></div>
@@ -1572,7 +1570,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   );
 }
 
-function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChange }: { onMessage: (value: string | null) => void; syncVersion: number; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; }) {
+function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnabledChange }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -1593,8 +1591,6 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const knownBillRequestIdsRef = useRef<Set<string>>(new Set());
   const soundEnabledRef = useRef(false);
@@ -1630,12 +1626,6 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
-
-  function showToast(msg: string) {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToast(msg);
-    toastTimerRef.current = setTimeout(() => setToast(null), 2500);
-  }
 
   async function load(options?: { initial?: boolean }) {
     try {
@@ -1693,7 +1683,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   async function changeStatus(orderId: string, status: OrderStatus) {
     try {
       await updateOrderStatus(orderId, status);
-      onMessage('订单状态已更新');
+      toast('订单状态已更新');
       load();
     } catch (err) {
       onMessage(formatUnknownError(err));
@@ -1758,13 +1748,13 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
         autoPrintWindowRef.current.close();
       }
       autoPrintWindowRef.current = null;
-      showToast('自动打印厨房小票已关闭');
+      toast('自动打印厨房小票已关闭');
       return;
     }
 
     const printWindow = window.open('', 'restaurant-kitchen-printer', 'width=420,height=720');
     if (!printWindow) {
-      showToast('浏览器阻止了自动打印窗口，请允许弹窗后重新启用');
+      toast('浏览器阻止了自动打印窗口，请允许弹窗后重新启用');
       return;
     }
 
@@ -1774,7 +1764,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
     autoPrintWindowRef.current = printWindow;
     autoPrintEnabledRef.current = true;
     setAutoPrintEnabled(true);
-    showToast('自动打印厨房小票已开启');
+    toast('自动打印厨房小票已开启');
   }
 
   function queueAutoPrint(pendingOrders: Order[]) {
@@ -1914,7 +1904,6 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
 
   return (
     <AdminSection title="订单管理" onRefresh={load}>
-      {toast ? <div className="order-toast">{toast}</div> : null}
       {/* ─ 结账提醒 ─ */}
       {billRequests.length ? (
         <section className="bill-alerts-new">
@@ -1991,7 +1980,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
             自动打印
           </label>
           <label className="tool-row">
-            <input checked={soundEnabled} type="checkbox" onChange={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); showToast(n ? '声音提醒已开启' : '声音提醒已关闭'); }} />
+            <input checked={soundEnabled} type="checkbox" onChange={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); toast(n ? '声音提醒已开启' : '声音提醒已关闭'); }} />
             {soundEnabled ? '🔔 有声' : '🔕 静音'}
           </label>
         </div>
@@ -2253,7 +2242,7 @@ function playOrderNotification() {
   window.setTimeout(() => audioContext.close(), 650);
 }
 
-function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | null) => void; syncVersion: number }) {
+function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number }) {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [sessions, setSessions] = useState<TableSession[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -2288,7 +2277,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
   async function addTable() {
     try {
       await createRestaurantTable(newNumber, newLabel || `Table ${newNumber}`);
-      onMessage('桌台已创建');
+      toast('桌台已创建');
       setNewNumber(newNumber + 1);
       setNewLabel('');
       load();
@@ -2300,7 +2289,7 @@ function TableManager({ onMessage, syncVersion }: { onMessage: (value: string | 
   async function saveTable(table: RestaurantTable) {
     try {
       await saveRestaurantTable(table);
-      onMessage('桌台已保存');
+      toast('桌台已保存');
       load();
     } catch (err) {
       onMessage(formatUnknownError(err));
