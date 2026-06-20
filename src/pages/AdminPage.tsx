@@ -1544,6 +1544,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
   const [printWarning, setPrintWarning] = useState<string | null>(null);
   const [confirmingBillIds, setConfirmingBillIds] = useState<Set<string>>(new Set());
+  const confirmingBillIdsRef = useRef<Set<string>>(new Set());
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
@@ -1616,7 +1617,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
       setTotalSessions(orderPage.total_sessions);
       if (page > orderPage.total_pages) setPage(orderPage.total_pages);
       setTableOptions(tables.filter((table) => table.is_active).map((table) => table.table_number));
-      setBillRequests(nextBillRequests);
+      setBillRequests(nextBillRequests.filter((r) => !confirmingBillIdsRef.current.has(r.id)));
 
       const hasNewBillRequest = !options?.initial && nextBillRequests.some((request) => !previousBillIds.has(request.id));
       if (insertedPendingOrders.length > 0 || hasNewBillRequest) {
@@ -1646,15 +1647,21 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   }
 
   async function confirmBillPayment(request: BillRequest) {
-    setConfirmingBillIds((prev) => new Set(prev).add(request.id));
+    const nextConfirming = new Set(confirmingBillIdsRef.current).add(request.id);
+    confirmingBillIdsRef.current = nextConfirming;
+    setConfirmingBillIds(nextConfirming);
     setBillRequests((prev) => prev.filter((r) => r.id !== request.id));
     try {
       const result = await confirmBillAndCloseSession(request.session_id);
       onMessage(`已付款并清桌：${result.paid_order_count} 张订单已结清，${result.deleted_cart_count} 条未提交购物车已清空`);
     } catch (err) {
-      setBillRequests((prev) => [request, ...prev]);
-      onMessage(formatUnknownError(err));
+      const msg = formatUnknownError(err);
+      if (!msg.includes('already closed')) {
+        setBillRequests((prev) => [request, ...prev]);
+      }
+      onMessage(msg);
     } finally {
+      confirmingBillIdsRef.current.delete(request.id);
       setConfirmingBillIds((prev) => {
         const next = new Set(prev);
         next.delete(request.id);
