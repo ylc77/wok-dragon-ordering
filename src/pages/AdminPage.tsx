@@ -1437,6 +1437,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
           <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={bulkUpdatePrice}>批量改价</button>
           <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(true)}>标记有货</button>
           <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>标记售罄</button>
+          <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(true)}>批量上架</button>
           <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>批量下架</button>
           <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => promptDeleteItems(Array.from(selectedIds), `批量删除 ${selectedIds.size} 个菜品`)}>
             <Trash2 size={14} /> 删除
