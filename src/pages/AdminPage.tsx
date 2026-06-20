@@ -1711,13 +1711,13 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
         autoPrintWindowRef.current.close();
       }
       autoPrintWindowRef.current = null;
-      onMessage('自动打印厨房小票已关闭');
+      showToast('自动打印厨房小票已关闭');
       return;
     }
 
     const printWindow = window.open('', 'restaurant-kitchen-printer', 'width=420,height=720');
     if (!printWindow) {
-      onMessage('浏览器阻止了自动打印窗口，请允许此网站打开弹窗后重新启用');
+      showToast('浏览器阻止了自动打印窗口，请允许弹窗后重新启用');
       return;
     }
 
@@ -1727,7 +1727,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
     autoPrintWindowRef.current = printWindow;
     autoPrintEnabledRef.current = true;
     setAutoPrintEnabled(true);
-    onMessage('自动打印厨房小票已启用，仅处理之后收到的新订单');
+    showToast('自动打印厨房小票已开启');
   }
 
   function queueAutoPrint(pendingOrders: Order[]) {
