@@ -848,7 +848,7 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
 
       {/* ─ 分类列表 ─ */}
       <div className="admin-table">
-        <div className="item-table-head" aria-hidden="true"><span>中文名</span><span>英文名</span><span>希腊语</span><span>排序</span><span>状态</span><span>操作</span></div>
+        <div className="cat-table-head" aria-hidden="true"><span>中文名</span><span>英文名</span><span>希腊语</span><span>排序</span><span>状态</span><span>操作</span></div>
         {filteredCategories.map((c) => (
           <div className="admin-row" key={c.id}>
             {editingId === c.id ? (

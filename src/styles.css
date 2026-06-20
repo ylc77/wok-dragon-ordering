@@ -4380,3 +4380,20 @@ body {
   .cat-row-summary { grid-template-columns: 1fr; gap: 4px; }
   .cat-row-summary > span { white-space: normal; }
 }
+.cat-table-head {
+  align-items: center;
+  border-bottom: 2px solid #e5e7eb;
+  color: #6b7280;
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr 1fr 60px 70px auto;
+  padding: 6px 0 8px;
+  white-space: nowrap;
+}
+.item-toolbar { gap: 12px; }
+.item-toolbar select, .item-toolbar input { height: 34px; }
+@media (max-width: 768px) {
+  .cat-table-head { display: none; }
+}
