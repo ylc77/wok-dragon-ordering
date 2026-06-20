@@ -1546,6 +1546,8 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const knownBillRequestIdsRef = useRef<Set<string>>(new Set());
   const soundEnabledRef = useRef(false);
@@ -1581,6 +1583,12 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
+
+  function showToast(msg: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(msg);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2500);
+  }
 
   async function load(options?: { initial?: boolean }) {
     try {
@@ -1859,6 +1867,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
 
   return (
     <AdminSection title="订单管理" onRefresh={load}>
+      {toast ? <div className="order-toast">{toast}</div> : null}
       {/* ─ 结账提醒 ─ */}
       {billRequests.length ? (
         <section className="bill-alerts-new">
@@ -1932,7 +1941,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
           <input checked={autoPrintEnabled} type="checkbox" onChange={toggleAutoPrint} />
           自动打印
         </label>
-        <button className={soundEnabled ? 'sound-chip on' : 'sound-chip'} onClick={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); onMessage(n ? '声音提醒已启用' : '声音提醒已关闭'); }}>
+        <button className={soundEnabled ? 'sound-chip on' : 'sound-chip'} onClick={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); showToast(n ? '声音提醒已开启' : '声音提醒已关闭'); }}>
           {soundEnabled ? '🔔 有声' : '🔕 静音'}
         </button>
       </div>

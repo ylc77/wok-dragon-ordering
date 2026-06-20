@@ -4004,6 +4004,20 @@ body {
 
 /* ── 新版订单管理 ── */
 
+.order-toast {
+  animation: order-toast-in .25s ease, order-toast-out .3s ease 2.2s forwards;
+  background: #1f2937;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding: 10px 18px;
+  text-align: center;
+}
+@keyframes order-toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes order-toast-out { from { opacity: 1; } to { opacity: 0; } }
+
 .bill-alerts-new { margin-bottom: 14px; }
 .bill-alert-item {
   align-items: center;
