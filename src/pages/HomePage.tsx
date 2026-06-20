@@ -127,7 +127,7 @@ export function HomePage() {
         <div className="hero-media">
           {heroImageUrl ? (
             <img src={heroImageUrl} alt={name} />
-          ) : <div className="hero-image-fallback" aria-hidden="true"><div className="hif-pattern" /><span className="hif-mark">火</span><strong>Wok Dragon</strong><small>Express</small><span className="hif-sub">Γρήγορο Wok · Ζεστή Φιλοξενία</span></div>}
+          ) : <div className="hero-image-fallback" aria-hidden="true"><div className="hif-inner"><span className="hif-mark">火</span><strong>Wok Dragon</strong><small>Express</small><span className="hif-sub">{lang === 'el' ? 'Γρήγορο Wok · Ζεστή Φιλοξενία' : 'Fast Wok · Warm Hospitality'}</span></div></div>}
         </div>
       </section>
 
