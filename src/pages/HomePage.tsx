@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock3, ExternalLink, Instagram, MapPin, MessageCircle, Phone, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { LanguageSwitch } from '../components/LanguageSwitch';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, getRestaurantSettings, subscribeToRestaurantSettings } from '../lib/menuApi';
 import { getLocalizedField, pickLocalized } from '../lib/localized';
@@ -203,6 +204,9 @@ export function HomePage() {
           </div>
         </div>
       </section>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '12px' }}>
+        <LanguageSwitch />
+      </div>
     </main>
   );
 }

@@ -34,6 +34,17 @@ export function TableOrderPage() {
   const [sessionInfo, setSessionInfo] = useState<TableSessionState | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  function sanitizeError(err: unknown): string {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('menu item is unavailable')) return t('common.unavailable');
+    if (msg.includes('quantity cannot exceed')) return msg;
+    if (msg.includes('quantity must be greater than zero')) return msg;
+    if (msg.includes('not a participant')) return t('order.sessionEnded');
+    if (msg.includes('cart is empty')) return t('order.cartEmpty');
+    if (msg.includes('active table session')) return t('order.sessionEnded');
+    return t('common.unavailable');
+  }
+
   const [submitting, setSubmitting] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [billOpen, setBillOpen] = useState(false);
@@ -121,7 +132,7 @@ export function TableOrderPage() {
             }
           })
           .catch((err) => {
-            if (!cancelled) setMessage(err instanceof Error ? err.message : String(err));
+            if (!cancelled) setMessage(sanitizeError(err));
           });
 
         if (!hasSupabaseConfig) {
@@ -177,7 +188,7 @@ export function TableOrderPage() {
         setRestaurantSettings(settings);
         setOrderingEnabled(settings?.ordering_enabled ?? true);
       } catch (err) {
-        if (!cancelled) setMessage(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setMessage(sanitizeError(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -192,13 +203,13 @@ export function TableOrderPage() {
   useEffect(() => {
     if (!sessionInfo) return;
     const unsubscribe = subscribeToTableCart(sessionInfo.session_id, () => {
-      void refreshCart(sessionInfo.session_id).catch((err) => setMessage(err.message));
-      void refreshSession(sessionInfo.session_id, false).catch((err) => setMessage(err.message));
-      void refreshOrderingStatus().catch((err) => setMessage(err.message));
+      void refreshCart(sessionInfo.session_id).catch((err) => setMessage(sanitizeError(err)));
+      void refreshSession(sessionInfo.session_id, false).catch((err) => setMessage(sanitizeError(err)));
+      void refreshOrderingStatus().catch((err) => setMessage(sanitizeError(err)));
     }, setRealtimeStatus);
     const interval = window.setInterval(() => {
-      void refreshSession(sessionInfo.session_id, true).catch((err) => setMessage(err.message));
-      void refreshOrderingStatus().catch((err) => setMessage(err.message));
+      void refreshSession(sessionInfo.session_id, true).catch((err) => setMessage(sanitizeError(err)));
+      void refreshOrderingStatus().catch((err) => setMessage(sanitizeError(err)));
     }, 30_000);
     return () => {
       window.clearInterval(interval);
@@ -270,7 +281,7 @@ export function TableOrderPage() {
   useEffect(() => {
     if (!reentryRequest?.id || reentryRequest.status !== 'pending') return;
     return subscribeToTableReentryRequest(reentryRequest.id, () => {
-      void refreshReentryRequest().catch((err) => setMessage(err.message));
+      void refreshReentryRequest().catch((err) => setMessage(sanitizeError(err)));
     });
   }, [reentryRequest?.id, reentryRequest?.status, refreshReentryRequest]);
 
@@ -337,7 +348,7 @@ export function TableOrderPage() {
       await addCartItem(sessionInfo.session_id, item.id, 1, '');
       await refreshCart(sessionInfo.session_id);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : String(err));
+      setMessage(sanitizeError(err));
     }
   }
 
@@ -359,7 +370,7 @@ export function TableOrderPage() {
       }
       await refreshCart(sessionInfo.session_id);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : String(err));
+      setMessage(sanitizeError(err));
     }
   }
 
@@ -380,7 +391,7 @@ export function TableOrderPage() {
       await Promise.all([refreshCart(sessionInfo.session_id), refreshOrders(sessionInfo.session_id)]);
       setCartOpen(false);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : String(err));
+      setMessage(sanitizeError(err));
     } finally {
       setSubmitting(false);
     }
@@ -409,7 +420,7 @@ export function TableOrderPage() {
         bill_payment_method: paymentMethod,
       } : current);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : String(err));
+      setMessage(sanitizeError(err));
     } finally {
       setRequestingBill(false);
     }
@@ -423,7 +434,7 @@ export function TableOrderPage() {
       await requestTableReentry(sessionInfo.session_id, qrToken);
       setReentryRequest(await fetchLatestTableReentryRequest(sessionInfo.session_id));
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : String(err));
+      setMessage(sanitizeError(err));
     } finally {
       setRequestingReentry(false);
     }

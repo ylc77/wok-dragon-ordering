@@ -2561,6 +2561,21 @@ button:disabled {
     display: flex;
     margin: 8px 0 0;
   }
+
+  .order-menu {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+
+  .order-category-tabs {
+    overflow-x: hidden;
+  }
+
+  .order-category-tabs a {
+    font-size: 10.5px;
+    hyphens: auto;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
 }
 
 /* Reference-led layout refinement */
@@ -3488,23 +3503,6 @@ body {
   .item-row-actions {
     grid-column: 2 / -1;
     justify-content: flex-start;
-  }
-}
-
-@media (max-width: 560px) {
-  .order-menu {
-    grid-template-columns: 92px minmax(0, 1fr);
-  }
-
-  .order-category-tabs {
-    overflow-x: hidden;
-  }
-
-  .order-category-tabs a {
-    font-size: 10.5px;
-    hyphens: auto;
-    overflow-wrap: break-word;
-    word-break: normal;
   }
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { LanguageSwitch } from '../components/LanguageSwitch';
 import { getPublicMenu } from '../lib/menuApi';
 import { formatPrice, getLocalizedField } from '../lib/localized';
 import type { Language, MenuGroup, MenuItem } from '../lib/types';
@@ -79,6 +80,9 @@ export function MenuPage() {
           )}
         </div>
       </div>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '12px' }}>
+        <LanguageSwitch />
+      </div>
     </main>
   );
 }
@@ -127,5 +131,5 @@ function DishImage({ item, alt }: { item: MenuItem; alt: string }) {
     return <div className="menu-card-fallback" aria-hidden="true" />;
   }
 
-  return <img src={item.image_url} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
+  return <img src={item.image_url} alt={alt} width="118" height="118" loading="lazy" onError={() => setFailed(true)} />;
 }
