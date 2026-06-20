@@ -6,7 +6,7 @@ export async function getRestaurantSettings(): Promise<RestaurantSettings | null
 
   const { data, error } = await supabase
     .from('restaurant_settings')
-    .select('*')
+    .select('id,name_zh,name_en,name_el,logo_url,hero_image_url,intro_zh,intro_en,intro_el,phone,whatsapp_url,instagram_url,address_zh,address_en,address_el,map_url,opening_hours_zh,opening_hours_en,opening_hours_el,wolt_url,efood_url,box_url,accept_pos_payment,accept_cash_payment,ordering_enabled,ordering_paused_at,created_at,updated_at')
     .limit(1)
     .maybeSingle();
 
