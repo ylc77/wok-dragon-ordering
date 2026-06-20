@@ -2515,7 +2515,7 @@ function TableCard({
     <article className="table-card">
       <div className="qr-box" ref={qrRef}>
         <strong>{tableLabel}</strong>
-        <QRCodeSVG value={qrUrl} size={128} />
+        <QRCodeSVG value={qrUrl} size={150} />
       </div>
       <div className="table-card-body">
         <div className="admin-form-grid table-form">
@@ -2530,9 +2530,12 @@ function TableCard({
             启用
           </label>
         </div>
-        <p className="qr-url">{qrUrl}</p>
+        <p className="qr-url" title={qrUrl}>{qrUrl}</p>
+        <span className={`availability-badge${occupancyLabel === '待付款' ? '' : occupancyLabel === '使用中' ? '' : occupancyLabel === '已付款 / 待清桌' ? '' : ' active'}`} style={{
+          background: occupancyLabel === '待付款' ? '#fef3c7' : occupancyLabel === '使用中' ? '#dbeafe' : occupancyLabel === '已付款 / 待清桌' ? '#dcfce7' : undefined,
+          color: occupancyLabel === '待付款' ? '#92400e' : occupancyLabel === '使用中' ? '#1e40af' : occupancyLabel === '已付款 / 待清桌' ? '#166534' : undefined,
+        }}>{occupancyLabel}</span>
         <div className={`table-occupancy-status ${paymentRequested ? 'is-payment' : occupied ? 'is-occupied' : 'is-ready'}`}>
-          <strong>{occupancyLabel}</strong>
           <span>{occupancyDetail}</span>
         </div>
         {reentryRequests.length ? (

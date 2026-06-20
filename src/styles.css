@@ -4401,3 +4401,7 @@ body {
 .table-admin-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
 @media (min-width: 1600px) { .table-admin-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 768px) { .table-admin-grid { grid-template-columns: 1fr; } }
+.qr-url { font-size: 11px; color: #9ca3af; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-card-body .availability-badge { display: inline-block; margin-bottom: 6px; }
+.maintenance-button { min-height: 32px; }
+.clear-table-button { min-height: 34px; }
