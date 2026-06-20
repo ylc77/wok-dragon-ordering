@@ -106,22 +106,17 @@ export function validateImageFile(file: File): string | null {
 }
 
 async function uploadCompressed(
-  file: File,
-  bucket: string,
-  path: string,
+  file: File, bucket: string, path: string,
   compressType: 'menuItem' | 'category' | 'logo' | 'hero',
 ): Promise<string> {
   if (!supabase) throw new Error('Supabase 客户端未初始化');
-
   let blob: Blob = file;
-  try {
-    blob = await compressImageToWebp(file, compressType);
-  } catch {
-    // 压缩失败，使用原图
-  }
-
-  const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' });
-  const { error, data } = await supabase.storage.from(bucket).upload(path, webpFile, { upsert: true, contentType: 'image/webp' });
+  let isWebp = false;
+  try { blob = await compressImageToWebp(file, compressType); isWebp = true; } catch { /* 压缩失败用原图 */ }
+  const ext = isWebp ? 'webp' : (file.name.split('.').pop() || 'jpg');
+  const mime = isWebp ? 'image/webp' : (file.type || 'image/jpeg');
+  const f = new File([blob], file.name.replace(/\.[^.]+$/, '.' + ext), { type: mime });
+  const { error, data } = await supabase.storage.from(bucket).upload(path, f, { upsert: true, contentType: mime });
   if (error) throw error;
   const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
   return urlData.publicUrl;
