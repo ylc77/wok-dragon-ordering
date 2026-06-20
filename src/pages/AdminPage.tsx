@@ -424,9 +424,13 @@ function Dashboard({
     preparing_count: 0,
     hot_items: [],
   });
+  const [tableStatuses, setTableStatuses] = useState<{
+    active: number; billPending: number; joinRequests: number;
+  }>({ active: 0, billPending: 0, joinRequests: 0 });
 
   useEffect(() => {
     void load();
+    void loadTableStatus();
   }, [syncVersion]);
 
   async function load() {
@@ -436,6 +440,21 @@ function Dashboard({
     } catch (err) {
       onMessage(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  async function loadTableStatus() {
+    try {
+      const [{ data: sessions }, { data: bills }, { data: reentries }] = await Promise.all([
+        supabase!.from('table_sessions').select('id, table_id, restaurant_tables(table_number)').eq('status', 'active'),
+        supabase!.from('bill_requests').select('id').eq('status', 'pending'),
+        supabase!.from('table_reentry_requests').select('id').eq('status', 'pending'),
+      ]);
+      setTableStatuses({
+        active: sessions?.length ?? 0,
+        billPending: bills?.length ?? 0,
+        joinRequests: reentries?.length ?? 0,
+      });
+    } catch { /* silent */ }
   }
 
   return (
@@ -456,6 +475,18 @@ function Dashboard({
         <div className="summary-tile">
           <span>制作中订单</span>
           <strong>{summary.preparing_count}</strong>
+        </div>
+        <div className={`summary-tile${tableStatuses.active > 0 ? ' active' : ''}`}>
+          <span>当前使用中桌台</span>
+          <strong>{tableStatuses.active}</strong>
+        </div>
+        <div className={`summary-tile${tableStatuses.billPending > 0 ? ' urgent' : ''}`}>
+          <span>待付款桌台</span>
+          <strong>{tableStatuses.billPending}</strong>
+        </div>
+        <div className={`summary-tile${tableStatuses.joinRequests > 0 ? ' urgent' : ''}`}>
+          <span>待处理加入请求</span>
+          <strong>{tableStatuses.joinRequests}</strong>
         </div>
       </div>
 
@@ -1511,6 +1542,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
     total_orders: 0, pending: 0, preparing: 0, served: 0, paid: 0, cancelled: 0, paid_total: 0,
   });
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
+  const [printWarning, setPrintWarning] = useState<string | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
@@ -1693,6 +1725,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
       setAutoPrintEnabled(false);
       autoPrintWindowRef.current = null;
       onMessage('自动打印窗口已关闭，请重新启用自动打印厨房小票');
+      setPrintWarning('自动打印窗口已意外关闭，新订单无法自动打印。请重新启用。');
       return;
     }
 
@@ -1844,6 +1877,12 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
             <small>仅打印 Realtime 收到且尚未打印的新 pending 订单</small>
           </span>
         </label>
+        {printWarning ? (
+          <span className="print-warning-banner">
+            ⚠ {printWarning}
+            <button type="button" onClick={() => setPrintWarning(null)} style={{ background: 'none', border: 'none', color: '#92400e', cursor: 'pointer', fontWeight: 700, marginLeft: '8px' }}>×</button>
+          </span>
+        ) : null}
         <button
           className={soundEnabled ? 'sound-toggle enabled' : 'sound-toggle'}
           type="button"
@@ -1875,7 +1914,7 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
           </label>
         ) : null}
         <label>
-          桌号筛选
+          桌号
           <select value={tableFilter} onChange={(event) => setTableFilter(event.target.value)}>
             <option value="all">全部桌号</option>
             {tableOptions.map((tableNumber) => (
@@ -1885,6 +1924,19 @@ function OrderManager({ onMessage, syncVersion, soundEnabled, onSoundEnabledChan
             ))}
           </select>
         </label>
+        <input
+          type="number"
+          min="1"
+          placeholder="快速跳转桌号"
+          style={{ width: '120px', border: '1px solid #dedfe1', borderRadius: '6px', padding: '6px 8px', fontSize: '13px' }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              const val = (event.target as HTMLInputElement).value;
+              if (val) setTableFilter(val);
+              else setTableFilter('all');
+            }
+          }}
+        />
       </div>
 
       <div className="order-summary-grid">
