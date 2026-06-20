@@ -1399,10 +1399,11 @@ button:disabled {
   border-radius: 8px;
   cursor: pointer;
   display: inline-flex;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  gap: 6px;
-  padding: 8px 14px;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 18px;
   transition: all .15s;
 }
 .quick-action-btn:hover { background: #f3f4f6; border-color: var(--accent); color: var(--accent); }
@@ -3914,13 +3915,13 @@ body {
 /* ---------- 30 天统计表 ---------- */
 
 .daily-stats-table-wrap {
-  max-height: 520px;
-  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .daily-stats-table {
   border-collapse: collapse;
   font-size: 13.5px;
+  min-width: 500px;
   width: 100%;
 }
 
@@ -3929,12 +3930,9 @@ body {
   border-bottom: 2px solid #e5e7eb;
   color: #6b7280;
   font-weight: 600;
-  padding: 8px 10px;
-  position: sticky;
+  padding: 10px 12px;
   text-align: left;
-  top: 0;
   white-space: nowrap;
-  z-index: 1;
 }
 
 .daily-stats-table th.num,
