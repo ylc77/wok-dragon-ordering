@@ -1492,11 +1492,19 @@ begin
   end if;
 
   if v_status <> 'active' then
-    raise exception 'table session is already closed';
+    update bill_requests
+    set status = 'handled', handled_at = v_now
+    where session_id = p_session_id and status = 'pending';
+    return query select 0, 0;
+    return;
   end if;
 
   if v_bill_status <> 'requested' or v_payment_method not in ('pos', 'cash') then
-    raise exception 'a valid bill request is required';
+    update bill_requests
+    set status = 'handled', handled_at = v_now
+    where session_id = p_session_id and status = 'pending';
+    return query select 0, 0;
+    return;
   end if;
 
   update orders
@@ -1521,6 +1529,10 @@ begin
       cart_version = cart_version + 1,
       cart_updated_at = v_now
   where id = p_session_id;
+
+  update bill_requests
+  set status = 'handled', handled_at = v_now
+  where session_id = p_session_id and status = 'pending';
 
   perform private.ensure_active_table_session(v_table_id);
   return query select v_paid_count, v_deleted_count;
@@ -1980,11 +1992,19 @@ begin
   end if;
 
   if v_status <> 'active' then
-    raise exception 'table session is already closed';
+    update bill_requests
+    set status = 'handled', handled_at = v_now
+    where session_id = p_session_id and status = 'pending';
+    return query select 0, 0;
+    return;
   end if;
 
   if v_bill_status <> 'requested' or v_payment_method not in ('pos', 'cash') then
-    raise exception 'a valid bill request is required';
+    update bill_requests
+    set status = 'handled', handled_at = v_now
+    where session_id = p_session_id and status = 'pending';
+    return query select 0, 0;
+    return;
   end if;
 
   update orders
