@@ -723,16 +723,8 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
       <div className="admin-form-panel">
         <h3>联系方式与平台</h3>
         <div className="admin-form-grid">
-        <div className="item-image-field">
-          <TextField label="Logo 图片链接" value={settings.logo_url} onChange={(v) => setSettings({ ...settings, logo_url: v })} />
-          {settings.logo_url ? <img src={settings.logo_url} alt="Logo" className="item-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
-          <label className="item-upload-btn"><Upload size={14} />上传 Logo<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const err = validateImageFile(file); if (err) { toast(err, 'warning'); return; } try { const url = await uploadRestaurantImage(file, 'logo'); setSettings({ ...settings, logo_url: url }); toast('Logo 上传成功'); } catch { toast('上传失败', 'error'); } }} /></label>
-        </div>
-        <div className="item-image-field">
-          <TextField label="首页主图链接" value={settings.hero_image_url} onChange={(v) => setSettings({ ...settings, hero_image_url: v })} />
-          {settings.hero_image_url ? <img src={settings.hero_image_url} alt="Hero" className="item-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
-          <label className="item-upload-btn"><Upload size={14} />上传 Hero 图<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const err = validateImageFile(file); if (err) { toast(err, 'warning'); return; } try { const url = await uploadRestaurantImage(file, 'hero'); setSettings({ ...settings, hero_image_url: url }); toast('Hero 图上传成功'); } catch { toast('上传失败', 'error'); } }} /></label>
-        </div>
+        <SettingsImageField label="Logo 图片链接" value={settings.logo_url} onChange={(v) => setSettings({ ...settings, logo_url: v })} uploadType="logo" toast={toast} tip="推荐 512×512 或 600×200，PNG/WebP，透明背景更好" />
+        <SettingsImageField label="首页主图链接" value={settings.hero_image_url} onChange={(v) => setSettings({ ...settings, hero_image_url: v })} uploadType="hero" toast={toast} tip="推荐 1600×900 或 1920×1080，16:9 横向图，主体居中，系统自动压缩为 WebP" />
         <TextField label="电话" value={settings.phone} onChange={(v) => setSettings({ ...settings, phone: v })} />
         <TextField label="WhatsApp 链接" value={settings.whatsapp_url} onChange={(v) => setSettings({ ...settings, whatsapp_url: v })} />
         <TextField label="Instagram 链接" value={settings.instagram_url} onChange={(v) => setSettings({ ...settings, instagram_url: v })} />
@@ -2984,6 +2976,42 @@ function AdminSection({
       </div>
       {children}
     </section>
+  );
+}
+
+function SettingsImageField({
+  label, value, onChange, uploadType, toast, tip,
+}: {
+  label: string; value?: string | null; onChange: (v: string) => void;
+  uploadType: 'logo' | 'hero'; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
+  tip?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const isLogo = uploadType === 'logo';
+  return (
+    <div className="item-image-field">
+      <TextField label={label} value={value} onChange={onChange} />
+      {value ? (
+        <img src={value} alt={label} className={isLogo ? 'settings-logo-preview' : 'settings-hero-preview'}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+            const span = (e.target as HTMLImageElement).nextElementSibling as HTMLElement | null;
+            if (span) span.style.display = 'block';
+          }} />
+      ) : null}
+      <span className="settings-preview-error" style={{ display: 'none' }}>图片无法预览</span>
+      <label className="item-upload-btn"><Upload size={14} />{uploading ? '上传中…' : `上传${isLogo ? 'Logo' : '首页图'}`}
+        <input type="file" accept="image/*" hidden disabled={uploading} onChange={async (e) => {
+          const file = e.target.files?.[0]; if (!file) return;
+          const err = validateImageFile(file); if (err) { toast(err, 'warning'); return; }
+          setUploading(true);
+          try { const url = await uploadRestaurantImage(file, uploadType); onChange(url); toast(isLogo ? 'Logo 上传成功' : '首页主图上传成功'); }
+          catch { toast('上传失败，请重试', 'error'); }
+          finally { setUploading(false); }
+        }} />
+      </label>
+      {tip ? <p className="settings-image-tip">{tip}</p> : null}
+    </div>
   );
 }
 
