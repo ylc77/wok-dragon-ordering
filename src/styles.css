@@ -1195,15 +1195,16 @@ button:disabled {
   flex-direction: column;
   flex-shrink: 0;
   gap: 4px;
-  justify-content: space-between;
-  padding: 18px;
+  justify-content: flex-start;
+  padding: 20px 16px;
   width: 200px;
 }
 
 .admin-nav-list {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .admin-sidebar button,
@@ -1211,13 +1212,13 @@ button:disabled {
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   color: white;
   display: flex;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 12px 14px;
   text-align: left;
 }
 
@@ -1240,7 +1241,8 @@ button:disabled {
   font-size: 13px !important;
   font-weight: 600 !important;
   gap: 8px;
-  padding: 8px 12px !important;
+  margin-top: auto;
+  padding: 8px 14px !important;
 }
 
 .admin-logout:hover {
