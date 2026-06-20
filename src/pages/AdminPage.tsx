@@ -1292,7 +1292,6 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       price: Number(item.price ?? 0),
       image_url: item.image_url || null,
       is_available: Boolean(item.is_available),
-      is_sold_out: Boolean(item.is_sold_out),
       sort_order: Number(item.sort_order ?? 0),
     };
     const { error } = item.id
@@ -1424,8 +1423,6 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
         </div>
       ) : null}
 
-      {/* - 批量操作（仅在选中时显示） - */}
-      {selectedIds.size > 0 ? (
         <div className="bulk-action-bar">
           <label className="checkbox-label">
             <input
@@ -1438,14 +1435,13 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
           <strong>已选 {selectedItems.length} 项</strong>
           <input value={bulkPrice} type="number" min="0" step="0.01" placeholder="新价格" onChange={(event) => setBulkPrice(event.target.value)} />
           <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={bulkUpdatePrice}>批量改价</button>
-          <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(true)}>上架</button>
-          <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>下架</button>
+          <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(true)}>标记有货</button>
+          <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>标记售罄</button>
           <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => promptDeleteItems(Array.from(selectedIds), `批量删除 ${selectedIds.size} 个菜品`)}>
             <Trash2 size={14} /> 删除
           </button>
-          <button className="secondary-button" type="button" onClick={() => setSelectedIds(new Set())}>取消选择</button>
+          {selectedIds.size > 0 ? <button className="secondary-button" type="button" onClick={() => setSelectedIds(new Set())}>取消选择</button> : null}
         </div>
-      ) : null}
 
       {/* - 菜品列表 - */}
       <div className="admin-table item-table">
@@ -3179,8 +3175,20 @@ function ItemRow({
         </div>
         <span>{category?.name_zh || category?.name_en || '未分类'}</span>
         <strong>{formatPrice(Number(item.price))}</strong>
-        <span className={item.is_available ? 'availability-badge active' : 'availability-badge'}>{item.is_available ? '已上架' : '已下架'}</span>
-        {item.is_sold_out ? <span className="availability-badge sold-out">已售罄</span> : null}
+        <button
+          className={`item-status-toggle${item.is_available ? ' on' : ''}`}
+          type="button"
+          onClick={async () => {
+            if (!supabase) return;
+            const { error } = await supabase.from('menu_items').update({ is_available: !item.is_available }).eq('id', item.id);
+            if (error) { onMessage(error.message); return; }
+            onSave({ ...item, is_available: !item.is_available });
+          }}
+          title={item.is_available ? '有货' : '已售罄'}
+        >
+          <span className="toggle-dot" />
+          {item.is_available ? '有货' : '售罄'}
+        </button>
         <div className="item-row-actions">
           <button type="button" onClick={() => setEditing((open) => !open)}><Pencil size={14} />编辑</button>
           <button type="button" onClick={() => onDuplicate(item)}><Copy size={14} />复制</button>
@@ -3228,22 +3236,17 @@ function ItemForm({
       <TextField label="价格" value={value.price} type="number" onChange={(v) => onChange({ ...value, price: Number(v) })} />
       <TextField label="图片 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
       <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
-      <label className="checkbox-label">
-        <input
-          checked={Boolean(value.is_available)}
-          type="checkbox"
-          onChange={(event) => onChange({ ...value, is_available: event.target.checked })}
-        />
-        上架
-      </label>
-      <label className="checkbox-label">
-        <input
-          checked={Boolean(value.is_sold_out)}
-          type="checkbox"
-          onChange={(event) => onChange({ ...value, is_sold_out: event.target.checked })}
-        />
-        已售罄
-      </label>
+      <div className="item-form-toggle-row">
+        <span>状态</span>
+        <button
+          className={`item-status-toggle${value.is_available !== false ? ' on' : ''}`}
+          type="button"
+          onClick={() => onChange({ ...value, is_available: value.is_available === false })}
+        >
+          <span className="toggle-dot" />
+          {value.is_available !== false ? '有货' : '售罄'}
+        </button>
+      </div>
       </div>
       <div className="item-language-field"><strong>简体中文</strong>
         <TextField label="菜品名称" value={value.name_zh} onChange={(v) => onChange({ ...value, name_zh: v })} />

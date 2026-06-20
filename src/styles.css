@@ -1559,6 +1559,51 @@ button:disabled {
   font-size: 13px;
 }
 
+.item-status-toggle {
+  align-items: center;
+  background: #e5e7eb;
+  border: 0;
+  border-radius: 999px;
+  color: #6b7280;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  transition: background .2s, color .2s;
+}
+
+.item-status-toggle.on {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.toggle-dot {
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  height: 16px;
+  transition: background .2s;
+  width: 16px;
+}
+
+.item-status-toggle.on .toggle-dot {
+  background: #16a34a;
+}
+
+.item-form-toggle-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.item-form-toggle-row span {
+  color: #4a4a4a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .item-table .admin-row {
   margin-bottom: 0;
 }

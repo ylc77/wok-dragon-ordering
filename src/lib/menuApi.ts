@@ -45,7 +45,6 @@ export async function getPublicMenu(): Promise<MenuGroup[]> {
         .from('menu_items')
         .select('*')
         .is('deleted_at', null)
-        .eq('is_available', true)
         .order('sort_order', { ascending: true }),
     ]);
 
