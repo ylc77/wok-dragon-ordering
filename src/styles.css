@@ -4538,3 +4538,21 @@ body {
 .settings-brand-preview, .settings-hero-preview-wrap { background: #fafbfc; border: 2px dashed #e5e7eb; transition: border-color .2s; }
 .settings-brand-preview:hover, .settings-hero-preview-wrap:hover { border-color: #d1d5db; }
 @media (max-width: 900px) { .admin-language-panels { grid-template-columns: 1fr; } }
+/* global form polish */
+input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select { border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; transition: border-color .15s, box-shadow .15s; }
+input:not([type=checkbox]):not([type=radio]):not([type=file]):focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(181,31,36,.1); }
+textarea { min-height: 100px; padding: 10px 12px; resize: vertical; }
+
+/* settings */
+.settings-card { box-shadow: 0 1px 2px rgba(0,0,0,.03); padding: 24px; }
+.settings-card-head { margin-bottom: 16px; padding-bottom: 12px; }
+.settings-card h3 { font-size: 18px; font-weight: 700; }
+.settings-brand-preview { min-height: 120px; }
+.settings-hero-preview-wrap { max-height: 280px; }
+.settings-payment-label { border-radius: 10px; padding: 12px 16px; }
+.settings-save-bar { align-items: center; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; border-radius: 12px; display: flex; justify-content: space-between; margin-top: 20px; padding: 14px 20px; }
+
+@media (max-width: 768px) {
+  .settings-brand-grid { grid-template-columns: 1fr; }
+  .settings-hero-preview-wrap { max-height: 200px; }
+}

@@ -3013,26 +3013,16 @@ function AdminSection({
 }
 
 function SettingsImageField({
-  label, value, onChange, uploadType, toast, tip,
+  label, value, onChange, uploadType, toast,
 }: {
   label: string; value?: string | null; onChange: (v: string) => void;
   uploadType: 'logo' | 'hero'; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
-  tip?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const isLogo = uploadType === 'logo';
   return (
     <div className="item-image-field">
       <TextField label={label} value={value} onChange={onChange} />
-      {value ? (
-        <img src={value} alt={label} className={isLogo ? 'settings-logo-preview' : 'settings-hero-preview'}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-            const span = (e.target as HTMLImageElement).nextElementSibling as HTMLElement | null;
-            if (span) span.style.display = 'block';
-          }} />
-      ) : null}
-      <span className="settings-preview-error" style={{ display: 'none' }}>图片无法预览</span>
       <label className="item-upload-btn"><Upload size={14} />{uploading ? '上传中…' : `上传${isLogo ? 'Logo' : '首页图'}`}
         <input type="file" accept="image/*" hidden disabled={uploading} onChange={async (e) => {
           const file = e.target.files?.[0]; if (!file) return;
@@ -3043,7 +3033,6 @@ function SettingsImageField({
           finally { setUploading(false); }
         }} />
       </label>
-      {tip ? <p className="settings-image-tip">{tip}</p> : null}
     </div>
   );
 }
