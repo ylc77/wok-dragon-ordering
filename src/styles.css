@@ -68,11 +68,11 @@ button:disabled {
   align-items: center;
   color: #fff;
   display: flex;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   gap: 10px;
-  margin-bottom: 10px;
-  padding: 2px 6px;
+  margin-bottom: 12px;
+  padding: 0 4px;
   text-decoration: none;
 }
 
@@ -1194,16 +1194,16 @@ button:disabled {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  gap: 2px;
+  gap: 4px;
   justify-content: space-between;
-  padding: 16px 14px;
-  width: 180px;
+  padding: 18px;
+  width: 200px;
 }
 
 .admin-nav-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .admin-sidebar button,
@@ -1211,40 +1211,36 @@ button:disabled {
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 6px;
-  color: rgba(255,255,255,.7);
+  border-radius: 7px;
+  color: white;
   display: flex;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px;
   text-align: left;
-  transition: background .15s, color .15s;
 }
 
 .admin-sidebar button:hover,
 .admin-sidebar a:hover {
-  background: rgba(255,255,255,.08);
-  color: #fff;
+  background: rgba(255,255,255,.06);
 }
 
 .admin-sidebar button.active {
-  background: rgba(255,255,255,.12);
-  color: #fff;
+  background: #313131;
 }
 
 .admin-logout {
   align-items: center;
   background: transparent !important;
   border: 0;
-  color: rgba(255,255,255,.4) !important;
+  color: rgba(255,255,255,.45) !important;
   cursor: pointer;
   display: flex;
   font-size: 13px !important;
   font-weight: 600 !important;
-  gap: 6px;
-  padding: 6px 10px !important;
-  transition: color .15s;
+  gap: 8px;
+  padding: 8px 12px !important;
 }
 
 .admin-logout:hover {
