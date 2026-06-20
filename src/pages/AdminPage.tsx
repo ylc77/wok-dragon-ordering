@@ -860,7 +860,7 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
                 </div>
               </>
             ) : (
-              <div className="item-row-summary">
+              <div className="cat-row-summary">
                 <span><strong>{c.name_zh || '未填写'}</strong></span>
                 <span>{c.name_en || <span className="item-name-el">未填写</span>}</span>
                 <span className="item-name-el">{c.name_el || '未填写'}</span>

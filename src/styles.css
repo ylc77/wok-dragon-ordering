@@ -4366,3 +4366,17 @@ body {
 .toast-warning { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
 @keyframes adm-toast-in { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 @keyframes adm-toast-out { from { opacity: 1; } to { opacity: 0; } }
+/* category table row */
+.cat-row-summary {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr 1fr 60px 70px auto;
+  min-height: 40px;
+  padding: 6px 0;
+}
+.cat-row-summary > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 768px) {
+  .cat-row-summary { grid-template-columns: 1fr; gap: 4px; }
+  .cat-row-summary > span { white-space: normal; }
+}
