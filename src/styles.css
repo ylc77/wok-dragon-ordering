@@ -1555,6 +1555,58 @@ button:disabled {
 
 /* ── 菜品管理：顶部工具栏 ── */
 
+/* ── 菜品统计卡片 ── */
+.item-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.istat {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #d1d5db;
+  border-radius: 8px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: center;
+  min-height: 56px;
+  min-width: 80px;
+  padding: 12px 16px;
+}
+.istat span { color: #6b7280; font-size: 12px; font-weight: 600; }
+.istat strong { font-size: 22px; font-weight: 900; }
+.istat-green { border-left-color: #16a34a; }
+.istat-gray { border-left-color: #9ca3af; }
+.istat-orange { border-left-color: #f59e0b; }
+
+/* ── 菜品行增强 ── */
+.item-summary-name img {
+  border-radius: 6px;
+  height: 44px;
+  object-fit: cover;
+  width: 44px;
+}
+.item-summary-name .item-image-placeholder {
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 6px;
+  color: #9ca3af;
+  display: flex;
+  font-size: 18px;
+  font-weight: 900;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+.item-name-el {
+  color: #b0b5bc;
+  display: block;
+  font-size: 11.5px;
+}
+
 .item-toolbar {
   align-items: center;
   display: flex;

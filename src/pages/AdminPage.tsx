@@ -1107,6 +1107,16 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
 
   useEffect(() => { setItemPage(1); }, [categoryFilter, searchTerm]);
 
+  const itemStats = useMemo(() => {
+    const all = items.filter((i) => !i.deleted_at);
+    return {
+      total: all.length,
+      available: all.filter((i) => i.is_available && !i.is_sold_out).length,
+      soldOut: all.filter((i) => i.is_sold_out).length,
+      delisted: all.filter((i) => !i.is_available).length,
+    };
+  }, [items]);
+
   function toggleSelect(itemId: string, checked: boolean) {
     setSelectedIds((current) => {
       const next = new Set(current);
@@ -1358,7 +1368,15 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   }
 
   return (
-    <AdminSection title="菜品管理" onRefresh={load}>
+    <AdminSection title="菜品管理" subtitle="管理菜单菜品、价格、分类、图片和上下架状态" onRefresh={load}>
+      {/* ─ 统计卡片 ─ */}
+      <div className="item-stats-row">
+        <div className="istat"><span>菜品总数</span><strong>{itemStats.total}</strong></div>
+        <div className="istat istat-green"><span>已上架</span><strong>{itemStats.available}</strong></div>
+        <div className="istat istat-gray"><span>已下架</span><strong>{itemStats.delisted}</strong></div>
+        <div className="istat istat-orange"><span>售罄</span><strong>{itemStats.soldOut}</strong></div>
+      </div>
+
       {/* 顶部工具栏 */}
       <div className="item-toolbar">
         <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
@@ -3037,8 +3055,12 @@ function ItemRow({
       <div className="item-row-summary">
         <input aria-label="选择菜品" checked={selected} type="checkbox" onChange={(event) => onSelect(event.target.checked)} />
         <div className="item-summary-name">
-          {item.image_url ? <img src={item.image_url} alt="" loading="lazy" /> : <span className="item-image-placeholder">龙</span>}
-          <span><strong>{item.name_zh || item.name_en || item.name_el}</strong><small>{item.name_en || item.name_el}</small></span>
+          {item.image_url ? <img src={item.image_url} alt="" width="44" height="44" loading="lazy" /> : <span className="item-image-placeholder">龙</span>}
+          <span>
+            <strong>{item.name_zh || item.name_en || item.name_el}</strong>
+            {item.name_en && item.name_en !== (item.name_zh || item.name_en || item.name_el) ? <small>{item.name_en}</small> : null}
+            {item.name_el && item.name_el !== item.name_en && item.name_el !== item.name_zh ? <small className="item-name-el">{item.name_el}</small> : null}
+          </span>
         </div>
         <span>{category?.name_zh || category?.name_en || '未分类'}</span>
         <strong>{formatPrice(Number(item.price))}</strong>
