@@ -1,4 +1,4 @@
-export type Language = 'el' | 'en';
+export type Language = 'el' | 'en' | 'zh';
 
 export type RestaurantSettings = {
   id: string;

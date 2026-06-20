@@ -9,7 +9,7 @@ import type { Language, MenuGroup, MenuItem } from '../lib/types';
 export function MenuPage() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const lang = (i18n.language === 'en' ? 'en' : 'el') as Language;
+  const lang: Language = i18n.language?.startsWith('zh') ? 'zh' : i18n.language?.startsWith('en') ? 'en' : 'el';
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +91,7 @@ export function MenuCard({
   lang: Language;
   action?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const name = getLocalizedField(lang, {
     zh: item.name_zh,
     en: item.name_en,
@@ -105,7 +106,7 @@ export function MenuCard({
   return (
     <article className={`menu-card${item.is_sold_out ? ' sold-out' : ''}`}>
       <DishImage item={item} alt={name} />
-      {item.is_sold_out ? <span className="sold-out-badge">已售罄</span> : null}
+      {item.is_sold_out ? <span className="sold-out-badge">{t('common.soldOut')}</span> : null}
       <div>
         <div className="menu-card-title">
           <h3>{name}</h3>

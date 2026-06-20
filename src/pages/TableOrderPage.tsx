@@ -28,7 +28,7 @@ import { LanguageSwitch } from '../components/LanguageSwitch';
 export function TableOrderPage() {
   const { qrToken = '' } = useParams();
   const { t, i18n } = useTranslation();
-  const lang = (i18n.language === 'en' ? 'en' : 'el') as Language;
+  const lang: Language = i18n.language?.startsWith('zh') ? 'zh' : i18n.language?.startsWith('en') ? 'en' : 'el';
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [sessionInfo, setSessionInfo] = useState<TableSessionState | null>(null);
@@ -605,7 +605,7 @@ export function TableOrderPage() {
                           decreaseDisabled={billRequested}
                           onAdd={() => addItem(item)}
                           onChange={updateQuantity}
-                          addLabel={item.is_sold_out ? '已售罄' : t('order.add')}
+                          addLabel={item.is_sold_out ? t('common.soldOut') : t('order.add')}
                         />
                       }
                     />

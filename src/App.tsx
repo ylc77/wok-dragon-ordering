@@ -18,7 +18,7 @@ function PublicShell() {
   const isTableOrder = location.pathname.startsWith('/table/');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
-  const lang = (i18n.language === 'en' ? 'en' : 'el') as Language;
+  const lang: Language = i18n.language?.startsWith('zh') ? 'zh' : i18n.language?.startsWith('en') ? 'en' : 'el';
   const restaurantName = settings
     ? getLocalizedField(lang, { zh: settings.name_zh, en: settings.name_en, el: settings.name_el })
     : t('home.title');

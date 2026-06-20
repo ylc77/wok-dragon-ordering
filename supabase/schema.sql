@@ -220,6 +220,20 @@ as $$
   );
 $$;
 
+create or replace function private.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.id = (select auth.uid())
+      and p.role = 'admin'
+  );
+$$;
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -1111,8 +1125,8 @@ security definer
 set search_path = public
 as $$
 begin
-  if not (select private.is_staff()) then
-    raise exception 'admin or staff role is required';
+  if not (select private.is_admin()) then
+    raise exception 'only admin can create tables';
   end if;
 
   return query
@@ -1131,8 +1145,8 @@ as $$
 declare
   v_token text;
 begin
-  if not (select private.is_staff()) then
-    raise exception 'admin or staff role is required';
+  if not (select private.is_admin()) then
+    raise exception 'only admin can regenerate QR tokens';
   end if;
 
   update restaurant_tables
@@ -2072,8 +2086,8 @@ as $$
 declare
   v_stored_password text;
 begin
-  if not (select private.is_staff()) then
-    raise exception 'admin or staff role is required';
+  if not (select private.is_admin()) then
+    raise exception 'only admin can permanently delete orders';
   end if;
 
   select delete_password into v_stored_password

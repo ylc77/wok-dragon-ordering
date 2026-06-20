@@ -700,9 +700,10 @@ button:disabled {
   border: 0;
   border-radius: 6px;
   display: inline-flex;
-  height: 30px;
+  height: 44px;
   justify-content: center;
-  width: 30px;
+  min-width: 44px;
+  width: 44px;
 }
 
 .cart-total {
@@ -1141,7 +1142,7 @@ button:disabled {
   color: white;
   font-weight: 900;
   gap: 6px;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 12px;
 }
 
@@ -1160,9 +1161,10 @@ button:disabled {
   border-radius: 999px;
   color: white;
   display: inline-flex;
-  height: 30px;
+  height: 44px;
   justify-content: center;
-  width: 30px;
+  min-width: 44px;
+  width: 44px;
 }
 
 .dish-quantity-control strong {
@@ -2487,8 +2489,8 @@ button:disabled {
   }
 
   .order-list .dish-add-button {
-    min-height: 34px;
-    padding: 7px 10px;
+    min-height: 44px;
+    padding: 10px 12px;
   }
 
   .cart-panel {
