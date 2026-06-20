@@ -678,7 +678,7 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
     try {
       const next = await setRestaurantOrdering(nextEnabled);
       setSettings((current) => ({ ...current, ...next }));
-      onMessage(nextEnabled ? '已恢复全店接单' : '已暂停全店接单');
+      toast(nextEnabled ? '已恢复全店接单' : '已暂停全店接单');
     } catch (err) {
       onMessage(formatUnknownError(err));
     }
@@ -826,7 +826,7 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
     setDeleteError(null);
     try {
       await adminHardDeleteMenuCategory(deleteTarget.id, deletePassword);
-      onMessage(`已永久删除分类"${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"`);
+      toast(`已永久删除分类"${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"`);
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
       load();
@@ -1322,7 +1322,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
     }
 
     setCsvResult(result);
-    onMessage(`导入完成：成功 ${result.success} 条，失败 ${result.failed} 条，翻译失败 ${result.translationFailed} 条`);
+    toast(`导入完成：成功 ${result.success} 条，失败 ${result.failed} 条`);
     load();
   }
 
@@ -1367,7 +1367,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
     try {
       setTranslatingDraft(true);
       setDraft(await translateSingleMenuValue(draft));
-      onMessage('自动翻译已补全缺失字段');
+      toast('自动翻译完成');
     } catch (err) {
       onMessage(formatUnknownError(err));
     } finally {
@@ -1697,7 +1697,7 @@ function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnab
     setBillRequests((prev) => prev.filter((r) => r.id !== request.id));
     try {
       const result = await confirmBillAndCloseSession(request.session_id);
-      onMessage(`已付款并清桌：${result.paid_order_count} 张订单已结清，${result.deleted_cart_count} 条未提交购物车已清空`);
+      toast(`已付款并清桌：${result.paid_order_count} 张订单已结清`);
     } catch (err) {
       const msg = formatUnknownError(err);
       if (!msg.includes('already closed')) {
@@ -1728,7 +1728,7 @@ function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnab
       await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, isReprint, new Date().toISOString()));
       printWindow.close();
       await markOrderKitchenPrinted(order.id);
-      onMessage(isReprint ? `订单 #${order.order_number} 已重打厨房小票` : `订单 #${order.order_number} 厨房小票已打印`);
+      toast(isReprint ? `订单 #${order.order_number} 已重打厨房小票` : `订单 #${order.order_number} 厨房小票已打印`);
       load();
     } catch (err) {
       printWindow.close();
@@ -1792,7 +1792,7 @@ function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnab
 
     await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, false, new Date().toISOString()));
     await markOrderKitchenPrinted(order.id);
-    onMessage(`新订单 #${order.order_number} 已触发自动打印厨房小票`);
+    toast(`新订单 #${order.order_number} 已触发自动打印厨房小票`);
     load();
   }
 
@@ -1861,7 +1861,7 @@ function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnab
       for (const id of deleteTarget.ids) {
         await adminHardDeleteOrder(id, deletePassword);
       }
-      onMessage(`已永久删除 ${deleteTarget.ids.length} 张订单`);
+      toast(`已永久删除 ${deleteTarget.ids.length} 张订单`);
       setSelectedOrderIds(new Set());
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -2304,7 +2304,7 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
 
     try {
       await regenerateTableQrToken(tableId);
-      onMessage('二维码 token 已重新生成');
+      toast('二维码 token 已重新生成');
       load();
     } catch (err) {
       onMessage(formatUnknownError(err));
@@ -2331,7 +2331,7 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
 
     try {
       const result = await closeTableSession(session.id);
-      onMessage(`已清桌，删除未提交购物车 ${result.deleted_cart_count} 条。`);
+      toast(`已清桌，删除未提交购物车 ${result.deleted_cart_count} 条。`);
       load();
     } catch (err) {
       onMessage(formatUnknownError(err));
@@ -2341,7 +2341,7 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
   async function approveReentry(request: TableReentryRequest) {
     try {
       const result = await approveTableReentry(request.id);
-      onMessage(result.request_status === 'approved' ? '已批准该设备重新开桌。' : '目标会话已结束，请顾客重新发起请求。');
+      toast(result.request_status === 'approved' ? '已批准该设备重新开桌。' : '目标会话已结束，请顾客重新发起请求。');
       await load();
     } catch (err) {
       onMessage(formatUnknownError(err));
@@ -2351,7 +2351,7 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
   async function rejectReentry(request: TableReentryRequest) {
     try {
       await rejectTableReentry(request.id);
-      onMessage('已拒绝该设备的重新开桌请求。');
+      toast('已拒绝该设备的重新开桌请求。');
       await load();
     } catch (err) {
       onMessage(formatUnknownError(err));
@@ -3041,7 +3041,7 @@ function ItemRow({
     try {
       setTranslating(true);
       setValue(await translateSingleMenuValue(value));
-      onMessage('自动翻译已补全缺失字段');
+      onMessage('自动翻译完成');
     } catch (err) {
       onMessage(formatUnknownError(err));
     } finally {
