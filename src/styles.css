@@ -4406,3 +4406,21 @@ body {
 .clear-table-button { min-height: 34px; }
 .settings-save-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; display: flex; justify-content: flex-end; margin-top: 16px; padding: 14px; }
 .text-field { border: 1px solid #d7d7d0; border-radius: 6px; font-size: 14px; padding: 8px 10px; width: 100%; resize: vertical; }
+/* mobile order page polish */
+@media (max-width: 900px) {
+  .order-table-banner { padding: 8px 12px; }
+  .order-table-banner strong { font-size: 17px; }
+  .order-table-banner p { font-size: 11px; }
+  .order-category-tabs { width: 88px; }
+  .order-category-tabs a { font-size: 11px; padding: 8px 4px; }
+  .menu-card { gap: 8px; padding: 8px; }
+  .menu-card h3 { font-size: 14px; }
+  .order-list .menu-card h3 { font-size: 13px; }
+  .menu-card p { font-size: 11px; }
+  .dish-add-button { min-height: 40px; font-size: 13px; padding: 6px 12px; }
+  .dish-quantity-control button { height: 38px; width: 38px; }
+  .mobile-cart-bar { height: 52px; padding: 8px 12px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .mobile-cart-bar strong { font-size: 15px; }
+  .mobile-cart-bar em { font-size: 13px; }
+  .order-menu-groups { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
