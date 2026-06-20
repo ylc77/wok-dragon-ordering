@@ -1061,9 +1061,18 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   const [deleting, setDeleting] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
+  const [itemToast, setItemToast] = useState<string | null>(null);
+  const itemToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showItemToast(msg: string) {
+    if (itemToastRef.current) clearTimeout(itemToastRef.current);
+    setItemToast(msg);
+    itemToastRef.current = setTimeout(() => setItemToast(null), 2500);
+  }
 
   useEffect(() => {
     load();
+    return () => { if (itemToastRef.current) clearTimeout(itemToastRef.current); };
   }, []);
 
   async function load() {
@@ -1140,7 +1149,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   async function bulkUpdateAvailability(isAvailable: boolean) {
     if (!supabase || selectedIds.size === 0) return;
     const { error } = await supabase.from('menu_items').update({ is_available: isAvailable, is_sold_out: false }).in('id', Array.from(selectedIds));
-    onMessage(error ? error.message : `已批量${isAvailable ? '上架' : '下架'} ${selectedIds.size} 个菜品`);
+    if (error) onMessage(error.message); else showItemToast(`已批量${isAvailable ? '上架' : '下架'} ${selectedIds.size} 个菜品`);
     if (!error) {
       setSelectedIds(new Set());
       load();
@@ -1150,7 +1159,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
   async function bulkUpdateSoldOut(soldOut: boolean) {
     if (!supabase || selectedIds.size === 0) return;
     const { error } = await supabase.from('menu_items').update({ is_sold_out: soldOut, is_available: true }).in('id', Array.from(selectedIds));
-    onMessage(error ? error.message : `已标记${soldOut ? '售罄' : '有货'} ${selectedIds.size} 个菜品`);
+    if (error) onMessage(error.message); else showItemToast(`已标记${soldOut ? '售罄' : '有货'} ${selectedIds.size} 个菜品`);
     if (!error) {
       setSelectedIds(new Set());
       load();
@@ -1176,7 +1185,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       for (const id of deleteTarget.ids) {
         await adminHardDeleteMenuItem(id, deletePassword);
       }
-      onMessage(`已永久删除 ${deleteTarget.ids.length} 个菜品`);
+      showItemToast(`已永久删除 ${deleteTarget.ids.length} 个菜品`);
       setSelectedIds(new Set());
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -1196,7 +1205,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
       return;
     }
     const { error } = await supabase.from('menu_items').update({ price: nextPrice }).in('id', Array.from(selectedIds));
-    onMessage(error ? error.message : `已批量修改 ${selectedIds.size} 个菜品价格`);
+    if (error) onMessage(error.message); else showItemToast(`已批量修改 ${selectedIds.size} 个菜品价格`);
     if (!error) {
       setBulkPrice('');
       setSelectedIds(new Set());
@@ -1369,6 +1378,7 @@ function ItemEditor({ onMessage }: { onMessage: (value: string | null) => void }
 
   return (
     <AdminSection title="菜品管理" subtitle="管理菜单菜品、价格、分类、图片和上下架状态" onRefresh={load}>
+      {itemToast ? <div className="order-toast">{itemToast}</div> : null}
       {/* ─ 统计卡片 ─ */}
       <div className="item-stats-row">
         <div className="istat"><span>菜品总数</span><strong>{itemStats.total}</strong></div>
