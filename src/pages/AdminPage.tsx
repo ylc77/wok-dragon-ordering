@@ -674,18 +674,19 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
   async function toggleOrdering() {
     const nextEnabled = settings.ordering_enabled === false;
     const action = nextEnabled ? '恢复接单' : '暂停接单';
-    if (!window.confirm(`${action}？${nextEnabled ? '顾客将可以继续加菜和提交订单。' : '现有购物车会保留，顾客仍可减量、删除和申请结账。'}`)) return;
+    const msg = nextEnabled ? '确定要恢复接单吗？顾客将可以继续加菜和提交订单。' : '确定要暂停接单吗？暂停后顾客将无法提交新订单，但可以请求结账。';
+    if (!window.confirm(msg)) return;
     try {
       const next = await setRestaurantOrdering(nextEnabled);
       setSettings((current) => ({ ...current, ...next }));
-      toast(nextEnabled ? '已恢复全店接单' : '已暂停全店接单');
+      toast(nextEnabled ? '已恢复全店接单' : '已暂停全店接单', 'warning');
     } catch (err) {
       onMessage(formatUnknownError(err));
     }
   }
 
   return (
-    <AdminSection title="餐馆信息" onRefresh={load}>
+    <AdminSection title="餐馆信息" subtitle="管理餐馆名称、地址、营业时间、联系方式、外卖平台和收款方式" onRefresh={load}>
       <section className={`ordering-control-card ${settings.ordering_enabled === false ? 'is-paused' : ''}`}>
         <div>
           {settings.ordering_enabled === false ? <PauseCircle size={24} /> : <PlayCircle size={24} />}
@@ -704,19 +705,19 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
           <TextField label="餐馆名称" value={settings.name_zh} onChange={(v) => setSettings({ ...settings, name_zh: v })} />
           <TextField label="地址" value={settings.address_zh} onChange={(v) => setSettings({ ...settings, address_zh: v })} />
           <TextField label="营业时间" value={settings.opening_hours_zh} onChange={(v) => setSettings({ ...settings, opening_hours_zh: v })} />
-          <TextField label="餐馆介绍" value={settings.intro_zh} onChange={(v) => setSettings({ ...settings, intro_zh: v })} />
+          <label>餐馆介绍<textarea className="text-field" rows={3} value={settings.intro_zh ?? ''} onChange={(e) => setSettings({ ...settings, intro_zh: e.target.value })} /></label>
         </div></section>
         <section><h3>English</h3><div className="admin-form-grid">
           <TextField label="Restaurant name" value={settings.name_en} onChange={(v) => setSettings({ ...settings, name_en: v })} />
           <TextField label="Address" value={settings.address_en} onChange={(v) => setSettings({ ...settings, address_en: v })} />
           <TextField label="Opening hours" value={settings.opening_hours_en} onChange={(v) => setSettings({ ...settings, opening_hours_en: v })} />
-          <TextField label="Introduction" value={settings.intro_en} onChange={(v) => setSettings({ ...settings, intro_en: v })} />
+          <label>Introduction<textarea className="text-field" rows={3} value={settings.intro_en ?? ''} onChange={(e) => setSettings({ ...settings, intro_en: e.target.value })} /></label>
         </div></section>
         <section><h3>Ελληνικά</h3><div className="admin-form-grid">
           <TextField label="Όνομα" value={settings.name_el} onChange={(v) => setSettings({ ...settings, name_el: v })} />
           <TextField label="Διεύθυνση" value={settings.address_el} onChange={(v) => setSettings({ ...settings, address_el: v })} />
           <TextField label="Ωράριο" value={settings.opening_hours_el} onChange={(v) => setSettings({ ...settings, opening_hours_el: v })} />
-          <TextField label="Παρουσίαση" value={settings.intro_el} onChange={(v) => setSettings({ ...settings, intro_el: v })} />
+          <label>Παρουσίαση<textarea className="text-field" rows={3} value={settings.intro_el ?? ''} onChange={(e) => setSettings({ ...settings, intro_el: e.target.value })} /></label>
         </div></section>
       </div>
       <div className="admin-form-panel">
@@ -741,10 +742,12 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
           <label className="checkbox-label"><input type="checkbox" checked={settings.accept_cash_payment !== false} onChange={(event) => setSettings({ ...settings, accept_cash_payment: event.target.checked })} />现金</label>
         </div>
       </div>
-      <button className="primary-button" type="button" onClick={save}>
-        <Save size={16} />
-        保存
-      </button>
+      <div className="settings-save-bar">
+        <button className="primary-button" type="button" onClick={save} style={{ minWidth: '160px', minHeight: '40px', fontSize: '15px' }}>
+          <Save size={16} />
+          保存
+        </button>
+      </div>
     </AdminSection>
   );
 }

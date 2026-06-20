@@ -4404,3 +4404,5 @@ body {
 .table-card-body .availability-badge { display: inline-block; margin-bottom: 6px; }
 .maintenance-button { min-height: 32px; }
 .clear-table-button { min-height: 34px; }
+.settings-save-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; display: flex; justify-content: flex-end; margin-top: 16px; padding: 14px; }
+.text-field { border: 1px solid #d7d7d0; border-radius: 6px; font-size: 14px; padding: 8px 10px; width: 100%; resize: vertical; }
