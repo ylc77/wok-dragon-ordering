@@ -4353,3 +4353,9 @@ body {
   border: 1px solid #fecaca;
   color: #dc2626;
 }
+/* status selector */
+.item-status-select { display: flex; flex-direction: column; gap: 4px; }
+.field-label { color: #4a4a4a; font-size: 13px; font-weight: 800; }
+.status-options { display: flex; gap: 4px; }
+.status-opt { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; padding: 6px 14px; transition: all .15s; }
+.status-opt.selected { background: var(--accent); border-color: var(--accent); color: #fff; }

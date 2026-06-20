@@ -3057,9 +3057,9 @@ function ItemRow({
         <div className="item-summary-name">
           {item.image_url ? <img src={item.image_url} alt="" width="44" height="44" loading="lazy" /> : <span className="item-image-placeholder">龙</span>}
           <span>
-            <strong>{item.name_zh || item.name_en || item.name_el}</strong>
-            {item.name_en && item.name_en !== (item.name_zh || item.name_en || item.name_el) ? <small>{item.name_en}</small> : null}
-            {item.name_el && item.name_el !== item.name_en && item.name_el !== item.name_zh ? <small className="item-name-el">{item.name_el}</small> : null}
+            <strong>{item.name_zh || item.name_en || item.name_el || '未填写'}</strong>
+            {item.name_en ? <small>{item.name_en}</small> : <small className="item-name-el">未填写英文名</small>}
+            {item.name_el ? <small className="item-name-el">{item.name_el}</small> : null}
           </span>
         </div>
         <span>{category?.name_zh || category?.name_en || '未分类'}</span>
@@ -3114,14 +3114,24 @@ function ItemForm({
       <TextField label="价格" value={value.price} type="number" onChange={(v) => onChange({ ...value, price: Number(v) })} />
       <TextField label="图片 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
       <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
-      <label className="checkbox-label">
-        <input checked={Boolean(value.is_available)} type="checkbox" onChange={(e) => onChange({ ...value, is_available: e.target.checked })} />
-        上架
-      </label>
-      <label className="checkbox-label">
-        <input checked={Boolean(value.is_sold_out)} type="checkbox" onChange={(e) => onChange({ ...value, is_sold_out: e.target.checked })} />
-        已售罄
-      </label>
+      <div className="item-status-select">
+        <span className="field-label">状态</span>
+        <div className="status-options">
+          {(['available', 'delisted', 'sold_out'] as const).map((opt) => {
+            const key = opt === 'available' ? (value.is_available !== false && !value.is_sold_out) : opt === 'sold_out' ? Boolean(value.is_sold_out) : (value.is_available === false);
+            return (
+              <button key={opt} type="button" className={`status-opt${key ? ' selected' : ''}`}
+                onClick={() => {
+                  if (opt === 'available') onChange({ ...value, is_available: true, is_sold_out: false });
+                  else if (opt === 'delisted') onChange({ ...value, is_available: false, is_sold_out: false });
+                  else onChange({ ...value, is_available: true, is_sold_out: true });
+                }}>
+                {{ available: '上架', delisted: '下架', sold_out: '售罄' }[opt]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       </div>
       <div className="item-language-field"><strong>简体中文</strong>
         <TextField label="菜品名称" value={value.name_zh} onChange={(v) => onChange({ ...value, name_zh: v })} />
