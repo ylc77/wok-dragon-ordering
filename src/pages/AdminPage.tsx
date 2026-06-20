@@ -291,56 +291,31 @@ export function AdminPage() {
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/">
           <span className="admin-brand-mark">龙</span>
-          <span>后台管理系统<small>餐馆运营管理</small></span>
+          <span>Wok Dragon</span>
         </Link>
-        <span className="admin-nav-label">经营管理</span>
-        <AdminNavButton icon={<LayoutDashboard size={17} />} active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>
-          仪表盘
-        </AdminNavButton>
-        <AdminNavButton icon={<ClipboardList size={17} />} active={tab === 'orders'} onClick={() => setTab('orders')}>
-          订单管理
-        </AdminNavButton>
-        <span className="admin-nav-label">菜单与桌台</span>
-        <AdminNavButton icon={<UtensilsCrossed size={17} />} active={tab === 'items'} onClick={() => setTab('items')}>
-          菜品管理
-        </AdminNavButton>
-        <AdminNavButton icon={<Tags size={17} />} active={tab === 'categories'} onClick={() => setTab('categories')}>
-          菜品分类
-        </AdminNavButton>
-        <AdminNavButton icon={<QrCode size={17} />} active={tab === 'tables'} onClick={() => setTab('tables')}>
-          桌台二维码
-        </AdminNavButton>
-        <span className="admin-nav-label">系统配置</span>
-        <AdminNavButton icon={<Building2 size={17} />} active={tab === 'settings'} onClick={() => setTab('settings')}>
-          餐馆信息设置
-        </AdminNavButton>
-        <AdminNavButton icon={<Settings2 size={17} />} active={tab === 'system'} onClick={() => setTab('system')}>
-          系统设置
-        </AdminNavButton>
-        <button
-          className="danger"
-          onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}
-        >
-          <LogOut size={16} />
-          退出登录
+        <nav className="admin-nav-list">
+          <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>仪表盘</AdminNavButton>
+          <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => setTab('orders')}>订单</AdminNavButton>
+          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => setTab('items')}>菜品</AdminNavButton>
+          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => setTab('categories')}>分类</AdminNavButton>
+          <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => setTab('tables')}>桌台</AdminNavButton>
+          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => setTab('settings')}>餐馆</AdminNavButton>
+          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => setTab('system')}>系统</AdminNavButton>
+        </nav>
+        <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>
+          <LogOut size={15} />
         </button>
       </aside>
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <strong>餐馆管理后台</strong>
+          <strong>Wok Dragon 后台</strong>
           <div>
-            <span className={`realtime-status is-${realtimeStatus}`} role="status">
-              {realtimeStatus === 'connected' ? <Wifi size={16} /> : <WifiOff size={16} />}
-              {realtimeStatus === 'connected' ? '实时连接正常' : realtimeStatus === 'connecting' ? '正在连接' : '连接中断，自动重试'}
-            </span>
-            <label className="admin-restaurant-select">
-              <Building2 size={16} />
-              <select aria-label="餐馆选择" defaultValue="restaurant">
-                <option value="restaurant">当前餐馆</option>
-              </select>
-              <ChevronDown size={14} />
-            </label>
-            <span className="admin-user"><UserCircle size={19} /><b>{adminEmail}</b></span>
+            <span className={`realtime-dot ${realtimeStatus}`} title={realtimeStatus === 'connected' ? '实时连接正常' : realtimeStatus === 'connecting' ? '连接中' : '连接中断'} />
+            <span className="admin-clock">{new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="admin-user"><UserCircle size={18} /><b>{adminEmail}</b></span>
+            <button className="logout-inline" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))} title="退出登录">
+              <LogOut size={16} />
+            </button>
           </div>
         </header>
         <section className="admin-content">

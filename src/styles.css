@@ -66,16 +66,14 @@ button:disabled {
 .brand,
 .admin-brand {
   align-items: center;
-  display: inline-flex;
-  gap: 12px;
-}
-
-.brand small,
-.admin-brand small {
-  color: var(--muted);
-  display: block;
-  font-size: 12px;
-  margin-top: 2px;
+  color: #fff;
+  display: flex;
+  font-size: 15px;
+  font-weight: 800;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0 6px;
+  text-decoration: none;
 }
 
 .brand-mark {
@@ -1195,26 +1193,113 @@ button:disabled {
   color: white;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 22px;
+  gap: 2px;
+  justify-content: space-between;
+  padding: 14px;
+  width: 150px;
+}
+
+.admin-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .admin-sidebar button,
 .admin-sidebar a {
+  align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 7px;
-  color: white;
-  font-weight: 800;
-  padding: 12px;
+  border-radius: 6px;
+  color: rgba(255,255,255,.7);
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  padding: 8px 10px;
   text-align: left;
+  transition: background .15s, color .15s;
+}
+
+.admin-sidebar button:hover,
+.admin-sidebar a:hover {
+  background: rgba(255,255,255,.08);
+  color: #fff;
 }
 
 .admin-sidebar button.active {
-  background: #313131;
+  background: rgba(255,255,255,.12);
+  color: #fff;
 }
 
-.admin-sidebar .danger {
+.admin-logout {
+  align-items: center;
+  background: transparent !important;
+  border: 0;
+  color: rgba(255,255,255,.4) !important;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  gap: 6px;
+  padding: 6px 10px !important;
+  transition: color .15s;
+}
+
+.admin-logout:hover {
+  color: #ffbbb8 !important;
+}
+
+.admin-topbar {
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 10px 18px;
+}
+
+.admin-topbar > strong {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.admin-topbar > div {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.realtime-dot {
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+}
+
+.realtime-dot.connected { background: #22c55e; }
+.realtime-dot.connecting { background: #f59e0b; }
+.realtime-dot.disconnected { background: #dc2626; }
+
+.admin-clock {
+  color: #6b7280;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.logout-inline {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  padding: 2px;
+}
+
+.logout-inline:hover { color: #dc2626; }
+
+.legacy-sidebar-rule {
   align-items: center;
   color: #ffbbb8;
   display: flex;
@@ -2940,14 +3025,6 @@ body {
 
 .admin-brand span:last-child {
   line-height: 1.25;
-}
-
-.admin-nav-label {
-  color: #777d82;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  padding: 16px 12px 7px;
 }
 
 .admin-sidebar button,
