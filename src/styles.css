@@ -4479,3 +4479,5 @@ body {
 .menu-card-fallback { align-items: center; background: linear-gradient(135deg, #faf5f3 0%, #fef2f2 100%); display: flex; justify-content: center; }
 .mcf-icon { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%); border-radius: 50%; display: block; height: 32px; opacity: .25; width: 32px; }
 @media (max-width: 768px) { .mcf-icon { height: 24px; width: 24px; } }
+.hero-media { background: transparent !important; }
+.hero-image-fallback { min-height: 520px; height: 100%; width: 100%; }
