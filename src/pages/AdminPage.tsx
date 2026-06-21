@@ -687,7 +687,7 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
 
   return (
     <AdminSection title="餐馆信息" subtitle="管理餐馆名称、地址、营业时间、联系方式、外卖平台和收款方式" onRefresh={load}>
-      {/* ── 接单状态 ── */}
+      {/* 接单状态 */}
       <div className="settings-card ordering-status">
         <div>
           {settings.ordering_enabled === false ? <PauseCircle size={26} /> : <PlayCircle size={26} />}
