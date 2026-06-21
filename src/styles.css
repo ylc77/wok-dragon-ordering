@@ -4547,7 +4547,7 @@ textarea { min-height: 100px; padding: 10px 12px; resize: vertical; }
 .settings-card { box-shadow: 0 1px 2px rgba(0,0,0,.03); padding: 24px; }
 .settings-card-head { margin-bottom: 16px; padding-bottom: 12px; }
 .settings-card h3 { font-size: 18px; font-weight: 700; }
-.settings-brand-preview { min-height: 120px; }
+.settings-brand-preview { align-items: center; background: #f8f9fa; border: 1px dashed #d1d5db; border-radius: 12px; display: flex; justify-content: center; min-height: 200px; overflow: hidden; }
 .settings-hero-preview-wrap { max-height: 280px; }
 .settings-payment-label { border-radius: 10px; padding: 12px 16px; }
 .settings-save-bar { align-items: center; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; border-radius: 12px; display: flex; justify-content: space-between; margin-top: 20px; padding: 14px 20px; }
