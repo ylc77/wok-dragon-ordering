@@ -1036,3 +1036,46 @@ Do not prioritize visual redesign over business correctness.
 
 
 
+
+---
+
+## 数据库维护规则
+
+所有数据库结构改动必须同时维护三处：
+
+1. **supabase/patches/** — 新建日期命名的增量 SQL 文件，用于老客户升级。必须可重复执行（`if not exists`、`create or replace`、`drop policy if exists`）。
+2. **supabase/client-init.sql** — 同步更新完整初始化文件，用于新客户。
+3. **docs/** — 更新相关部署和维护文档。
+
+数据库改动包括：新增/修改表、字段、索引、RLS、RPC、Storage bucket、默认数据。
+
+**禁止**：只在 Supabase SQL Editor 手动改库而不提交 SQL 文件。
+
+## 新客户初始化
+
+- 新客户只执行 `supabase/client-init.sql`
+- 演示数据使用 `supabase/demo-menu.sql`（可选）
+- 老客户升级使用 `supabase/patches/`
+
+## 关键业务规则（不可破坏）
+
+- 前台英语/希腊语，后台中文
+- 菜单和餐馆信息来自 Supabase，不写死
+- 桌台二维码固定，session 动态生成
+- 清桌后旧 session 失效，重新扫码自动创建新 session（无 24h 限制）
+- 结账后购物车锁定
+- 付款方式由后台控制
+- 暂停接单后顾客不能提交订单
+- 所有删除操作需 admin + 密码
+- 图片自动压缩 WebP
+
+## 交付文档
+
+| 文件 | 用途 |
+|------|------|
+| `docs/deploy-client-zh.md` | 新客户部署步骤 |
+| `docs/client-guide-zh.md` | 餐馆老板/员工操作指南 |
+| `docs/maintenance-zh.md` | 开发者维护说明 |
+| `supabase/client-init.sql` | 一键数据库初始化 |
+| `supabase/demo-menu.sql` | 演示菜单数据 |
+| `README_CLIENT_DATABASE.md` | 数据库部署英文指南 |

@@ -1,160 +1,94 @@
-# Wok Dragon Express Restaurant App
+# 餐馆官网 + 扫码点餐系统
 
-React + Vite + Supabase implementation for Wok Dragon Express:
+React + Vite + TypeScript + Supabase 餐馆系统模板，可复制部署给不同餐馆客户。
 
-- Restaurant website
-- Public menu
-- QR table ordering MVP
-- Shared table cart with Supabase Realtime
-- Chinese admin panel
-- Wolt-derived menu seed data
-- Dish image URLs managed from Supabase menu data
+- 餐馆官网首页（多语言）
+- 菜单展示页
+- 桌台二维码扫码点餐
+- 共享购物车（Supabase Realtime 同步）
+- 中文后台管理
 
-## Links
+## 线上地址
 
 - Production: https://wok-dragon-ordering.vercel.app/
-- GitHub: https://github.com/ylc77/wok-dragon-ordering.git
 
-## Supabase Environment Variables
+## 技术栈
 
-The frontend uses only public Supabase client credentials:
+| 层 | 技术 |
+|----|------|
+| 前端 | React 19 + Vite 7 + TypeScript |
+| 数据库 | Supabase (PostgreSQL + RLS + RPC) |
+| 部署 | Vercel |
+| 翻译 | DeepSeek API（后台可选） |
+| 图片 | Supabase Storage + WebP 压缩 |
 
-```env
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-or-anon-key
-```
-
-Do not expose or commit the Supabase `service_role` key.
-
-For local development, copy `.env.example` to `.env.local` and fill in the two variables above.
-For Vercel, add the same two variables in Project Settings -> Environment Variables for Production and Preview.
-
-## Setup
-
-1. Create a Supabase project.
-2. Enable Anonymous Sign-Ins in Supabase Auth settings.
-3. Run `supabase/schema.sql` in the Supabase SQL Editor.
-4. Run `supabase/seed.sql` to load restaurant information, demo tables, and Wolt-derived menu data.
-5. Create the first admin email user in Supabase Auth.
-6. Manually insert one `public.profiles` row for that user with `role = 'admin'`.
-7. Install dependencies and start the app:
+## 快速开始
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-## Admin Login
+### 环境变量
 
-Admin users log in at:
-
-```text
-/admin
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
 
-The backend UI is Chinese only. Admin/staff permissions are controlled by `public.profiles.role`, not by user metadata.
+## 新客户部署
 
-Anonymous table-ordering customers sign in anonymously through Supabase Auth. They are `authenticated` users, but they do not need `profiles` rows.
+见 [docs/deploy-client-zh.md](docs/deploy-client-zh.md)。
 
-For production, enable **Leaked Password Protection** in Supabase Dashboard under Authentication security settings. This project-level Auth switch cannot be enabled by a SQL migration. The admin UI detects signed-out or expired sessions and returns staff to the login screen.
+简要流程：
+1. 新建 Supabase 项目 → 执行 `supabase/client-init.sql`
+2. 创建管理员账号
+3. 部署 Vercel
+4. 后台录入餐馆信息 + 菜单 + 桌台
 
-## Table QR Code Rules
+## 项目结构
 
-Customer table links use QR tokens, not table numbers:
-
-```text
-/table/:qrToken
+```
+src/pages/       # 前台: HomePage, MenuPage, TableOrderPage / 后台: AdminPage
+src/lib/         # API, 类型, 多语言, 图片压缩, 数据导出
+src/i18n.ts      # 三语资源 (el / en / zh)
+api/             # Vercel Serverless Functions
+supabase/        # client-init.sql, demo-menu.sql, schema.sql, patches/
+docs/            # 部署指南, 操作指南, 维护说明
 ```
 
-The production QR URL format is:
+## 后台页面
 
-```text
-https://wok-dragon-ordering.vercel.app/table/:qrToken
-```
+| Tab | 功能 |
+|-----|------|
+| 仪表盘 | 今日订单/营收/桌台状态/热销菜品/30天统计 |
+| 订单 | 查看/筛选/确认收款/打印/删除 |
+| 菜品 | 新增/编辑/删除/批量操作/CSV导入导出/图片上传 |
+| 分类 | 新增/编辑/删除 |
+| 桌台 | 管理桌号和二维码/清桌 |
+| 餐馆 | 多语言信息/Logo/Hero/联系方式/外卖平台/付款方式 |
+| 系统 | 健康检查/数据备份 |
 
-The admin table page can:
+## 业务规则
 
-- Create tables such as `Table 1`, `Table 2`, `Table 3`
-- Show each table's QR code
-- Download a QR image with the table label
-- Close the current table session
-- Regenerate a table QR token when necessary
+- 前台支持英语/希腊语，后台固定中文
+- 菜单和餐馆信息全部来自 Supabase，不写死
+- 桌台二维码固定，session 动态生成
+- 清桌后旧 session 失效，新扫码自动创建新 session
+- 所有删除操作需二级密码
+- 菜品图片自动压缩为 WebP
 
-## Clear Table vs Regenerate QR
+## 文档
 
-`Clear Table` / `清桌` is the normal daily operation.
+| 文件 | 说明 |
+|------|------|
+| [docs/deploy-client-zh.md](docs/deploy-client-zh.md) | 新客户部署步骤 |
+| [docs/client-guide-zh.md](docs/client-guide-zh.md) | 餐馆老板操作指南 |
+| [docs/maintenance-zh.md](docs/maintenance-zh.md) | 开发者维护说明 |
+| [README_CLIENT_DATABASE.md](README_CLIENT_DATABASE.md) | 数据库部署英文指南 |
 
-- It closes only the current `table_session`.
-- It does not change `restaurant_tables.qr_token`.
-- The printed QR code on the table remains valid.
-- The next guests scanning the same QR code will create a new active session.
-
-`Regenerate QR` / `重生成二维码` is a rare maintenance operation.
-
-- It changes `restaurant_tables.qr_token`.
-- The old QR link immediately becomes invalid.
-- Any already printed QR code must be printed and replaced again.
-- The admin UI shows a strong confirmation prompt before this action.
-
-## Bill And Payment Flow
-
-- Customers request the bill only after submitting at least one non-cancelled order, then choose `pos` or `cash`.
-- A bill request notifies staff but does not close the table session.
-- Staff confirmation marks all non-cancelled session orders as paid, records the payment method, clears unsubmitted cart items, handles the bill request, and closes the session atomically.
-- The device that joined a session remembers that session for the QR token. If staff closes it, refreshing that old page shows the ended-session message instead of joining the next guests' session.
-- A new device scanning the unchanged QR token can create or join the next active session.
-
-## Ordering Flow
-
-- Each table can have only one active `table_session`.
-- Multiple devices scanning the same table QR join the same session.
-- The shared cart syncs through Supabase Realtime.
-- Cart writes go through RPC functions, so the frontend cannot set `unit_price`.
-- `submit_order(session_id, client_request_id)` creates an order snapshot and clears the current cart.
-- Submitting an order does not close the table session, so guests can continue adding dishes.
-- Historical `orders` and `order_items` are preserved after dishes are edited or marked unavailable.
-
-## Menu Images And Delivery Links
-
-- Dish images are read from `menu_items.image_url`; React components do not hardcode menu images.
-- If a dish has no image URL, or the remote image cannot load, the frontend falls back to a neutral placeholder.
-- Admin users can edit each dish's `image_url` from the Chinese menu management page.
-- The homepage reads `restaurant_settings.wolt_url`, `restaurant_settings.efood_url`, and `restaurant_settings.box_url`.
-- Delivery platform buttons are shown only when the matching URL is configured, and open in a new browser tab.
-- `supabase/patches/2026-06-delivery-links.sql` can update an existing Supabase project with the currently found public delivery links.
-- For long-term production use, upload restaurant-owned dish photos to Supabase Storage or another authorized image host, then paste those URLs into `menu_items.image_url`.
-
-## Deployment Notes
-
-The project is a React + Vite SPA. Vercel fallback is configured in `vercel.json`, so direct visits to these routes work:
-
-```text
-/
-/menu
-/table/:qrToken
-/admin
-```
-
-Run before pushing deployment changes:
+## Build
 
 ```bash
 pnpm build
 ```
-
-## Kitchen Ticket Printing
-
-- The Chinese admin order page can enable automatic kitchen-ticket printing for new `pending` orders received through Supabase Realtime.
-- Automatic printing only claims orders whose `kitchen_printed_at` is empty. Each later add-on order is a new order and prints only its own item snapshot.
-- Kitchen tickets are operational kitchen order slips, not formal tax receipts.
-- The first version uses the browser print window, so the browser or operating system may still show a print confirmation dialog.
-- Keep the dedicated automatic-print window open and allow popups for the admin site.
-- Fully unattended paper printing requires a later ESC/POS printer integration or a local print service.
-
-## Important Notes
-
-- Menu content is stored in Supabase, not in React components and not in i18n files.
-- Fixed frontend UI copy is managed by i18n.
-- Backend UI is Chinese only.
-- Wolt menu prices in `supabase/seed.sql` come from a public delivery platform and may differ from dine-in prices.
-- Some seed image URLs come from public delivery platform pages as temporary references; confirm authorization or replace them with restaurant-owned photos before formal commercial use.
-- First-stage MVP intentionally does not include online payment, membership, inventory, printer integration, delivery fulfillment, or complex coupons.
