@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { adminHardDeleteMenuCategory, adminHardDeleteMenuItem, getRestaurantSettings, uploadCategoryImage, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
@@ -218,6 +218,10 @@ export function AdminPage() {
   const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [syncVersion, setSyncVersion] = useState(0);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  const closeDrawer = () => setMobileDrawerOpen(false);
+  const onTabChange = (t: AdminTab) => { setTab(t); closeDrawer(); };
 
   useEffect(() => {
     if (!supabase) return;
@@ -297,25 +301,52 @@ export function AdminPage() {
 
   return (
     <main className="admin-shell">
+      {/* 桌面端侧边栏 */}
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/">
           <span className="admin-brand-mark">餐</span>
           <span>后台管理</span>
         </Link>
         <nav className="admin-nav-list">
-          <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>仪表盘</AdminNavButton>
-          <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => setTab('orders')}>订单</AdminNavButton>
-          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => setTab('items')}>菜品</AdminNavButton>
-          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => setTab('categories')}>分类</AdminNavButton>
-          <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => setTab('tables')}>桌台</AdminNavButton>
-          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => setTab('settings')}>餐馆</AdminNavButton>
-          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => setTab('system')}>系统</AdminNavButton>
+          <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton>
+          <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton>
+          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品</AdminNavButton>
+          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>分类</AdminNavButton>
+          <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton>
+          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
+          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>
           <LogOut size={15} />
         </button>
       </aside>
+
+      {/* 移动端抽屉遮罩 */}
+      {mobileDrawerOpen ? <div className="admin-mobile-overlay" onClick={closeDrawer} /> : null}
+      {/* 移动端抽屉 */}
+      <aside className={`admin-mobile-drawer${mobileDrawerOpen ? ' open' : ''}`}>
+        <Link className="admin-brand" to="/" onClick={closeDrawer}><span className="admin-brand-mark">餐</span><span>后台管理</span></Link>
+        <nav className="admin-nav-list">
+          <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton>
+          <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton>
+          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品</AdminNavButton>
+          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>分类</AdminNavButton>
+          <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton>
+          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
+          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
+        </nav>
+        <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>退出登录</button>
+      </aside>
+
       <div className="admin-workspace">
+        {/* 移动端顶部 */}
+        <header className="admin-mobile-topbar">
+          <button className="admin-mobile-menu-btn" onClick={() => setMobileDrawerOpen(true)} aria-label="菜单"><Menu size={22} /></button>
+          <strong>后台管理</strong>
+          <span style={{ flex: 1 }} />
+          <span className={`realtime-dot ${realtimeStatus}`} />
+        </header>
+        {/* 桌面端顶部 */}
         <header className="admin-topbar">
           <strong>餐馆后台管理</strong>
           <div>
