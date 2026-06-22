@@ -3595,7 +3595,7 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
   }
 
   async function submitPOS() {
-    if (!selectedTableId || cart.length === 0) return;
+    if (cart.length === 0) return;
     try {
       setSubmitting(true);
       const items = cart.map((e) => ({ menu_item_id: e.menuItemId, quantity: e.quantity, selected_options: e.selectedOptions, note: '' }));
