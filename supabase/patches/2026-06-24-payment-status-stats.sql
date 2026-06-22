@@ -20,9 +20,9 @@ begin
 
   select jsonb_build_object(
     'total_orders', count(*),
-    'pending', count(*) filter (where o.status = 'pending'),
-    'preparing', count(*) filter (where o.status = 'preparing'),
-    'served', count(*) filter (where o.status = 'served'),
+    'pending', count(*) filter (where o.status = 'pending' and o.payment_status <> 'paid'),
+    'preparing', count(*) filter (where o.status = 'preparing' and o.payment_status <> 'paid'),
+    'served', count(*) filter (where o.status = 'served' and o.payment_status <> 'paid'),
     'paid', count(*) filter (where o.payment_status = 'paid'),
     'cancelled', count(*) filter (where o.status = 'cancelled'),
     'paid_total', coalesce(sum(o.total_price) filter (where o.payment_status = 'paid'), 0)
@@ -66,10 +66,10 @@ begin
         and o.created_at >= p_today_from and o.created_at < p_today_to
     ),
     'pending_count', (
-      select count(*) from orders o where o.deleted_at is null and o.status = 'pending'
+      select count(*) from orders o where o.deleted_at is null and o.status = 'pending' and o.payment_status <> 'paid'
     ),
     'preparing_count', (
-      select count(*) from orders o where o.deleted_at is null and o.status = 'preparing'
+      select count(*) from orders o where o.deleted_at is null and o.status = 'preparing' and o.payment_status <> 'paid'
     ),
     'hot_items', coalesce((
       select jsonb_agg(to_jsonb(h) order by h.quantity desc, h.total desc)
