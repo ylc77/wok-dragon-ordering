@@ -602,11 +602,6 @@ export function TableOrderPage() {
           <p>{t('order.liveCart')}</p>
         </div>
         {message ? <p className="admin-message">{message}</p> : null}
-        {/* TEMP DEBUG: 检查 options 功能状态 */}
-        <p style={{background:'#ff0',padding:4,margin:0,fontSize:11}}>
-          DEBUG: session={!!sessionInfo} ordering={String(orderingEnabled)} billReq={String(billRequested)}
-          &nbsp; 套餐A options={String(groups.flatMap(g=>g.items).find(i=>i.id==='8a797070-a4da-41ad-a87b-c3f96bd3c494')?.options?.length ?? 'NOT FOUND')}
-        </p>
         {!orderingEnabled ? (
           <section className="ordering-paused-banner" role="status">
             <Ban size={20} />
