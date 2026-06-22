@@ -135,5 +135,5 @@ end;
 $$;
 
 -- 权限
-revoke execute on function public.pos_submit_order(uuid, jsonb, text) from public, anon;
-grant execute on function public.pos_submit_order(uuid, jsonb, text) to authenticated, service_role;
+revoke execute on function public.pos_submit_order(uuid, jsonb, text, text) from public, anon;
+grant execute on function public.pos_submit_order(uuid, jsonb, text, text) to authenticated, service_role;
