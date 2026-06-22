@@ -92,18 +92,26 @@ function DishImage({ item, alt }: { item: MenuItem; alt: string }) {
 function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visibleGroups: MenuGroup[]; lang: Language; search: string; setSearch: (v: string) => void; settings: RestaurantSettings | null; }) {
   const [activeCat, setActiveCat] = useState('');
   const mainRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLElement>(null);
   const manualRef = useRef(false);
 
   // 滚动联动：监听右侧 main 容器
   useEffect(() => {
     if (visibleGroups.length === 0 || search) return;
     const main = mainRef.current; if (!main) return;
+    const rail = railRef.current;
     const ids = visibleGroups.map((g) => `mcat-${g.id}`);
     const sections = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     if (sections.length === 0) return;
 
     const handler = () => {
       if (manualRef.current) return;
+      // 滚回顶部时，左侧分类栏也回顶部
+      if (main.scrollTop < 10 && rail && visibleGroups.length > 0) {
+        rail.scrollTo({ top: 0, behavior: 'smooth' });
+        setActiveCat(`mcat-${visibleGroups[0].id}`);
+        return;
+      }
       let best: string | null = null; let bestDist = Infinity;
       for (const s of sections) {
         const rect = s.getBoundingClientRect();
@@ -119,6 +127,19 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
     return () => main.removeEventListener('scroll', handler);
   }, [visibleGroups, search]);
 
+  // 当前分类变化时，左侧按钮滚入可见区域
+  useEffect(() => {
+    if (!activeCat || !railRef.current) return;
+    const btn = document.getElementById(activeCat)?.closest('button');
+    if (!btn) return;
+    const rail = railRef.current;
+    const railRect = rail.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    if (btnRect.top < railRect.top + 4 || btnRect.bottom > railRect.bottom - 4) {
+      btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [activeCat]);
+
   const scrollTo = useCallback((id: string) => {
     setActiveCat(id);
     manualRef.current = true;
@@ -130,7 +151,7 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
     <div className="menu-mobile-root">
       <div className="menu-mobile-body">
         {visibleGroups.length > 1 ? (
-          <aside className="mobile-rail">
+          <aside ref={railRef} className="mobile-rail">
             {visibleGroups.map((g) => (
               <button key={g.id} className={activeCat === `mcat-${g.id}` ? 'active' : ''} onClick={() => scrollTo(`mcat-${g.id}`)}>
                 {getLocalizedField(lang, { zh: g.name_zh, en: g.name_en, el: g.name_el })}
