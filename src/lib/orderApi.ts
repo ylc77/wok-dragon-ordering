@@ -475,14 +475,15 @@ export async function closeTableSession(sessionId: string) {
 }
 
 export async function posSubmitOrder(
-  tableId: string,
+  tableId: string | null,
   items: { menu_item_id: string; quantity: number; selected_options?: import('./types').SelectedOption[]; note?: string }[],
   note?: string,
   paymentMethod?: 'cash' | 'pos' | null,
+  orderType?: 'dine_in' | 'takeaway',
 ) {
   const client = requireClient();
   const { data, error } = await client.rpc('pos_submit_order', {
-    p_table_id: tableId,
+    p_table_id: tableId ?? null,
     p_items: items.map((item) => ({
       menu_item_id: item.menu_item_id,
       quantity: item.quantity,
@@ -491,6 +492,7 @@ export async function posSubmitOrder(
     })),
     p_note: note ?? null,
     p_payment_method: paymentMethod ?? null,
+    p_order_type: orderType ?? 'dine_in',
   });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
