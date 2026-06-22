@@ -3573,7 +3573,7 @@ body {
   }
 
   .item-row-summary {
-    grid-template-columns: 30px minmax(220px, 1fr) 100px 80px;
+    grid-template-columns: 28px minmax(150px, 1fr) 80px 70px;
   }
 
   .item-row-summary > .availability-badge,
@@ -3786,6 +3786,7 @@ body {
   }
 
   .item-row-actions {
+    flex-wrap: wrap;
     grid-column: 2 / -1;
     justify-content: flex-start;
   }
@@ -4654,4 +4655,4 @@ textarea.text-field:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(18
 .admin-mobile-drawer-close { align-self: flex-end; background: none; border: 0; color: rgba(255,255,255,.5); cursor: pointer; padding: 4px; margin-bottom: 8px; }
 .admin-mobile-drawer-close:hover { color: #fff; }
 .admin-mobile-overlay { background: rgba(0,0,0,.4); bottom: 0; left: 0; position: fixed; right: 0; top: 0; z-index: 49; }
-@media (max-width: 767px) { .admin-shell { display: block; } .admin-sidebar { display: none; } .admin-mobile-topbar { display: flex; } .admin-mobile-drawer { display: flex; } .admin-topbar { display: none; } .admin-workspace { width: 100%; } .admin-content { max-width: 100%; overflow-x: hidden; padding: 14px; width: 100%; } .dash-stat-grid { grid-template-columns: repeat(2, 1fr); } .dash-stat { min-height: 64px; padding: 12px 14px; } .dash-stat strong { font-size: 22px; } .daily-stats-table-wrap { overflow-x: auto; } .daily-stats-table { font-size: 12px; } .daily-stats-table th, .daily-stats-table td { padding: 6px 8px; } .order-stats-row { flex-wrap: wrap; } .stat-card { flex: 1 1 40%; min-width: 100px; } .stat-card strong { font-size: 20px; } .table-admin-grid { grid-template-columns: 1fr; } .settings-grid-2, .settings-grid-3 { grid-template-columns: 1fr; } .settings-brand-grid { grid-template-columns: 1fr; } .admin-language-panels { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .admin-shell { display: block; } .admin-sidebar { display: none; } .admin-mobile-topbar { display: flex; } .admin-mobile-drawer { display: flex; } .admin-topbar { display: none; } .admin-workspace { width: 100%; } .admin-content { max-width: 100%; overflow-x: hidden; padding: 14px; width: 100%; } .admin-row { min-width: 0; overflow-wrap: break-word; } .admin-table { overflow-x: auto; } .item-row-summary { min-width: 0; } .item-summary-name { min-width: 0; } .item-row-actions { flex-wrap: wrap; } .dash-stat-grid { grid-template-columns: repeat(2, 1fr); } .dash-stat { min-height: 64px; padding: 12px 14px; } .dash-stat strong { font-size: 22px; } .daily-stats-table-wrap { overflow-x: auto; } .daily-stats-table { font-size: 12px; } .daily-stats-table th, .daily-stats-table td { padding: 6px 8px; } .order-stats-row { flex-wrap: wrap; } .stat-card { flex: 1 1 40%; min-width: 100px; } .stat-card strong { font-size: 20px; } .table-admin-grid { grid-template-columns: 1fr; } .settings-grid-2, .settings-grid-3 { grid-template-columns: 1fr; } .settings-brand-grid { grid-template-columns: 1fr; } .admin-language-panels { grid-template-columns: 1fr; } }
