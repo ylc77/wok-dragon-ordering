@@ -1783,7 +1783,17 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
         if (soundEnabledRef.current) playOrderNotification();
       }
       if (autoPrintEnabledRef.current) {
-        queueAutoPrint(insertedPendingOrders.filter((order) => !order.kitchen_printed_at));
+        // 新订单 + 加餐（已有订单中新增 order_items 且打印标记已重置）
+        const newOrderIds = new Set(insertedPendingOrders.map((o) => o.id));
+        const repopulatedOrders = pendingOrders.filter((order) =>
+          !newOrderIds.has(order.id) &&
+          !order.kitchen_printed_at &&
+          order.order_items?.some((item) => newOrderItems.some((ni) => ni.id === item.id)),
+        );
+        queueAutoPrint([
+          ...insertedPendingOrders.filter((order) => !order.kitchen_printed_at),
+          ...repopulatedOrders,
+        ]);
       }
     } catch (err) {
       onMessage(formatUnknownError(err));
