@@ -4583,11 +4583,11 @@ textarea.text-field:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(18
   .mobile-rail { background: #f5f0eb; border-right: 1px solid #e5e0da; display: flex; flex-direction: column; gap: 1px; padding: 4px 3px 24px; }
   .mobile-rail button { background: transparent; border: 0; border-radius: 6px; color: #594f46; cursor: pointer; font-size: 11px; font-weight: 600; line-height: 1.25; overflow-wrap: break-word; padding: 8px 3px; text-align: center; word-break: break-word; }
   .mobile-rail button.active { background: #fff; border-left: 3px solid var(--accent); color: var(--accent-dark); font-weight: 900; }
-  .mobile-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 4px 8px 60px; }
+  .mobile-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 8px calc(72px + env(safe-area-inset-bottom)); }
   .page-shell { min-height: 100dvh; }
   .page-heading { flex-shrink: 0; }
   .menu-search-bar { flex-shrink: 0; }
-  .mobile-main .menu-group { margin-bottom: 10px; scroll-margin-top: 2px; }
+  .mobile-main .menu-group { margin-bottom: 10px; scroll-margin-top: 8px; }
   .mobile-main .menu-group h2 { font-size: 17px; margin: 6px 0 6px; }
   .menu-card { border-radius: 8px; gap: 8px; grid-template-columns: 72px minmax(0, 1fr); margin-bottom: 8px; min-height: 0; padding: 8px; }
   .menu-card img, .menu-card-fallback { border-radius: 6px; height: 72px; width: 72px; }
