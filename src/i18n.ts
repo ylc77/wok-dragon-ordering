@@ -99,6 +99,10 @@ const resources = {
           'Ορισμένα είδη στο καλάθι έχουν εξαντληθεί ή δεν είναι διαθέσιμα. Αφαιρέστε τα πριν υποβάλετε την παραγγελία.',
         cartSoldOutIncrease: 'Αυτό το είδος δεν είναι πλέον διαθέσιμο.',
         delisted: 'Μη διαθέσιμο',
+        addNote: 'Προσθήκη σημείωσης',
+        editNote: 'Επεξεργασία σημείωσης',
+        noteLabel: 'Σημείωση',
+        notePlaceholder: 'π.χ. λιγότερο αλάτι, χωρίς κρεμμύδι',
       },
       platforms: {
         wolt: 'Wolt',
@@ -204,6 +208,10 @@ const resources = {
           'Some items in your cart are sold out or unavailable. Please remove them before submitting.',
         cartSoldOutIncrease: 'This item is no longer available.',
         delisted: 'Unavailable',
+        addNote: 'Add note',
+        editNote: 'Edit note',
+        noteLabel: 'Note',
+        notePlaceholder: 'e.g. less salt, no onion',
       },
       platforms: {
         wolt: 'Wolt',
@@ -308,6 +316,10 @@ const resources = {
         cartSoldOutPrompt: '购物车中有菜品已售罄或已下架，请先移除后再提交订单。',
         cartSoldOutIncrease: '该菜品已不可售。',
         delisted: '已下架',
+        addNote: '添加备注',
+        editNote: '编辑备注',
+        noteLabel: '备注',
+        notePlaceholder: '例如：少盐，不要葱',
       },
       platforms: {
         wolt: 'Wolt',

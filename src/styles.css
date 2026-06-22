@@ -3792,6 +3792,112 @@ body {
   }
 }
 
+/* ---------- 手机端菜品管理卡片化 (≤600px) ---------- */
+@media (max-width: 600px) {
+  .item-row-summary {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    grid-template-columns: none;
+    position: relative;
+  }
+
+  /* checkbox 放卡片左上角 */
+  .item-row-summary > input[type="checkbox"] {
+    align-self: flex-start;
+    flex-shrink: 0;
+    height: 18px;
+    margin: 2px 0 0 2px;
+    width: 18px;
+  }
+
+  /* 图片+名称 区域 */
+  .item-summary-name {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    min-width: 0;
+    padding-left: 26px; /* 给 checkbox 让位 */
+  }
+
+  .item-summary-name img,
+  .item-image-placeholder {
+    border-radius: 8px;
+    flex-shrink: 0;
+    height: 56px;
+    width: 56px;
+  }
+
+  .item-summary-name > span {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .item-summary-name strong,
+  .item-summary-name small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 价格：粗体突出 */
+  .item-row-summary > strong {
+    align-self: flex-start;
+    font-size: 16px;
+    margin-left: 36px; /* 与名称文本对齐 */
+  }
+
+  /* 恢复被 900px 隐藏的分类 */
+  .item-row-summary > span:nth-child(3) {
+    display: block;
+    color: #6b7280;
+    font-size: 13px;
+    margin-left: 36px;
+    white-space: normal;
+  }
+
+  /* 恢复被 900px 隐藏的状态 */
+  .item-row-summary > .availability-badge {
+    align-self: flex-start;
+    display: inline-block;
+    margin-left: 36px;
+  }
+
+  /* 操作按钮：全宽均分 */
+  .item-row-actions {
+    display: flex;
+    gap: 8px;
+    grid-column: auto;
+    justify-content: stretch;
+    margin-top: 4px;
+    width: 100%;
+  }
+
+  .item-row-actions button {
+    align-items: center;
+    border-radius: 8px;
+    display: flex;
+    flex: 1;
+    font-size: 14px;
+    justify-content: center;
+    min-height: 40px;
+    padding: 8px 4px;
+  }
+
+  .item-row-actions .danger-text {
+    flex: 0 0 auto;
+    min-width: 56px;
+  }
+
+  /* 编辑器展开 */
+  .item-row-editor {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
 /* ---------- 系统状态 / 健康检查 ---------- */
 
 .health-status-grid {
@@ -4314,6 +4420,191 @@ body {
   .filter-chip { font-size: 13px; padding: 6px 12px; }
 }
 
+/* ---------- 手机端订单管理深度卡片化 (≤600px) ---------- */
+@media (max-width: 600px) {
+  /* 卡片内边距收紧 */
+  .order-card-row {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  /* 桌号缩小，与其他信息比例更协调 */
+  .ocr-table {
+    font-size: 17px;
+  }
+
+  /* 金额和操作按钮纵向排列，不互相挤压 */
+  .ocr-right {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .ocr-price {
+    font-size: 20px;
+  }
+
+  /* 操作按钮允许换行：2×2 或自然排列 */
+  .ocr-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .ocr-actions .mini-btn {
+    flex: 1 1 auto;
+    font-size: 13px;
+    justify-content: center;
+    min-height: 40px;
+    min-width: 68px;
+    padding: 8px 10px;
+    white-space: normal;
+  }
+
+  /* 删除按钮保持紧凑 */
+  .ocr-actions .mini-btn.danger-text {
+    flex: 0 0 auto;
+    min-width: 40px;
+  }
+
+  /* 菜品明细字号微调 */
+  .ocr-item {
+    font-size: 14px;
+  }
+
+  /* 筛选 chip 多行时增加行间距，避免粘连 */
+  .order-filter-row {
+    row-gap: 6px;
+  }
+
+  .filter-chip {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  /* 筛选第二行：搜索框占满宽 */
+  .order-filter-row .filter-input[style*="flex"] {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  /* 统计卡片进一步紧凑 */
+  .stat-card {
+    flex: 1 1 45%;
+    min-height: 60px;
+    padding: 10px 12px;
+  }
+
+  .stat-card strong {
+    font-size: 20px;
+  }
+
+  .tool-card {
+    flex: 1 1 100%;
+    flex-direction: row;
+    gap: 12px;
+    justify-content: center;
+    min-height: 50px;
+    padding: 10px 12px;
+  }
+
+  /* ── 30 天统计 → 卡片列表 (替代横向滚动表格) ── */
+  .daily-stats-table-wrap {
+    overflow-x: visible;
+  }
+
+  .daily-stats-table {
+    min-width: 0;
+  }
+
+  .daily-stats-table thead {
+    display: none;
+  }
+
+  .daily-stats-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .daily-stats-table tr {
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    padding: 8px 0;
+  }
+
+  .daily-stats-table tr.zero-row {
+    opacity: .45;
+  }
+
+  .daily-stats-table td {
+    border-bottom: none;
+    font-size: 13px;
+    padding: 2px 0;
+    white-space: normal;
+  }
+
+  .daily-stats-table td:first-child {
+    font-weight: 700;
+    width: 100%;
+  }
+
+  /* 隐藏零值行的冗余数据，只保留日期 */
+  .daily-stats-table tr.zero-row td:not(:first-child) {
+    display: none;
+  }
+
+  /* ── 热销菜品列表收紧 ── */
+  .hot-item-list div {
+    gap: 8px;
+    grid-template-columns: 28px minmax(0, 1fr) auto auto;
+    padding: 8px 0;
+  }
+
+  .hot-item-list em {
+    font-size: 12px;
+  }
+
+  /* ── 桌台管理：QR 区域缩小 ── */
+  .qr-box {
+    min-height: 100px;
+  }
+
+  /* ── 桌台管理：维护按钮触控面积加大 ── */
+  .maintenance-button {
+    min-height: 40px;
+    padding: 8px 14px;
+  }
+
+  /* ── 餐馆设置：保存栏 sticky 不用滚到底 ── */
+  .settings-save-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+  }
+}
+
+/* ---------- 极端小屏仪表盘微调 (≤400px) ---------- */
+@media (max-width: 400px) {
+  .dash-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-empty-state {
+    padding: 20px 14px;
+  }
+
+  /* ── 餐馆设置：品牌预览高度缩减 ── */
+  .settings-brand-preview,
+  .settings-hero-preview-wrap {
+    height: 140px;
+  }
+}
+
 .admin-message-muted {
   color: #70747a;
 }
@@ -4493,6 +4784,25 @@ body {
 .selling-point p { color: #6b7280; font-size: 13px; margin: 0; }
 @media (max-width: 768px) { .selling-point { min-width: 140px; padding: 16px 14px; } }
 .cart-soldout-mark { background: #fef2f2; border-radius: 3px; color: #dc2626; font-size: 10px; font-weight: 700; margin-left: 6px; padding: 1px 5px; vertical-align: middle; }
+
+/* 购物车备注 */
+.cart-line-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cart-note-text { color: #6b7280; font-size: 12px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-note-btn { align-items: center; align-self: flex-start; background: none; border: 1px dashed #d1d5db; border-radius: 6px; color: #9ca3af; cursor: pointer; display: inline-flex; font-size: 12px; gap: 4px; padding: 3px 8px; transition: border-color .15s, color .15s; }
+.cart-note-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cart-note-btn:disabled { opacity: .4; pointer-events: none; }
+
+/* 备注编辑面板 */
+.cart-note-backdrop { align-items: flex-end; background: rgba(0,0,0,.35); bottom: 0; display: flex; justify-content: center; left: 0; position: fixed; right: 0; top: 0; z-index: 60; }
+.cart-note-panel { background: #fff; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 16px; max-width: 500px; padding: 20px; width: 100%; }
+.cart-note-head { align-items: center; display: flex; justify-content: space-between; }
+.cart-note-head h3 { font-size: 16px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-note-head button { background: none; border: 0; color: #9ca3af; cursor: pointer; padding: 4px; }
+.cart-note-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+.cart-note-field textarea { min-height: 72px; }
+.cart-note-hint { color: #9ca3af; font-size: 11px; text-align: right; }
+.cart-note-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.cart-note-actions button { min-width: 80px; }
 @media (max-width: 640px) { .home-menu-list { grid-template-columns: 1fr; } }
 .settings-logo-preview { max-height: 80px; max-width: 160px; object-fit: contain; background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; }
 .settings-hero-preview { aspect-ratio: 16/9; border: 1px solid #e5e7eb; border-radius: 6px; max-width: 360px; object-fit: cover; width: 100%; }

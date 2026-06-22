@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Ban, Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Ban, Banknote, CreditCard, Minus, Pencil, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { SafeImage } from '../components/SafeImage';
@@ -21,6 +21,7 @@ import {
   submitOrder,
   subscribeToTableCart,
   subscribeToTableReentryRequest,
+  updateCartItemNote,
   updateCartItemQuantity,
 } from '../lib/orderApi';
 import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, RealtimeConnectionStatus, RestaurantSettings, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
@@ -52,6 +53,9 @@ export function TableOrderPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<BillPaymentMethod | null>(null);
   const [requestingBill, setRequestingBill] = useState(false);
+  const [noteLine, setNoteLine] = useState<CartItem | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
   const [billOrders, setBillOrders] = useState<Order[]>([]);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [entryState, setEntryState] = useState<TableEntryState | null>(null);
@@ -363,6 +367,37 @@ export function TableOrderPage() {
     }
   }
 
+  function openNoteEditor(line: CartItem) {
+    setNoteLine(line);
+    setNoteText(line.note ?? '');
+  }
+
+  function closeNoteEditor() {
+    setNoteLine(null);
+    setNoteText('');
+  }
+
+  async function saveNote() {
+    if (!noteLine || !sessionInfo) return;
+    const trimmed = noteText.trim().slice(0, 120);
+    try {
+      setSavingNote(true);
+      if (trimmed) {
+        await updateCartItemNote(noteLine.id, trimmed);
+      } else {
+        // 空备注 → 删除购物车行（当前 note 为空时等同于删除该行）
+        // 如果原行已有备注，清空 note → 传空串
+        await updateCartItemNote(noteLine.id, '');
+      }
+      await refreshCart(sessionInfo.session_id);
+      closeNoteEditor();
+    } catch (err) {
+      setMessage(sanitizeError(err));
+    } finally {
+      setSavingNote(false);
+    }
+  }
+
   async function submitCurrentOrder() {
     if (!sessionInfo || cartSummary.isEmpty) return;
     if (!orderingEnabled) {
@@ -622,20 +657,35 @@ export function TableOrderPage() {
           const item = line.menu_items;
           return (
             <div className="cart-line" key={line.id}>
-              <strong>
-                {item
-                  ? getLocalizedField(lang, {
-                      zh: item.name_zh,
-                      en: item.name_en,
-                      el: item.name_el,
-                    })
-                  : line.menu_item_id}
-                {item?.is_sold_out || item?.is_available === false ? (
-                  <span className="cart-soldout-mark">
-                    {item?.is_available === false ? t('order.delisted') : t('common.soldOut')}
-                  </span>
+              <div className="cart-line-info">
+                <strong>
+                  {item
+                    ? getLocalizedField(lang, {
+                        zh: item.name_zh,
+                        en: item.name_en,
+                        el: item.name_el,
+                      })
+                    : line.menu_item_id}
+                  {item?.is_sold_out || item?.is_available === false ? (
+                    <span className="cart-soldout-mark">
+                      {item?.is_available === false ? t('order.delisted') : t('common.soldOut')}
+                    </span>
+                  ) : null}
+                </strong>
+                {line.note ? (
+                  <span className="cart-note-text" title={line.note}>{line.note}</span>
                 ) : null}
-              </strong>
+                <button
+                  type="button"
+                  className="cart-note-btn"
+                  disabled={billRequested}
+                  onClick={() => openNoteEditor(line)}
+                  aria-label={line.note ? t('order.editNote') : t('order.addNote')}
+                >
+                  <Pencil size={12} />
+                  <span>{line.note ? t('order.editNote') : t('order.addNote')}</span>
+                </button>
+              </div>
               <strong className="cart-line-subtotal">{formatPrice(Number(line.unit_price) * line.quantity)}</strong>
               <div className="cart-controls">
                 <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, line.quantity - 1)}>
@@ -671,6 +721,55 @@ export function TableOrderPage() {
           {t('order.submit')}
         </button>
       </aside>
+
+      {/* 备注编辑面板 */}
+      {noteLine ? (
+        <div className="cart-note-backdrop" role="presentation" onClick={closeNoteEditor}>
+          <div
+            className="cart-note-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('order.noteLabel')}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="cart-note-head">
+              <h3>
+                {noteLine.menu_items
+                  ? getLocalizedField(lang, {
+                      zh: noteLine.menu_items.name_zh,
+                      en: noteLine.menu_items.name_en,
+                      el: noteLine.menu_items.name_el,
+                    })
+                  : t('order.noteLabel')}
+              </h3>
+              <button type="button" onClick={closeNoteEditor} aria-label={t('order.cancel')}>
+                <X size={18} />
+              </button>
+            </div>
+            <label className="cart-note-field">
+              <span>{t('order.noteLabel')}</span>
+              <textarea
+                className="text-field"
+                rows={3}
+                maxLength={120}
+                placeholder={t('order.notePlaceholder')}
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                autoFocus
+              />
+              <small className="cart-note-hint">{noteText.length}/120</small>
+            </label>
+            <div className="cart-note-actions">
+              <button className="secondary-button" type="button" onClick={closeNoteEditor} disabled={savingNote}>
+                {t('order.cancel')}
+              </button>
+              <button className="primary-button" type="button" onClick={saveNote} disabled={savingNote}>
+                {savingNote ? '...' : t('order.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {billOpen ? (
         <div className="bill-dialog-backdrop" role="presentation" onClick={() => setBillOpen(false)}>
