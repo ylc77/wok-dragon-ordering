@@ -219,6 +219,9 @@ export function AdminPage() {
   const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [restaurantName, setRestaurantName] = useState('餐馆');
+  const [paperWidth, setPaperWidth] = useState(() => {
+    try { const v = localStorage.getItem('restaurant_ticket_paper_width'); return v === '58' ? '58' : '80'; } catch { return '80'; }
+  });
   const [syncVersion, setSyncVersion] = useState(0);
   const requestSync = useCallback(() => setSyncVersion((c) => c + 1), []);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -377,7 +380,7 @@ export function AdminPage() {
           {adminToast ? <div className={`admin-toast toast-${adminToast.type}`}>{adminToast.msg}</div> : null}
           {message ? <p className="admin-message">{message}<button type="button" className="print-warning-dismiss" style={{marginLeft:8}} onClick={()=>setMessage(null)}>×</button></p> : null}
           {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} /> : null}
-          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} /> : null}
+          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} /> : null}
           {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
@@ -1681,7 +1684,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
   );
 }
 
-function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled, onSoundEnabledChange, restaurantName }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; requestSync: () => void; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; restaurantName: string; }) {
+function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled, onSoundEnabledChange, restaurantName, paperWidth, setPaperWidth }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; requestSync: () => void; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; restaurantName: string; paperWidth: string; setPaperWidth: (v: string) => void; }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -1862,7 +1865,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
     printWindow.document.write('<p style="font-family:sans-serif;padding:20px">正在准备厨房小票...</p>');
     try {
       const isReprint = Boolean(order.kitchen_printed_at);
-      await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, isReprint, new Date().toISOString(), restaurantName));
+      await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, isReprint, new Date().toISOString(), restaurantName, undefined, paperWidth));
       printWindow.close();
       await markOrderKitchenPrinted(order.id);
       toast(isReprint ? `订单 #${order.order_number} 已重打厨房小票` : `订单 #${order.order_number} 厨房小票已打印`);
@@ -1879,7 +1882,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
 
   function previewKitchenTicket(order: Order) {
     const isReprint = Boolean(order.kitchen_printed_at);
-    const ticketHtml = buildKitchenTicket(order, isReprint, new Date().toISOString(), restaurantName);
+    const ticketHtml = buildKitchenTicket(order, isReprint, new Date().toISOString(), restaurantName, undefined, paperWidth);
     const previewWindow = window.open('', 'kitchen-ticket-preview', 'width=420,height=720');
     if (!previewWindow) {
       toast('浏览器阻止了预览窗口，请允许弹窗');
@@ -1943,7 +1946,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
       return;
     }
 
-    await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, false, new Date().toISOString(), restaurantName));
+    await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, false, new Date().toISOString(), restaurantName, undefined, paperWidth));
     await markOrderKitchenPrinted(order.id);
     toast(`新订单 #${order.order_number} 已触发自动打印厨房小票`);
     load();
@@ -2136,6 +2139,13 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
             <input checked={soundEnabled} type="checkbox" onChange={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); toast(n ? '声音提醒已开启' : '声音提醒已关闭'); }} />
             {soundEnabled ? '🔔 有声' : '🔕 静音'}
           </label>
+          <label className="tool-row">
+            纸宽
+            <select value={paperWidth} onChange={(e) => { const v = e.target.value; setPaperWidth(v); try { localStorage.setItem('restaurant_ticket_paper_width', v); } catch { /* noop */ } }}>
+              <option value="80">80mm</option>
+              <option value="58">58mm</option>
+            </select>
+          </label>
         </div>
       </div>
       {printWarning ? <p className="print-warning-banner">⚠ {printWarning}<button type="button" onClick={() => setPrintWarning(null)} className="print-warning-dismiss">×</button></p> : null}
@@ -2290,7 +2300,9 @@ function buildKitchenTicket(
   printedAt: string,
   restaurantName?: string,
   isAdditional?: boolean,
+  paperWidth = '80',
 ) {
+  const is58 = paperWidth === '58';
   const tableNumber = order.restaurant_tables?.table_number ?? '?';
   const totalPrice = formatPrice(Number(order.total_price));
   const itemRows = (order.order_items ?? [])
@@ -2315,19 +2327,19 @@ function buildKitchenTicket(
         <meta charset="utf-8" />
         <title>厨房小票 #${escapeTicketText(order.order_number)}</title>
         <style>
-          @page { size: 80mm auto; margin: 5mm; }
-          body { color: #000; font-family: Arial, "Microsoft YaHei", sans-serif; margin: 0; width: 70mm; }
-          h1 { border-bottom: 2px dashed #000; font-size: 22px; margin: 0 0 8px; padding-bottom: 8px; text-align: center; }
-          .restaurant { font-size: 14px; font-weight: 700; margin-bottom: 2px; text-align: center; }
-          .reprint { border: 3px solid #000; font-size: 20px; font-weight: 900; margin-bottom: 8px; padding: 5px; text-align: center; }
-          .additional { border: 2px solid #000; font-size: 16px; font-weight: 900; margin-bottom: 8px; padding: 4px; text-align: center; }
-          .meta { border-bottom: 1px dashed #000; display: grid; gap: 4px; padding-bottom: 8px; }
-          .item { border-bottom: 1px dashed #777; padding: 10px 0; }
-          .item-head { font-size: 18px; font-weight: 700; }
-          .item-opts { color: #444; font-size: 15px; margin-top: 2px; }
-          .item-note { color: #666; font-size: 14px; margin-top: 1px; }
-          .total { border-top: 2px solid #000; font-size: 20px; font-weight: 900; margin-top: 8px; padding-top: 8px; text-align: right; }
-          footer { font-size: 11px; margin-top: 12px; text-align: center; }
+          @page { size: ${paperWidth}mm auto; margin: ${is58 ? '3mm' : '5mm'}; }
+          body { color: #000; font-family: Arial, "Microsoft YaHei", sans-serif; margin: 0; width: ${is58 ? '50mm' : '70mm'}; }
+          h1 { border-bottom: 2px dashed #000; font-size: ${is58 ? '18px' : '22px'}; margin: 0 0 8px; padding-bottom: 8px; text-align: center; }
+          .restaurant { font-size: ${is58 ? '12px' : '14px'}; font-weight: 700; margin-bottom: 2px; text-align: center; }
+          .reprint { border: 3px solid #000; font-size: ${is58 ? '16px' : '20px'}; font-weight: 900; margin-bottom: 8px; padding: 5px; text-align: center; }
+          .additional { border: 2px solid #000; font-size: ${is58 ? '13px' : '16px'}; font-weight: 900; margin-bottom: 8px; padding: 4px; text-align: center; }
+          .meta { border-bottom: 1px dashed #000; display: grid; gap: 4px; font-size: ${is58 ? '13px' : '16px'}; padding-bottom: 8px; }
+          .item { border-bottom: 1px dashed #777; padding: ${is58 ? '6px 0' : '10px 0'}; }
+          .item-head { font-size: ${is58 ? '16px' : '18px'}; font-weight: 700; }
+          .item-opts { color: #444; font-size: ${is58 ? '13px' : '15px'}; margin-top: 2px; }
+          .item-note { color: #666; font-size: ${is58 ? '12px' : '14px'}; margin-top: 1px; }
+          .total { border-top: 2px solid #000; font-size: ${is58 ? '17px' : '20px'}; font-weight: 900; margin-top: 8px; padding-top: 8px; text-align: right; }
+          footer { font-size: ${is58 ? '10px' : '11px'}; margin-top: 12px; text-align: center; }
         </style>
       </head>
       <body>
