@@ -3503,11 +3503,27 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
   const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
   const [optionsPicked, setOptionsPicked] = useState<Record<string, string | string[]>>({});
   const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchRestaurantTables().then(setTables).catch(() => {});
     getPublicMenu().then(setGroups).catch(() => {});
   }, []);
+
+  const filteredGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return groups;
+    return groups
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((item) =>
+          (item.name_zh || '').toLowerCase().includes(q) ||
+          (item.name_en || '').toLowerCase().includes(q) ||
+          (item.name_el || '').toLowerCase().includes(q)
+        ),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [groups, search]);
 
   const cartTotal = cart.reduce((s, e) => s + e.quantity * e.price, 0);
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
@@ -3586,6 +3602,7 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
     <main className="pos-shell">
       <div className="pos-menu">
         <div className="pos-toolbar">
+          <input className="pos-search" type="text" placeholder="搜索菜品…" value={search} onChange={(e) => setSearch(e.target.value)} />
           <label className="filter-label">桌号
             <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
               <option value="">选择桌号</option>
@@ -3596,12 +3613,12 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
           </label>
         </div>
         <nav className="pos-category-tabs">
-          {groups.map((g) => (
+          {filteredGroups.map((g) => (
             <a href={`#pos-cat-${g.id}`} key={g.id} className="pos-cat-tab" onClick={(e) => { e.preventDefault(); document.getElementById(`pos-cat-${g.id}`)?.scrollIntoView({ behavior: 'smooth' }); }}>{g.name_zh || g.name_en}</a>
           ))}
         </nav>
         <div className="pos-menu-list">
-          {groups.map((g) => (
+          {filteredGroups.map((g) => (
             <section key={g.id} id={`pos-cat-${g.id}`} className="pos-category">
               <h3>{g.name_zh || g.name_en}</h3>
               <div className="pos-items">

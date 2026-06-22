@@ -4718,7 +4718,9 @@ body {
 /* ── POS 前台点单 ── */
 .pos-shell { display: grid; gap: 16px; grid-template-columns: 1fr 360px; height: calc(100vh - 120px); overflow: hidden; }
 .pos-menu { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.pos-toolbar { margin-bottom: 10px; }
+.pos-toolbar { align-items: center; display: flex; gap: 10px; margin-bottom: 10px; }
+.pos-search { border: 1px solid #d1d5db; border-radius: 8px; flex: 1; font-size: 14px; max-width: 320px; outline: none; padding: 8px 12px; }
+.pos-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(181,31,36,.1); }
 .pos-category-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .pos-cat-tab { background: #f3f4f6; border-radius: 6px; color: #374151; font-size: 13px; font-weight: 600; padding: 6px 14px; text-decoration: none; white-space: nowrap; }
 .pos-cat-tab:hover { background: #e5e7eb; }
