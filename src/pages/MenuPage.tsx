@@ -254,7 +254,7 @@ export function MenuPage() {
 
   // 过滤掉不适合公开菜单展示的分类（如餐具）
   const publicGroups = useMemo(() => groups.filter((g) => {
-    const name = (g.name_en + g.name_el + g.name_zh).toLowerCase();
+    const name = ((g.name_en ?? '') + (g.name_el ?? '') + g.name_zh).toLowerCase();
     return !name.includes('μαχαιροπίρουνα') && !name.includes('utensil') && !name.includes('餐具');
   }), [groups]);
 
