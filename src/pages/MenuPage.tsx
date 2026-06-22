@@ -49,19 +49,35 @@ export function MenuPage() {
 
   const visibleGroups = filteredGroups.filter((group) => group.items.length > 0);
 
-  // 滚动联动 highlight
+  const manualRef = useRef(false);
+
+  // 滚动联动 highlight（仅自动滚动时生效）
   useEffect(() => {
     if (visibleGroups.length === 0 || search) return;
     const container = listRef.current;
     if (!container) return;
     const headers = visibleGroups.map((g) => document.getElementById(`cat-${g.id}`)).filter(Boolean) as HTMLElement[];
     if (headers.length === 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => { const v = entries.filter((e) => e.isIntersecting); if (v.length > 0) setActiveCat(v[0].target.id); },
-      { root: container, threshold: 0.3, rootMargin: '-15% 0px -75% 0px' },
-    );
-    headers.forEach((h) => observer.observe(h));
-    return () => observer.disconnect();
+
+    const onIntersect = () => {
+      if (manualRef.current) return; // 手动点击分类时跳过
+      // 找离顶部最近的可见 section
+      let closest: string | null = null;
+      let minDist = Infinity;
+      for (const h of headers) {
+        const rect = h.getBoundingClientRect();
+        if (rect.bottom > 0 && rect.top < window.innerHeight) {
+          const dist = Math.abs(rect.top - 120); // 120px = 顶部导航高度
+          if (dist < minDist) { minDist = dist; closest = h.id; }
+        }
+      }
+      if (closest) setActiveCat(closest);
+    };
+
+    // 用滚动事件代替 IntersectionObserver，更精确
+    container.addEventListener('scroll', onIntersect, { passive: true });
+    onIntersect(); // 初始触发
+    return () => container.removeEventListener('scroll', onIntersect);
   }, [visibleGroups, search]);
 
   // 返回顶部
@@ -72,7 +88,10 @@ export function MenuPage() {
   }, []);
 
   const scrollToCat = (id: string) => {
+    setActiveCat(id); // 立即更新高亮
+    manualRef.current = true;
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => { manualRef.current = false; }, 800); // 滚动结束后恢复 observer
   };
 
   const hasResults = visibleGroups.length > 0;
