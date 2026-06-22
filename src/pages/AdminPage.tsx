@@ -1687,9 +1687,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
   const [stats, setStats] = useState<AdminOrderStats>({
     total_orders: 0, pending: 0, preparing: 0, served: 0, paid: 0, cancelled: 0, paid_total: 0,
   });
-  const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
-    try { return localStorage.getItem('restaurant_auto_print_enabled') === '1'; } catch { return false; }
-  });
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
   const [printWarning, setPrintWarning] = useState<string | null>(null);
   const [confirmingBillIds, setConfirmingBillIds] = useState<Set<string>>(new Set());
   const confirmingBillIdsRef = useRef<Set<string>>(new Set());
@@ -1732,6 +1730,14 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('restaurant_auto_print_enabled') === '1') {
+        toast('自动打印已保存为开启，请点击「启用自动打印」以恢复');
+      }
+    } catch { /* noop */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load(options?: { initial?: boolean }) {
     try {
