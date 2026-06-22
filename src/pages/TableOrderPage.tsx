@@ -278,9 +278,11 @@ export function TableOrderPage() {
   const hasOrders = billOrders.length > 0;
   const orderingLocked = sessionInfo?.bill_request_status === 'requested';
   const cartByMenuItemId = useMemo(() => {
-    const rows = new Map<string, CartItem>();
+    const rows = new Map<string, CartItem[]>();
     cart.forEach((line) => {
-      rows.set(line.menu_item_id, line);
+      const list = rows.get(line.menu_item_id) || [];
+      list.push(line);
+      rows.set(line.menu_item_id, list);
     });
     return rows;
   }, [cart]);
@@ -655,26 +657,35 @@ export function TableOrderPage() {
                   })}
                 </h2>
                 <div className="menu-list order-list">
-                  {group.items.map((item) => (
-                    <MenuCard
-                      item={item}
-                      lang={lang}
-                      key={item.id}
-                      action={
-                        <DishQuantityControl
-                          item={item}
-                          line={cartByMenuItemId.get(item.id)}
-                          disabled={!sessionInfo || billRequested || !orderingEnabled || Boolean(item.is_sold_out)}
-                          increaseDisabled={billRequested || !orderingEnabled || Boolean(item.is_sold_out)}
-                          decreaseDisabled={billRequested}
-                          onAdd={() => addItem(item)}
-                          onChange={updateQuantity}
-                          addLabel={item.is_sold_out ? t('common.soldOut') : t('order.add')}
-                          hasOptions={Boolean(item.options && item.options.length > 0)}
-                        />
-                      }
-                    />
-                  ))}
+                  {group.items.map((item) => {
+                    const cartLines = cartByMenuItemId.get(item.id);
+                    const hasOpts = Boolean(item.options && item.options.length > 0);
+                    const totalQty = cartLines ? cartLines.reduce((s, l) => s + l.quantity, 0) : 0;
+                    // 有 options 的菜: 传合成行用于显示总数量; 无 options: 传第一行用于数量控件
+                    const cartLine = hasOpts
+                      ? (totalQty > 0 ? { ...cartLines![0], quantity: totalQty } : undefined)
+                      : cartLines?.[0];
+                    return (
+                      <MenuCard
+                        item={item}
+                        lang={lang}
+                        key={item.id}
+                        action={
+                          <DishQuantityControl
+                            item={item}
+                            line={cartLine}
+                            disabled={!sessionInfo || billRequested || !orderingEnabled || Boolean(item.is_sold_out)}
+                            increaseDisabled={billRequested || !orderingEnabled || Boolean(item.is_sold_out)}
+                            decreaseDisabled={billRequested}
+                            onAdd={() => addItem(item)}
+                            onChange={updateQuantity}
+                            addLabel={item.is_sold_out ? t('common.soldOut') : t('order.add')}
+                            hasOptions={hasOpts}
+                          />
+                        }
+                      />
+                    );
+                  })}
                 </div>
               </section>
             ) : null,
