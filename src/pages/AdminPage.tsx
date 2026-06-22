@@ -2215,7 +2215,6 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                     <span className="ocr-status" style={{ background: isPaid ? (order.payment_method === 'cash' ? '#16a34a' : '#2563eb') : s === 'cancelled' ? '#9ca3af' : '#f59e0b' }}>
                       {isPaid ? (order.payment_method === 'cash' ? '已收款 · 现金' : order.payment_method === 'pos' ? '已收款 · 刷卡' : '已收款') : s === 'cancelled' ? '已取消' : '未付款'}
                     </span>
-                    <span className="ocr-status-sub">{statusLabels[s]}</span>
                   </div>
                   <div className="ocr-items">
                     {(order.order_items ?? []).map((item) => (
@@ -2233,10 +2232,8 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                   <div className="ocr-right">
                     <strong className="ocr-price">{formatPrice(Number(order.total_price))}</strong>
                     <div className="ocr-actions">
-                      {s === 'pending' ? <button className="mini-btn primary" onClick={() => changeStatus(order.id, 'preparing')}>接单</button> : null}
                       {!isPaid ? (
-                        <button className="mini-btn" style={{ background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}
-                          onClick={() => setPayOrder(order)}>收款</button>
+                        <button className="mini-btn primary" onClick={() => setPayOrder(order)}>收款</button>
                       ) : null}
                       <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
                       <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
