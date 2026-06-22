@@ -196,11 +196,21 @@ export function TableOrderPage() {
       void refreshOrderingStatus().catch((err) => setMessage(sanitizeError(err)));
     }, setRealtimeStatus);
     const interval = window.setInterval(() => {
+      void refreshCart(sessionInfo.session_id).catch((err) => setMessage(sanitizeError(err)));
       void refreshSession(sessionInfo.session_id, true).catch((err) => setMessage(sanitizeError(err)));
       void refreshOrderingStatus().catch((err) => setMessage(sanitizeError(err)));
-    }, 30_000);
+    }, 5_000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshCart(sessionInfo.session_id).catch(() => {});
+        void refreshSession(sessionInfo.session_id, true).catch(() => {});
+        void refreshOrderingStatus().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsubscribe();
     };
   }, [refreshCart, refreshOrderingStatus, refreshSession, sessionInfo?.session_id]);
