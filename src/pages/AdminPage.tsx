@@ -2232,12 +2232,14 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                   <div className="ocr-right">
                     <strong className="ocr-price">{formatPrice(Number(order.total_price))}</strong>
                     <div className="ocr-actions">
-                      {!isPaid ? (
+                      {!isPaid && s !== 'cancelled' ? (
                         <button className="mini-btn primary" onClick={() => setPayOrder(order)}>收款</button>
                       ) : null}
                       <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
                       <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
-                      <button className="mini-btn danger-text" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
+                      {!isPaid && s !== 'cancelled' ? (
+                        <button className="mini-btn danger-text" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
+                      ) : null}
                       <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `删除订单 #${order.order_number}`)}><Trash2 size={13} /></button>
                     </div>
                   </div>
