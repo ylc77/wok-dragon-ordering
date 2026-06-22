@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { SafeImage } from '../components/SafeImage';
 import { getPublicMenu, getRestaurantSettings } from '../lib/menuApi';
 import { formatPrice, getLocalizedField } from '../lib/localized';
 import type { Language, MenuGroup, MenuItem, RestaurantSettings } from '../lib/types';
@@ -45,7 +46,7 @@ function MenuIntro({ settings, tag = '菜' }: { settings: RestaurantSettings | n
   return (
     <section className="page-heading">
       <div>
-        {settings?.logo_url ? <img className="brand-logo" src={settings.logo_url} alt="" /> : <span className="page-brand-mark">{tag}</span>}
+        <SafeImage src={settings?.logo_url} className="brand-logo" alt="" fallback={<span className="page-brand-mark">{tag}</span>} />
         <div>
           <h1>{t('nav.menu')}</h1>
           <p>{t('common.priceNote')}</p>
@@ -82,9 +83,16 @@ export function MenuCard({ item, lang, action }: { item: MenuItem; lang: Languag
 }
 
 function DishImage({ item, alt }: { item: MenuItem; alt: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!item.image_url || failed) return <div className="menu-card-fallback" aria-hidden="true"><span className="mcf-icon">🍽️</span></div>;
-  return <img src={item.image_url} alt={alt} width="118" height="118" loading="lazy" onError={() => setFailed(true)} />;
+  return (
+    <SafeImage
+      src={item.image_url}
+      alt={alt}
+      width="118"
+      height="118"
+      loading="lazy"
+      fallback={<div className="menu-card-fallback" aria-hidden="true"><span className="mcf-icon">🍽️</span></div>}
+    />
+  );
 }
 
 /* ── 移动端菜单 ── */
@@ -168,7 +176,7 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
           </aside>
         ) : null}
         <main ref={mainRef} className="mobile-main">
-          {settings?.logo_url ? <img className="mobile-head-logo" src={settings.logo_url} alt="" /> : null}
+          <SafeImage src={settings?.logo_url} className="mobile-head-logo" alt="" fallback={null} />
           {visibleGroups.map((g) => (
             <section className="menu-group" id={`mcat-${g.id}`} key={g.id}>
               <h2>{getLocalizedField(lang, { zh: g.name_zh, en: g.name_en, el: g.name_el })}</h2>

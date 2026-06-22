@@ -7,6 +7,7 @@ import { MenuPage } from './pages/MenuPage';
 import { TableOrderPage } from './pages/TableOrderPage';
 import { AdminPage } from './pages/AdminPage';
 import { LanguageSwitch } from './components/LanguageSwitch';
+import { SafeImage } from './components/SafeImage';
 import { getRestaurantSettings, subscribeToRestaurantSettings } from './lib/menuApi';
 import { getLocalizedField } from './lib/localized';
 import type { Language, RestaurantSettings } from './lib/types';
@@ -58,8 +59,7 @@ function PublicShell() {
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand" to="/">
-            {settings?.logo_url ? <img className="brand-logo" src={settings.logo_url} alt="" onError={(e) => { const t = e.target as HTMLImageElement; t.style.display = 'none'; }} /> : null}
-            <span className="brand-mark" style={settings?.logo_url ? { display: 'none' } : undefined}>餐</span>
+            <SafeImage src={settings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
             <span>
               <strong>{restaurantName}</strong>
               {restaurantAddress ? <small>{restaurantAddress}</small> : null}

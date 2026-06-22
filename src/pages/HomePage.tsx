@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Clock3, ExternalLink, Instagram, MapPin, MessageCircle, Phone, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitch } from '../components/LanguageSwitch';
+import { SafeImage } from '../components/SafeImage';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, getRestaurantSettings, subscribeToRestaurantSettings } from '../lib/menuApi';
 import { getLocalizedField, pickLocalized } from '../lib/localized';
@@ -114,7 +115,7 @@ export function HomePage() {
       <section className="hero-section">
         <div className="hero-copy">
           <div className="hero-brand-lockup" aria-hidden="true">
-            {settings?.logo_url ? <img className="brand-logo" src={settings.logo_url} alt="" /> : <span className="brand-mark">餐</span>}
+            <SafeImage src={settings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
             <strong>{name}</strong>
           </div>
           <h1>{name || t('home.title')}</h1>
@@ -127,9 +128,19 @@ export function HomePage() {
           {error ? <p className="error-text">{error}</p> : null}
         </div>
         <div className="hero-media">
-          {heroImageUrl ? (
-            <img src={heroImageUrl} alt={name} />
-          ) : <div className="hero-image-fallback" aria-hidden="true"><div className="hif-inner"><span className="hif-mark">餐</span><strong>{name || t('home.title')}</strong><span className="hif-sub">{t('home.subtitle')}</span></div></div>}
+          <SafeImage
+            src={heroImageUrl}
+            alt={name}
+            fallback={
+              <div className="hero-image-fallback" aria-hidden="true">
+                <div className="hif-inner">
+                  <span className="hif-mark">餐</span>
+                  <strong>{name || t('home.title')}</strong>
+                  <span className="hif-sub">{t('home.subtitle')}</span>
+                </div>
+              </div>
+            }
+          />
         </div>
       </section>
 
