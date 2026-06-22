@@ -4559,8 +4559,8 @@ textarea { min-height: 100px; padding: 10px 12px; resize: vertical; }
 textarea.text-field { border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-size: 14px; min-height: 110px; outline: none; padding: 10px 12px; resize: vertical; width: 100%; }
 textarea.text-field:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(185,28,28,.12); }
 .settings-grid-2 .field-label, .settings-grid-3 .field-label { width: 100%; }
-/* 移动端菜单页 */
-@media (max-width: 900px) {
+/* 移动端菜单页 — 仅手机（<768px） */
+@media (max-width: 767px) {
   .page-heading { padding: 14px 18px 6px; }
   .page-heading h1 { font-size: 22px; }
   .menu-layout { display: grid; gap: 0; grid-template-columns: 88px minmax(0, 1fr); height: calc(100dvh - 100px); overflow: hidden; }
