@@ -72,6 +72,7 @@ create table if not exists public.menu_items (
   image_url text,
   is_available boolean not null default true,
   is_sold_out boolean not null default false,
+  options jsonb default '[]'::jsonb,
   sort_order int not null default 0,
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
@@ -129,6 +130,7 @@ create table if not exists public.cart_items (
   added_by uuid references auth.users(id) on delete set null,
   quantity int not null check (quantity > 0),
   note text,
+  selected_options jsonb default '[]'::jsonb,
   unit_price numeric(10, 2) not null check (unit_price >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -137,14 +139,15 @@ create table if not exists public.cart_items (
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   order_number bigint generated always as identity unique,
-  session_id uuid not null references public.table_sessions(id) on delete restrict,
-  table_id uuid not null references public.restaurant_tables(id) on delete restrict,
+  session_id uuid references public.table_sessions(id) on delete restrict,
+  table_id uuid references public.restaurant_tables(id) on delete restrict,
   submitted_by uuid references auth.users(id) on delete set null,
   client_request_id uuid not null unique,
   status text not null default 'pending' check (status in ('pending', 'preparing', 'served', 'paid', 'cancelled')),
   payment_status text not null default 'unpaid' check (payment_status in ('unpaid', 'paid')),
   payment_method text check (payment_method is null or payment_method in ('pos', 'cash')),
   paid_at timestamptz,
+  order_type text default 'dine_in' check (order_type in ('dine_in', 'takeaway')),
   total_price numeric(10, 2) not null check (total_price >= 0),
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
@@ -160,6 +163,7 @@ create table if not exists public.order_items (
   item_name_el text,
   quantity int not null check (quantity > 0),
   note text,
+  selected_options jsonb default '[]'::jsonb,
   unit_price numeric(10, 2) not null check (unit_price >= 0),
   line_total numeric(10, 2) not null check (line_total >= 0)
 );
@@ -178,7 +182,7 @@ create index if not exists idx_cart_items_session
   on public.cart_items (session_id);
 
 create unique index if not exists idx_cart_items_merge
-  on public.cart_items (session_id, menu_item_id, (coalesce(note, ''::text)));
+  on public.cart_items (session_id, menu_item_id, (coalesce(note, ''::text)), (selected_options::text));
 
 create index if not exists idx_orders_session
   on public.orders (session_id);
@@ -2630,3 +2634,1035 @@ where not exists (select 1 from public.restaurant_tables);
 
 -- 菜单分类封面图
 alter table public.menu_categories add column if not exists image_url text;
+
+-- ============================================================
+-- 2026-06-23/24 RPC updates (create or replace)
+-- ============================================================
+-- 菜品口味选项功能
+-- 新增 menu_items.options, cart_items.selected_options, order_items.selected_options
+-- 更新 add_cart_item / submit_order RPC
+
+-- 1. menu_items 新增 options
+alter table public.menu_items
+  add column if not exists options jsonb default '[]'::jsonb;
+
+-- 2. cart_items 新增 selected_options
+alter table public.cart_items
+  add column if not exists selected_options jsonb default '[]'::jsonb;
+
+-- 3. order_items 新增 selected_options (快照)
+alter table public.order_items
+  add column if not exists selected_options jsonb default '[]'::jsonb;
+
+-- 4. 删除旧的 cart_items 唯一索引 idx_cart_items_merge
+-- (定义: session_id, menu_item_id, coalesce(note, ''::text))
+drop index if exists idx_cart_items_merge;
+
+-- 5. 创建新的唯一索引，包含 selected_options::text 以区分不同口味
+-- 使用 text 强制转换确保 jsonb 可参与 B-tree 唯一约束
+create unique index if not exists idx_cart_items_merge
+  on public.cart_items (
+    session_id,
+    menu_item_id,
+    (coalesce(note, ''::text)),
+    (selected_options::text)
+  );
+
+-- 6. 更新 add_cart_item RPC
+create or replace function public.add_cart_item(
+  p_session_id uuid,
+  p_menu_item_id uuid,
+  p_quantity int,
+  p_note text default null,
+  p_selected_options jsonb default '[]'::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_price numeric(10, 2);
+  v_cart_item_id uuid;
+begin
+  if v_user_id is null then
+    raise exception 'anonymous sign-in is required';
+  end if;
+
+  if p_quantity is null or p_quantity <= 0 then
+    raise exception 'quantity must be greater than zero';
+  end if;
+
+  if p_quantity > 99 then
+    raise exception 'quantity cannot exceed 99';
+  end if;
+
+  if not exists (
+    select 1
+    from table_sessions s
+    join table_session_participants tsp on tsp.session_id = s.id
+    where s.id = p_session_id
+      and s.status = 'active'
+      and s.bill_request_status = 'none'
+      and tsp.user_id = v_user_id
+  ) then
+    raise exception 'not a participant of this active table session';
+  end if;
+
+  select price
+  into v_price
+  from menu_items
+  where id = p_menu_item_id
+    and is_available = true;
+
+  if v_price is null then
+    raise exception 'menu item is unavailable';
+  end if;
+
+  insert into cart_items (session_id, menu_item_id, added_by, quantity, note, selected_options, unit_price)
+  values (
+    p_session_id,
+    p_menu_item_id,
+    v_user_id,
+    p_quantity,
+    nullif(trim(coalesce(p_note, '')), ''),
+    coalesce(p_selected_options, '[]'::jsonb),
+    v_price
+  )
+  on conflict (session_id, menu_item_id, (coalesce(note, ''::text)), (selected_options::text)) do update
+    set quantity = cart_items.quantity + excluded.quantity,
+        updated_at = now()
+  returning id into v_cart_item_id;
+
+  update table_sessions
+  set cart_version = cart_version + 1,
+      cart_updated_at = now()
+  where id = p_session_id;
+
+  return v_cart_item_id;
+end;
+$$;
+
+-- 7. 更新 submit_order RPC (两处 insert)
+create or replace function public.submit_order(
+  p_session_id uuid,
+  p_client_request_id uuid
+)
+returns table (order_id uuid, order_number bigint)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_table_id uuid;
+  v_total numeric(10, 2);
+  v_order_id uuid;
+  v_order_number bigint;
+  v_existing_order_id uuid;
+  v_existing_order_number bigint;
+  v_existing_session_id uuid;
+begin
+  if v_user_id is null then
+    raise exception 'anonymous sign-in is required';
+  end if;
+
+  select s.table_id
+  into v_table_id
+  from table_sessions s
+  join table_session_participants tsp on tsp.session_id = s.id
+  where s.id = p_session_id
+    and s.status = 'active'
+    and s.bill_request_status = 'none'
+    and tsp.user_id = v_user_id
+  for update of s;
+
+  if v_table_id is null then
+    raise exception 'not a participant of this active table session';
+  end if;
+
+  -- 幂等性检查
+  select o.id, o.order_number, o.session_id
+  into v_existing_order_id, v_existing_order_number, v_existing_session_id
+  from orders o
+  where o.client_request_id = p_client_request_id;
+
+  if v_existing_order_id is not null then
+    if v_existing_session_id <> p_session_id then
+      raise exception 'client_request_id belongs to a different session';
+    end if;
+    return query select v_existing_order_id, v_existing_order_number;
+    return;
+  end if;
+
+  perform 1
+  from cart_items ci
+  where ci.session_id = p_session_id
+  for update;
+
+  select coalesce(sum(ci.unit_price * ci.quantity), 0)
+  into v_total
+  from cart_items ci
+  where ci.session_id = p_session_id;
+
+  if v_total <= 0 then
+    raise exception 'cart is empty';
+  end if;
+
+  -- 检查该 session 是否已有 pending 订单，有则合并
+  select o.id, o.order_number
+  into v_existing_order_id, v_existing_order_number
+  from orders o
+  where o.session_id = p_session_id
+    and o.status = 'pending'
+    and o.deleted_at is null
+  order by o.created_at asc
+  limit 1
+  for update of o;
+
+  if v_existing_order_id is not null then
+    -- 合并：将购物车项追加到已有 pending 订单
+    insert into order_items (
+      order_id, menu_item_id,
+      item_name_zh, item_name_en, item_name_el,
+      quantity, note, selected_options, unit_price, line_total
+    )
+    select
+      v_existing_order_id, ci.menu_item_id,
+      mi.name_zh, mi.name_en, mi.name_el,
+      ci.quantity, ci.note, coalesce(ci.selected_options, '[]'::jsonb),
+      ci.unit_price, ci.unit_price * ci.quantity
+    from cart_items ci
+    join menu_items mi on mi.id = ci.menu_item_id
+    where ci.session_id = p_session_id;
+
+    update orders
+    set total_price = total_price + v_total,
+        kitchen_printed_at = null
+    where id = v_existing_order_id;
+
+    delete from cart_items ci where ci.session_id = p_session_id;
+
+    update table_sessions
+    set cart_version = cart_version + 1, cart_updated_at = now()
+    where id = p_session_id;
+
+    return query select v_existing_order_id, v_existing_order_number;
+    return;
+  end if;
+
+  -- 无 pending 订单，新建
+  insert into orders (session_id, table_id, submitted_by, client_request_id, status, total_price)
+  values (p_session_id, v_table_id, v_user_id, p_client_request_id, 'pending', v_total)
+  returning id, orders.order_number into v_order_id, v_order_number;
+
+  insert into order_items (
+    order_id, menu_item_id,
+    item_name_zh, item_name_en, item_name_el,
+    quantity, note, selected_options, unit_price, line_total
+  )
+  select
+    v_order_id, ci.menu_item_id,
+    mi.name_zh, mi.name_en, mi.name_el,
+    ci.quantity, ci.note, coalesce(ci.selected_options, '[]'::jsonb),
+    ci.unit_price, ci.unit_price * ci.quantity
+  from cart_items ci
+  join menu_items mi on mi.id = ci.menu_item_id
+  where ci.session_id = p_session_id;
+
+  delete from cart_items ci where ci.session_id = p_session_id;
+
+  update table_sessions
+  set cart_version = cart_version + 1, cart_updated_at = now()
+  where id = p_session_id;
+
+  return query select v_order_id, v_order_number;
+end;
+$$;
+
+-- POS 前台点单 RPC
+-- staff/admin 专用，直接创建订单，不使用顾客 cart_items
+
+create or replace function public.pos_submit_order(
+  p_table_id uuid,
+  p_items jsonb,
+  p_note text default null,
+  p_payment_method text default null
+)
+returns table(order_id uuid, order_number bigint)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_role text;
+  v_session_id uuid;
+  v_order_id uuid;
+  v_order_number bigint;
+  v_total numeric(10, 2) := 0;
+  v_item jsonb;
+  v_menu_item record;
+  v_quantity int;
+  v_unit_price numeric(10, 2);
+  v_line_total numeric(10, 2);
+begin
+  -- 权限检查
+  select role into v_role from profiles where id = v_user_id;
+  if v_role not in ('admin', 'staff') then
+    raise exception '只有管理员或员工可以执行此操作';
+  end if;
+
+  -- 校验付款方式
+  if p_payment_method is not null and p_payment_method not in ('cash', 'pos') then
+    raise exception '付款方式只能是 cash 或 pos';
+  end if;
+
+  -- 验证桌台存在
+  if not exists (select 1 from restaurant_tables where id = p_table_id) then
+    raise exception '桌台不存在';
+  end if;
+
+  -- 验证 items 是数组
+  if jsonb_typeof(p_items) <> 'array' then
+    raise exception 'p_items 必须是数组';
+  end if;
+
+  if jsonb_array_length(p_items) = 0 then
+    raise exception '点单不能为空';
+  end if;
+
+  -- 获取或创建该桌 active session
+  select id into v_session_id
+  from table_sessions
+  where table_id = p_table_id and status = 'active';
+
+  if v_session_id is null then
+    insert into table_sessions (table_id, status)
+    values (p_table_id, 'active')
+    returning id into v_session_id;
+  end if;
+
+  -- 验证所有菜品并计算总价
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    v_quantity := (v_item->>'quantity')::int;
+    if v_quantity is null or v_quantity <= 0 then
+      raise exception '数量必须大于 0';
+    end if;
+    if v_quantity > 99 then
+      raise exception '数量不能超过 99';
+    end if;
+
+    select id, name_zh, name_en, name_el, price
+    into v_menu_item
+    from menu_items
+    where id = (v_item->>'menu_item_id')::uuid
+      and is_available = true
+      and is_sold_out is not true
+      and deleted_at is null;
+
+    if v_menu_item.id is null then
+      raise exception '菜品不可售: %', v_item->>'menu_item_id';
+    end if;
+
+    v_unit_price := v_menu_item.price;
+    v_line_total := v_unit_price * v_quantity;
+    v_total := v_total + v_line_total;
+  end loop;
+
+  if v_total <= 0 then
+    raise exception '订单总额必须大于 0';
+  end if;
+
+  -- 创建订单
+  insert into orders (session_id, table_id, submitted_by, client_request_id, status, total_price,
+    payment_status, payment_method, paid_at)
+  values (v_session_id, p_table_id, v_user_id, gen_random_uuid(), 'pending', v_total,
+    case when p_payment_method in ('cash', 'pos') then 'paid' else 'unpaid' end,
+    p_payment_method,
+    case when p_payment_method in ('cash', 'pos') then now() else null end)
+  returning id, orders.order_number into v_order_id, v_order_number;
+
+  -- 写入订单明细
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    v_quantity := (v_item->>'quantity')::int;
+
+    select id, name_zh, name_en, name_el, price
+    into v_menu_item
+    from menu_items
+    where id = (v_item->>'menu_item_id')::uuid;
+
+    v_unit_price := v_menu_item.price;
+
+    insert into order_items (
+      order_id, menu_item_id,
+      item_name_zh, item_name_en, item_name_el,
+      quantity, note, selected_options,
+      unit_price, line_total
+    ) values (
+      v_order_id, v_menu_item.id,
+      v_menu_item.name_zh, v_menu_item.name_en, v_menu_item.name_el,
+      v_quantity,
+      nullif(trim(coalesce((v_item->>'note')::text, '')), ''),
+      coalesce((v_item->'selected_options'), '[]'::jsonb),
+      v_unit_price,
+      v_unit_price * v_quantity
+    );
+  end loop;
+
+  return query select v_order_id, v_order_number;
+end;
+$$;
+
+-- 权限
+revoke execute on function public.pos_submit_order(uuid, jsonb, text, text) from public, anon;
+grant execute on function public.pos_submit_order(uuid, jsonb, text, text) to authenticated, service_role;
+
+-- POS 订单类型：堂食/外带
+-- 允许 POS 订单不绑定桌台和 session
+
+-- 1. 新增 order_type 列
+alter table public.orders
+  add column if not exists order_type text default 'dine_in';
+
+-- 2. 回填历史订单
+update public.orders set order_type = 'dine_in' where order_type is null;
+
+-- 3. 加 check 约束（安全处理重复执行）
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'orders_order_type_check' and conrelid = 'orders'::regclass
+  ) then
+    alter table public.orders
+      add constraint orders_order_type_check
+      check (order_type in ('dine_in', 'takeaway'));
+  end if;
+end;
+$$;
+
+-- 4. 允许 table_id 和 session_id 为 null（仅 POS 使用，顾客端提交不受影响）
+alter table public.orders alter column table_id drop not null;
+alter table public.orders alter column session_id drop not null;
+
+-- 5. 更新 pos_submit_order RPC
+create or replace function public.pos_submit_order(
+  p_table_id uuid,
+  p_items jsonb,
+  p_note text default null,
+  p_payment_method text default null,
+  p_order_type text default 'dine_in'
+)
+returns table(order_id uuid, order_number bigint)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_role text;
+  v_session_id uuid;
+  v_order_id uuid;
+  v_order_number bigint;
+  v_total numeric(10, 2) := 0;
+  v_item jsonb;
+  v_menu_item record;
+  v_quantity int;
+  v_unit_price numeric(10, 2);
+  v_line_total numeric(10, 2);
+begin
+  -- 权限检查
+  select role into v_role from profiles where id = v_user_id;
+  if v_role not in ('admin', 'staff') then
+    raise exception '只有管理员或员工可以执行此操作';
+  end if;
+
+  -- 校验订单类型
+  if p_order_type not in ('dine_in', 'takeaway') then
+    raise exception '订单类型只能是 dine_in 或 takeaway';
+  end if;
+
+  -- 校验付款方式
+  if p_payment_method is not null and p_payment_method not in ('cash', 'pos') then
+    raise exception '付款方式只能是 cash 或 pos';
+  end if;
+
+  -- 堂食有桌号 → 验证桌台存在 + 获取/创建 session
+  if p_order_type = 'dine_in' and p_table_id is not null then
+    if not exists (select 1 from restaurant_tables where id = p_table_id) then
+      raise exception '桌台不存在';
+    end if;
+
+    select id into v_session_id
+    from table_sessions
+    where table_id = p_table_id and status = 'active';
+
+    if v_session_id is null then
+      insert into table_sessions (table_id, status)
+      values (p_table_id, 'active')
+      returning id into v_session_id;
+    end if;
+  else
+    -- 外带或堂食无桌号 → 不绑定 session/table
+    v_session_id := null;
+  end if;
+
+  -- 验证 items 是数组
+  if jsonb_typeof(p_items) <> 'array' then
+    raise exception 'p_items 必须是数组';
+  end if;
+
+  if jsonb_array_length(p_items) = 0 then
+    raise exception '点单不能为空';
+  end if;
+
+  -- 验证所有菜品并计算总价
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    v_quantity := (v_item->>'quantity')::int;
+    if v_quantity is null or v_quantity <= 0 then
+      raise exception '数量必须大于 0';
+    end if;
+    if v_quantity > 99 then
+      raise exception '数量不能超过 99';
+    end if;
+
+    select id, name_zh, name_en, name_el, price
+    into v_menu_item
+    from menu_items
+    where id = (v_item->>'menu_item_id')::uuid
+      and is_available = true
+      and is_sold_out is not true
+      and deleted_at is null;
+
+    if v_menu_item.id is null then
+      raise exception '菜品不可售: %', v_item->>'menu_item_id';
+    end if;
+
+    v_unit_price := v_menu_item.price;
+    v_line_total := v_unit_price * v_quantity;
+    v_total := v_total + v_line_total;
+  end loop;
+
+  if v_total <= 0 then
+    raise exception '订单总额必须大于 0';
+  end if;
+
+  -- 创建订单
+  insert into orders (session_id, table_id, submitted_by, client_request_id, status, total_price,
+    payment_status, payment_method, paid_at, order_type)
+  values (v_session_id,
+    case when p_order_type = 'dine_in' then p_table_id else null end,
+    v_user_id, gen_random_uuid(), 'pending', v_total,
+    case when p_payment_method in ('cash', 'pos') then 'paid' else 'unpaid' end,
+    p_payment_method,
+    case when p_payment_method in ('cash', 'pos') then now() else null end,
+    p_order_type)
+  returning id, orders.order_number into v_order_id, v_order_number;
+
+  -- 写入订单明细
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    v_quantity := (v_item->>'quantity')::int;
+
+    select id, name_zh, name_en, name_el, price
+    into v_menu_item
+    from menu_items
+    where id = (v_item->>'menu_item_id')::uuid;
+
+    v_unit_price := v_menu_item.price;
+
+    insert into order_items (
+      order_id, menu_item_id,
+      item_name_zh, item_name_en, item_name_el,
+      quantity, note, selected_options,
+      unit_price, line_total
+    ) values (
+      v_order_id, v_menu_item.id,
+      v_menu_item.name_zh, v_menu_item.name_en, v_menu_item.name_el,
+      v_quantity,
+      nullif(trim(coalesce((v_item->>'note')::text, '')), ''),
+      coalesce((v_item->'selected_options'), '[]'::jsonb),
+      v_unit_price,
+      v_unit_price * v_quantity
+    );
+  end loop;
+
+  return query select v_order_id, v_order_number;
+end;
+$$;
+
+-- 权限
+revoke execute on function public.pos_submit_order(uuid, jsonb, text, text, text) from public, anon;
+grant execute on function public.pos_submit_order(uuid, jsonb, text, text, text) to authenticated, service_role;
+
+-- 后台手动确认收款 RPC
+-- 有 session 的订单：标记整个 session 已付款 + 清桌 + 创建新 session
+-- 无 session 的订单：仅标记当前订单已付款
+
+create or replace function public.admin_confirm_order_payment(
+  p_order_id uuid,
+  p_payment_method text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_role text;
+  v_session_id uuid;
+  v_table_id uuid;
+  v_payment_status text;
+  v_status text;
+  v_paid_count int := 0;
+  v_cart_deleted int := 0;
+  v_now timestamptz := now();
+  v_new_session_id uuid;
+begin
+  -- 权限
+  select role into v_role from profiles where id = v_user_id;
+  if v_role not in ('admin', 'staff') then
+    raise exception '只有管理员或员工可以执行此操作';
+  end if;
+
+  if p_payment_method not in ('cash', 'pos') then
+    raise exception '付款方式只能是 cash 或 pos';
+  end if;
+
+  -- 查询订单
+  select o.session_id, o.table_id, o.payment_status, o.status
+  into v_session_id, v_table_id, v_payment_status, v_status
+  from orders o
+  where o.id = p_order_id and o.deleted_at is null;
+
+  if not found then
+    raise exception '订单不存在';
+  end if;
+
+  if v_payment_status = 'paid' then
+    raise exception '该订单已付款，不能重复收款';
+  end if;
+
+  if v_status = 'cancelled' then
+    raise exception '已取消订单不能确认收款';
+  end if;
+
+  -- 有 session → 处理该 session 下所有未付款订单 + 清桌
+  if v_session_id is not null then
+    -- 锁定 session
+    perform 1 from table_sessions s
+    where s.id = v_session_id
+    for update;
+
+    -- 标记该 session 下所有未取消、未付款订单
+    update orders
+    set payment_status = 'paid',
+        payment_method = p_payment_method,
+        paid_at = v_now,
+        updated_at = v_now
+    where session_id = v_session_id
+      and deleted_at is null
+      and payment_status <> 'paid'
+      and status <> 'cancelled';
+    get diagnostics v_paid_count = row_count;
+
+    -- 清空购物车
+    with deleted as (
+      delete from cart_items
+      where session_id = v_session_id
+      returning id
+    )
+    select count(*) into v_cart_deleted from deleted;
+
+    -- 关闭旧 session
+    update table_sessions
+    set status = 'closed', closed_at = v_now,
+        cart_version = cart_version + 1, cart_updated_at = v_now
+    where id = v_session_id;
+
+    -- 创建新 active session
+    if v_table_id is not null then
+      insert into table_sessions (table_id, status)
+      values (v_table_id, 'active')
+      returning id into v_new_session_id;
+    end if;
+
+    return jsonb_build_object(
+      'paid_orders_count', v_paid_count,
+      'session_closed', true,
+      'cart_cleared', v_cart_deleted > 0,
+      'new_session_id', v_new_session_id
+    );
+  end if;
+
+  -- 无 session → 仅标记当前订单
+  update orders
+  set payment_status = 'paid',
+      payment_method = p_payment_method,
+      paid_at = v_now,
+      updated_at = v_now
+  where id = p_order_id;
+  get diagnostics v_paid_count = row_count;
+
+  return jsonb_build_object(
+    'paid_orders_count', v_paid_count,
+    'session_closed', false,
+    'cart_cleared', false,
+    'new_session_id', null
+  );
+end;
+$$;
+
+revoke execute on function public.admin_confirm_order_payment(uuid, text) from public, anon;
+grant execute on function public.admin_confirm_order_payment(uuid, text) to authenticated, service_role;
+
+-- 更新 update_order_status：增加 payment_status='paid' 保护
+create or replace function public.update_order_status(p_order_id uuid, p_status text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_current_status text;
+  v_payment_status text;
+begin
+  if not (select private.is_staff()) then
+    raise exception 'admin or staff role is required';
+  end if;
+
+  if p_status not in ('pending', 'preparing', 'served', 'cancelled') then
+    raise exception 'invalid order status';
+  end if;
+
+  select status, payment_status into v_current_status, v_payment_status from orders
+  where id = p_order_id and deleted_at is null;
+
+  if not found then
+    raise exception 'order not found';
+  end if;
+
+  -- paid 订单不可修改（status 或 payment_status）
+  if v_current_status = 'paid' or v_payment_status = 'paid' then
+    raise exception 'paid orders cannot be changed';
+  end if;
+
+  -- cancelled 订单不可恢复
+  if v_current_status = 'cancelled' then
+    raise exception 'cancelled orders cannot be restored';
+  end if;
+
+  -- 只允许从 pending 或 preparing 取消
+  if p_status = 'cancelled' and v_current_status not in ('pending', 'preparing') then
+    raise exception 'only pending or preparing orders can be cancelled';
+  end if;
+
+  update orders set status = p_status, updated_at = now()
+  where id = p_order_id and deleted_at is null;
+end;
+$$;
+
+-- 统一付款统计口径：payment_status='paid' 替代 status='paid'
+
+-- 1. admin_order_stats: paid count + paid_total
+create or replace function public.admin_order_stats(
+  p_date_from timestamptz default null,
+  p_date_to timestamptz default null,
+  p_table_number int default null
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_result jsonb;
+begin
+  if not (select private.is_staff()) then
+    raise exception 'admin or staff role is required';
+  end if;
+
+  select jsonb_build_object(
+    'total_orders', count(*),
+    'pending', count(*) filter (where o.status = 'pending' and o.payment_status <> 'paid'),
+    'preparing', count(*) filter (where o.status = 'preparing' and o.payment_status <> 'paid'),
+    'served', count(*) filter (where o.status = 'served' and o.payment_status <> 'paid'),
+    'paid', count(*) filter (where o.payment_status = 'paid'),
+    'cancelled', count(*) filter (where o.status = 'cancelled'),
+    'paid_total', coalesce(sum(o.total_price) filter (where o.payment_status = 'paid'), 0)
+  ) into v_result
+  from orders o
+  left join restaurant_tables t on t.id = o.table_id
+  where o.deleted_at is null
+    and (p_date_from is null or o.created_at >= p_date_from)
+    and (p_date_to is null or o.created_at < p_date_to)
+    and (p_table_number is null or t.table_number = p_table_number);
+
+  return v_result;
+end;
+$$;
+
+-- 2. admin_dashboard_summary: today_revenue
+create or replace function public.admin_dashboard_summary(
+  p_today_from timestamptz,
+  p_today_to timestamptz
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_result jsonb;
+begin
+  if not (select private.is_staff()) then
+    raise exception 'admin or staff role is required';
+  end if;
+
+  select jsonb_build_object(
+    'today_order_count', (
+      select count(*) from orders o
+      where o.deleted_at is null and o.created_at >= p_today_from and o.created_at < p_today_to
+    ),
+    'today_revenue', (
+      select coalesce(sum(o.total_price), 0) from orders o
+      where o.deleted_at is null and o.payment_status = 'paid'
+        and o.created_at >= p_today_from and o.created_at < p_today_to
+    ),
+    'pending_count', (
+      select count(*) from orders o where o.deleted_at is null and o.status = 'pending' and o.payment_status <> 'paid'
+    ),
+    'preparing_count', (
+      select count(*) from orders o where o.deleted_at is null and o.status = 'preparing' and o.payment_status <> 'paid'
+    ),
+    'hot_items', coalesce((
+      select jsonb_agg(to_jsonb(h) order by h.quantity desc, h.total desc)
+      from (
+        select coalesce(nullif(oi.item_name_zh, ''), nullif(oi.item_name_en, ''), nullif(oi.item_name_el, ''), 'Unnamed item') as name,
+               sum(oi.quantity)::int as quantity,
+               sum(oi.line_total) as total
+        from order_items oi
+        join orders o on o.id = oi.order_id
+        where o.deleted_at is null
+          and o.created_at >= p_today_from
+          and o.created_at < p_today_to
+          and o.status <> 'cancelled'
+        group by oi.item_name_zh, oi.item_name_en, oi.item_name_el
+        order by sum(oi.quantity) desc
+        limit 20
+      ) h
+    ), '[]'::jsonb)
+  ) into v_result;
+
+  return v_result;
+end;
+$$;
+
+-- 3. admin_order_page: paid 筛选用 payment_status
+create or replace function public.admin_order_page(
+  p_date_from timestamptz default null,
+  p_date_to timestamptz default null,
+  p_table_number int default null,
+  p_status text default null,
+  p_page int default 1,
+  p_page_size int default 50
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_page int := greatest(coalesce(p_page, 1), 1);
+  v_page_size int := least(greatest(coalesce(p_page_size, 50), 1), 100);
+  v_result jsonb;
+begin
+  if not (select private.is_staff()) then
+    raise exception 'admin or staff role is required';
+  end if;
+  if p_status is not null and p_status not in ('pending', 'preparing', 'served', 'paid', 'cancelled') then
+    raise exception 'invalid order status';
+  end if;
+
+  with filtered_orders as (
+    select o.*
+    from orders o
+    left join restaurant_tables t on t.id = o.table_id
+    where o.deleted_at is null
+      and (p_date_from is null or o.created_at >= p_date_from)
+      and (p_date_to is null or o.created_at < p_date_to)
+      and (p_table_number is null or (t.table_number = p_table_number))
+      and (
+        p_status is null
+        or (p_status = 'paid' and o.payment_status = 'paid')
+        or (p_status <> 'paid' and o.status = p_status and o.payment_status <> 'paid')
+      )
+  ), ranked_sessions as (
+    select coalesce(fo.session_id::text, fo.id::text) as session_key,
+           max(fo.created_at) as newest_at
+    from filtered_orders fo
+    group by coalesce(fo.session_id::text, fo.id::text)
+  ), page_sessions as (
+    select rs.session_key, rs.newest_at
+    from ranked_sessions rs
+    order by rs.newest_at desc, rs.session_key
+    offset (v_page - 1) * v_page_size
+    limit v_page_size
+  ), page_orders as (
+    select fo.*
+    from filtered_orders fo
+    join page_sessions ps on coalesce(fo.session_id::text, fo.id::text) = ps.session_key
+  )
+  select jsonb_build_object(
+    'orders', coalesce((
+      select jsonb_agg(
+        to_jsonb(po)
+        || jsonb_build_object(
+          'restaurant_tables', case when po.table_id is not null
+            then jsonb_build_object('table_number', t.table_number, 'label', t.label)
+            else null end,
+          'order_items', coalesce((
+            select jsonb_agg(to_jsonb(oi) order by oi.id)
+            from order_items oi
+            where oi.order_id = po.id
+          ), '[]'::jsonb)
+        )
+        order by po.created_at desc, po.id
+      )
+      from page_orders po
+      left join restaurant_tables t on t.id = po.table_id
+    ), '[]'::jsonb),
+    'page', v_page,
+    'page_size', v_page_size,
+    'total_sessions', (select count(*) from ranked_sessions),
+    'total_pages', greatest(ceil((select count(*) from ranked_sessions)::numeric / v_page_size)::int, 1)
+  ) into v_result;
+
+  return v_result;
+end;
+$$;
+
+-- 修复 admin_order_page：支持 table_id/session_id 为 null 的 POS 订单
+
+create or replace function public.admin_order_page(
+  p_date_from timestamptz default null,
+  p_date_to timestamptz default null,
+  p_table_number int default null,
+  p_status text default null,
+  p_page int default 1,
+  p_page_size int default 50
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_page int := greatest(coalesce(p_page, 1), 1);
+  v_page_size int := least(greatest(coalesce(p_page_size, 50), 1), 100);
+  v_result jsonb;
+begin
+  if not (select private.is_staff()) then
+    raise exception 'admin or staff role is required';
+  end if;
+  if p_status is not null and p_status not in ('pending', 'preparing', 'served', 'paid', 'cancelled') then
+    raise exception 'invalid order status';
+  end if;
+
+  with filtered_orders as (
+    select o.*
+    from orders o
+    left join restaurant_tables t on t.id = o.table_id
+    where o.deleted_at is null
+      and (p_date_from is null or o.created_at >= p_date_from)
+      and (p_date_to is null or o.created_at < p_date_to)
+      and (p_table_number is null or (t.table_number = p_table_number))
+      and (p_status is null or o.status = p_status)
+  ), ranked_sessions as (
+    select coalesce(fo.session_id::text, fo.id::text) as session_key,
+           max(fo.created_at) as newest_at
+    from filtered_orders fo
+    group by coalesce(fo.session_id::text, fo.id::text)
+  ), page_sessions as (
+    select rs.session_key, rs.newest_at
+    from ranked_sessions rs
+    order by rs.newest_at desc, rs.session_key
+    offset (v_page - 1) * v_page_size
+    limit v_page_size
+  ), page_orders as (
+    select fo.*
+    from filtered_orders fo
+    join page_sessions ps on coalesce(fo.session_id::text, fo.id::text) = ps.session_key
+  )
+  select jsonb_build_object(
+    'orders', coalesce((
+      select jsonb_agg(
+        to_jsonb(po)
+        || jsonb_build_object(
+          'restaurant_tables', case when po.table_id is not null
+            then jsonb_build_object('table_number', t.table_number, 'label', t.label)
+            else null end,
+          'order_items', coalesce((
+            select jsonb_agg(to_jsonb(oi) order by oi.id)
+            from order_items oi
+            where oi.order_id = po.id
+          ), '[]'::jsonb)
+        )
+        order by po.created_at desc, po.id
+      )
+      from page_orders po
+      left join restaurant_tables t on t.id = po.table_id
+    ), '[]'::jsonb),
+    'page', v_page,
+    'page_size', v_page_size,
+    'total_sessions', (select count(*) from ranked_sessions),
+    'total_pages', greatest(ceil((select count(*) from ranked_sessions)::numeric / v_page_size)::int, 1)
+  ) into v_result;
+
+  return v_result;
+end;
+$$;
+
+-- 同样修复 admin_order_stats
+create or replace function public.admin_order_stats(
+  p_date_from timestamptz default null,
+  p_date_to timestamptz default null,
+  p_table_number int default null
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_result jsonb;
+begin
+  if not (select private.is_staff()) then
+    raise exception 'admin or staff role is required';
+  end if;
+
+  select jsonb_build_object(
+    'total_orders', count(*),
+    'pending', count(*) filter (where o.status = 'pending'),
+    'preparing', count(*) filter (where o.status = 'preparing'),
+    'served', count(*) filter (where o.status = 'served'),
+    'paid', count(*) filter (where o.status = 'paid'),
+    'cancelled', count(*) filter (where o.status = 'cancelled'),
+    'paid_total', coalesce(sum(o.total_price) filter (where o.status = 'paid'), 0)
+  ) into v_result
+  from orders o
+  left join restaurant_tables t on t.id = o.table_id
+  where o.deleted_at is null
+    and (p_date_from is null or o.created_at >= p_date_from)
+    and (p_date_to is null or o.created_at < p_date_to)
+    and (p_table_number is null or t.table_number = p_table_number);
+
+  return v_result;
+end;
+$$;
