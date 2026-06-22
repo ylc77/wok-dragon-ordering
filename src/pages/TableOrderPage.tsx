@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Ban, Banknote, CreditCard, Minus, Pencil, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Ban, Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { SafeImage } from '../components/SafeImage';
@@ -21,10 +21,9 @@ import {
   submitOrder,
   subscribeToTableCart,
   subscribeToTableReentryRequest,
-  updateCartItemNote,
   updateCartItemQuantity,
 } from '../lib/orderApi';
-import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, Order, RealtimeConnectionStatus, RestaurantSettings, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
+import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, MenuItemOptionGroup, Order, RealtimeConnectionStatus, RestaurantSettings, SelectedOption, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
 import { LanguageSwitch } from '../components/LanguageSwitch';
 
 export function TableOrderPage() {
@@ -53,9 +52,9 @@ export function TableOrderPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<BillPaymentMethod | null>(null);
   const [requestingBill, setRequestingBill] = useState(false);
-  const [noteLine, setNoteLine] = useState<CartItem | null>(null);
-  const [noteText, setNoteText] = useState('');
-  const [savingNote, setSavingNote] = useState(false);
+  const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
+  const [optionsPicked, setOptionsPicked] = useState<Record<string, string | string[]>>({});
+  const [optionsError, setOptionsError] = useState<string | null>(null);
   const [billOrders, setBillOrders] = useState<Order[]>([]);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [entryState, setEntryState] = useState<TableEntryState | null>(null);
@@ -333,9 +332,80 @@ export function TableOrderPage() {
       setMessage(t('order.billOrderingLocked'));
       return;
     }
+    // 有选项 → 弹窗选择
+    if (item.options && item.options.length > 0) {
+      const initial: Record<string, string | string[]> = {};
+      for (const g of item.options) {
+        initial[g.id] = g.type === 'multiple' ? [] : '';
+      }
+      setOptionsPicked(initial);
+      setOptionsError(null);
+      setOptionsItem(item);
+      return;
+    }
+    // 无选项 → 直接加购
     try {
-      await addCartItem(sessionInfo.session_id, item.id, 1, '');
+      await addCartItem(sessionInfo.session_id, item.id, 1, '', []);
       await refreshCart(sessionInfo.session_id);
+    } catch (err) {
+      setMessage(sanitizeError(err));
+    }
+  }
+
+  function toggleSingleOption(groupId: string, choiceId: string) {
+    setOptionsPicked((prev) => ({ ...prev, [groupId]: prev[groupId] === choiceId ? '' : choiceId }));
+    setOptionsError(null);
+  }
+
+  function toggleMultiOption(groupId: string, choiceId: string) {
+    setOptionsPicked((prev) => {
+      const current = (prev[groupId] as string[]) || [];
+      const next = current.includes(choiceId)
+        ? current.filter((id) => id !== choiceId)
+        : [...current, choiceId];
+      return { ...prev, [groupId]: next };
+    });
+    setOptionsError(null);
+  }
+
+  async function confirmOptions() {
+    if (!optionsItem || !sessionInfo) return;
+    const groups = optionsItem.options ?? [];
+    // 检查必选
+    for (const g of groups) {
+      if (!g.required) continue;
+      const picked = optionsPicked[g.id];
+      if (!picked || (Array.isArray(picked) && picked.length === 0)) {
+        setOptionsError('请完成所有必选项');
+        return;
+      }
+    }
+    // 构建 selected_options
+    const selected: SelectedOption[] = [];
+    for (const g of groups) {
+      const picked = optionsPicked[g.id];
+      if (!picked || (Array.isArray(picked) && picked.length === 0)) continue;
+      const choiceIds = Array.isArray(picked) ? picked : [picked];
+      for (const cid of choiceIds) {
+        const choice = g.choices.find((c) => c.id === cid);
+        if (!choice) continue;
+        selected.push({
+          group_id: g.id,
+          group_name_zh: g.name_zh,
+          group_name_en: g.name_en,
+          group_name_el: g.name_el,
+          choice_id: choice.id,
+          choice_name_zh: choice.name_zh,
+          choice_name_en: choice.name_en,
+          choice_name_el: choice.name_el,
+        });
+      }
+    }
+    try {
+      await addCartItem(sessionInfo.session_id, optionsItem.id, 1, '', selected);
+      await refreshCart(sessionInfo.session_id);
+      setOptionsItem(null);
+      setOptionsPicked({});
     } catch (err) {
       setMessage(sanitizeError(err));
     }
@@ -364,37 +434,6 @@ export function TableOrderPage() {
       await refreshCart(sessionInfo.session_id);
     } catch (err) {
       setMessage(sanitizeError(err));
-    }
-  }
-
-  function openNoteEditor(line: CartItem) {
-    setNoteLine(line);
-    setNoteText(line.note ?? '');
-  }
-
-  function closeNoteEditor() {
-    setNoteLine(null);
-    setNoteText('');
-  }
-
-  async function saveNote() {
-    if (!noteLine || !sessionInfo) return;
-    const trimmed = noteText.trim().slice(0, 120);
-    try {
-      setSavingNote(true);
-      if (trimmed) {
-        await updateCartItemNote(noteLine.id, trimmed);
-      } else {
-        // 空备注 → 删除购物车行（当前 note 为空时等同于删除该行）
-        // 如果原行已有备注，清空 note → 传空串
-        await updateCartItemNote(noteLine.id, '');
-      }
-      await refreshCart(sessionInfo.session_id);
-      closeNoteEditor();
-    } catch (err) {
-      setMessage(sanitizeError(err));
-    } finally {
-      setSavingNote(false);
     }
   }
 
@@ -563,6 +602,11 @@ export function TableOrderPage() {
           <p>{t('order.liveCart')}</p>
         </div>
         {message ? <p className="admin-message">{message}</p> : null}
+        {/* TEMP DEBUG: 检查 options 功能状态 */}
+        <p style={{background:'#ff0',padding:4,margin:0,fontSize:11}}>
+          DEBUG: session={!!sessionInfo} ordering={String(orderingEnabled)} billReq={String(billRequested)}
+          &nbsp; 套餐A options={String(groups.flatMap(g=>g.items).find(i=>i.id==='8a797070-a4da-41ad-a87b-c3f96bd3c494')?.options?.length ?? 'NOT FOUND')}
+        </p>
         {!orderingEnabled ? (
           <section className="ordering-paused-banner" role="status">
             <Ban size={20} />
@@ -657,35 +701,34 @@ export function TableOrderPage() {
           const item = line.menu_items;
           return (
             <div className="cart-line" key={line.id}>
-              <div className="cart-line-info">
-                <strong>
-                  {item
-                    ? getLocalizedField(lang, {
-                        zh: item.name_zh,
-                        en: item.name_en,
-                        el: item.name_el,
-                      })
-                    : line.menu_item_id}
-                  {item?.is_sold_out || item?.is_available === false ? (
-                    <span className="cart-soldout-mark">
-                      {item?.is_available === false ? t('order.delisted') : t('common.soldOut')}
-                    </span>
-                  ) : null}
-                </strong>
-                {line.note ? (
-                  <span className="cart-note-text" title={line.note}>{line.note}</span>
+              <strong>
+                {item
+                  ? getLocalizedField(lang, {
+                      zh: item.name_zh,
+                      en: item.name_en,
+                      el: item.name_el,
+                    })
+                  : line.menu_item_id}
+                {item?.is_sold_out || item?.is_available === false ? (
+                  <span className="cart-soldout-mark">
+                    {item?.is_available === false ? t('order.delisted') : t('common.soldOut')}
+                  </span>
                 ) : null}
-                <button
-                  type="button"
-                  className="cart-note-btn"
-                  disabled={billRequested}
-                  onClick={() => openNoteEditor(line)}
-                  aria-label={line.note ? t('order.editNote') : t('order.addNote')}
-                >
-                  <Pencil size={12} />
-                  <span>{line.note ? t('order.editNote') : t('order.addNote')}</span>
-                </button>
-              </div>
+              </strong>
+              {line.selected_options && line.selected_options.length > 0 ? (
+                <span className="cart-options-text">
+                  {line.selected_options
+                    .map((opt) => {
+                      const choiceName = getLocalizedField(lang, {
+                        zh: opt.choice_name_zh,
+                        en: opt.choice_name_en,
+                        el: opt.choice_name_el,
+                      });
+                      return choiceName;
+                    })
+                    .join('、')}
+                </span>
+              ) : null}
               <strong className="cart-line-subtotal">{formatPrice(Number(line.unit_price) * line.quantity)}</strong>
               <div className="cart-controls">
                 <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, line.quantity - 1)}>
@@ -722,49 +765,72 @@ export function TableOrderPage() {
         </button>
       </aside>
 
-      {/* 备注编辑面板 */}
-      {noteLine ? (
-        <div className="cart-note-backdrop" role="presentation" onClick={closeNoteEditor}>
+      {/* 口味选择弹窗 */}
+      {optionsItem ? (
+        <div className="cart-note-backdrop" role="presentation" onClick={() => { setOptionsItem(null); setOptionsError(null); }}>
           <div
-            className="cart-note-panel"
+            className="cart-note-panel options-panel"
             role="dialog"
             aria-modal="true"
-            aria-label={t('order.noteLabel')}
+            aria-label={t('order.selectOptions')}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="cart-note-head">
               <h3>
-                {noteLine.menu_items
+                {optionsItem
                   ? getLocalizedField(lang, {
-                      zh: noteLine.menu_items.name_zh,
-                      en: noteLine.menu_items.name_en,
-                      el: noteLine.menu_items.name_el,
+                      zh: optionsItem.name_zh,
+                      en: optionsItem.name_en,
+                      el: optionsItem.name_el,
                     })
-                  : t('order.noteLabel')}
+                  : ''}
               </h3>
-              <button type="button" onClick={closeNoteEditor} aria-label={t('order.cancel')}>
+              <button type="button" onClick={() => { setOptionsItem(null); setOptionsError(null); }} aria-label={t('order.cancel')}>
                 <X size={18} />
               </button>
             </div>
-            <label className="cart-note-field">
-              <span>{t('order.noteLabel')}</span>
-              <textarea
-                className="text-field"
-                rows={3}
-                maxLength={120}
-                placeholder={t('order.notePlaceholder')}
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                autoFocus
-              />
-              <small className="cart-note-hint">{noteText.length}/120</small>
-            </label>
+            <div className="options-groups">
+              {(optionsItem.options ?? []).map((group) => (
+                <div className="options-group" key={group.id}>
+                  <div className="options-group-head">
+                    <strong>{getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}</strong>
+                    {group.required ? <span className="options-required">{t('order.optionsRequired')}</span> : null}
+                    {group.type === 'multiple' ? <small className="options-hint">（可多选）</small> : null}
+                  </div>
+                  <div className="options-choices">
+                    {group.choices.map((choice) => {
+                      const choiceName = getLocalizedField(lang, {
+                        zh: choice.name_zh,
+                        en: choice.name_en,
+                        el: choice.name_el,
+                      });
+                      const isActive = group.type === 'multiple'
+                        ? ((optionsPicked[group.id] as string[]) || []).includes(choice.id)
+                        : optionsPicked[group.id] === choice.id;
+                      return (
+                        <button
+                          key={choice.id}
+                          type="button"
+                          className={`option-chip${isActive ? ' active' : ''}`}
+                          onClick={() => group.type === 'multiple'
+                            ? toggleMultiOption(group.id, choice.id)
+                            : toggleSingleOption(group.id, choice.id)}
+                        >
+                          {choiceName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {optionsError ? <p className="options-error">{optionsError}</p> : null}
             <div className="cart-note-actions">
-              <button className="secondary-button" type="button" onClick={closeNoteEditor} disabled={savingNote}>
+              <button className="secondary-button" type="button" onClick={() => { setOptionsItem(null); setOptionsError(null); }}>
                 {t('order.cancel')}
               </button>
-              <button className="primary-button" type="button" onClick={saveNote} disabled={savingNote}>
-                {savingNote ? '...' : t('order.confirm')}
+              <button className="primary-button" type="button" onClick={confirmOptions}>
+                {t('order.confirmSelection')}
               </button>
             </div>
           </div>

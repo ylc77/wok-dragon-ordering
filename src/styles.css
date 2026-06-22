@@ -4368,6 +4368,7 @@ body {
 .ocr-item { font-size: 15px; line-height: 1.6; }
 .ocr-item b { margin-right: 6px; }
 .ocr-item small { color: #9ca3af; font-size: 12.5px; }
+.ocr-options { color: var(--accent); }
 .ocr-right { align-items: flex-end; display: flex; flex-direction: column; gap: 12px; justify-content: center; }
 .ocr-price { font-size: 24px; font-weight: 900; }
 .ocr-paid-label { color: #16a34a; font-size: 14px; font-weight: 700; }
@@ -4785,24 +4786,32 @@ body {
 @media (max-width: 768px) { .selling-point { min-width: 140px; padding: 16px 14px; } }
 .cart-soldout-mark { background: #fef2f2; border-radius: 3px; color: #dc2626; font-size: 10px; font-weight: 700; margin-left: 6px; padding: 1px 5px; vertical-align: middle; }
 
-/* 购物车备注 */
-.cart-line-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.cart-note-text { color: #6b7280; font-size: 12px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cart-note-btn { align-items: center; align-self: flex-start; background: none; border: 1px dashed #d1d5db; border-radius: 6px; color: #9ca3af; cursor: pointer; display: inline-flex; font-size: 12px; gap: 4px; padding: 3px 8px; transition: border-color .15s, color .15s; }
-.cart-note-btn:hover { border-color: var(--accent); color: var(--accent); }
-.cart-note-btn:disabled { opacity: .4; pointer-events: none; }
+/* 购物车口味标签 */
+.cart-options-text { color: #6b7280; font-size: 12px; line-height: 1.4; }
 
-/* 备注编辑面板 */
+/* 通用底部面板（复用备注和 options 弹窗） */
 .cart-note-backdrop { align-items: flex-end; background: rgba(0,0,0,.35); bottom: 0; display: flex; justify-content: center; left: 0; position: fixed; right: 0; top: 0; z-index: 60; }
-.cart-note-panel { background: #fff; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 16px; max-width: 500px; padding: 20px; width: 100%; }
+.cart-note-panel { background: #fff; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 16px; max-height: 80vh; max-width: 500px; overflow-y: auto; padding: 20px; width: 100%; }
 .cart-note-head { align-items: center; display: flex; justify-content: space-between; }
 .cart-note-head h3 { font-size: 16px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cart-note-head button { background: none; border: 0; color: #9ca3af; cursor: pointer; padding: 4px; }
-.cart-note-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
-.cart-note-field textarea { min-height: 72px; }
-.cart-note-hint { color: #9ca3af; font-size: 11px; text-align: right; }
-.cart-note-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.cart-note-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
 .cart-note-actions button { min-width: 80px; }
+
+/* 口味选项 */
+.options-groups { display: flex; flex-direction: column; gap: 16px; }
+.options-group { display: flex; flex-direction: column; gap: 8px; }
+.options-group-head { align-items: center; display: flex; gap: 8px; }
+.options-group-head strong { font-size: 14px; }
+.options-required { background: #fef2f2; border-radius: 4px; color: #dc2626; font-size: 11px; font-weight: 700; padding: 1px 6px; }
+.options-hint { color: #9ca3af; font-size: 12px; }
+.options-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.option-chip { background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; min-height: 40px; padding: 8px 16px; transition: all .15s; }
+.option-chip:hover { border-color: #d1d5db; }
+.option-chip.active { background: #fef2f2; border-color: var(--accent); color: var(--accent); }
+.options-error { color: #dc2626; font-size: 13px; font-weight: 600; margin: 0; }
+.options-panel { max-height: 70vh; }
+
 @media (max-width: 640px) { .home-menu-list { grid-template-columns: 1fr; } }
 .settings-logo-preview { max-height: 80px; max-width: 160px; object-fit: contain; background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; }
 .settings-hero-preview { aspect-ratio: 16/9; border: 1px solid #e5e7eb; border-radius: 6px; max-width: 360px; object-fit: cover; width: 100%; }

@@ -2117,6 +2117,11 @@ function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnab
                       <div key={item.id} className="ocr-item">
                         <b>×{item.quantity}</b> {item.item_name_zh || item.item_name_en || item.item_name_el}
                         {item.note ? <small> · {item.note}</small> : null}
+                        {item.selected_options && item.selected_options.length > 0 ? (
+                          <small className="ocr-options">
+                            {item.selected_options.map((opt) => opt.choice_name_zh || opt.choice_name_en || opt.choice_name_el).join('、')}
+                          </small>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -2168,7 +2173,7 @@ function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnab
             </div>
             <div className="print-confirm-items">
               {printConfirmOrder.order_items?.map((item, i) => (
-                <div key={i} className="print-confirm-item"><strong>{item.quantity} × {item.item_name_zh || item.item_name_en || item.item_name_el}</strong>{item.note ? <small>备注：{item.note}</small> : null}</div>
+                <div key={i} className="print-confirm-item"><strong>{item.quantity} × {item.item_name_zh || item.item_name_en || item.item_name_el}</strong>{item.selected_options && item.selected_options.length > 0 ? <small> · {item.selected_options.map((o: any) => o.choice_name_zh || o.choice_name_en || o.choice_name_el).join('、')}</small> : null}{item.note ? <small>备注：{item.note}</small> : null}</div>
               ))}
             </div>
             <div className="print-confirm-actions">
@@ -2220,13 +2225,17 @@ function formatUnknownError(value: unknown) {
 function buildKitchenTicket(order: Order, isReprint: boolean, printedAt: string) {
   const tableNumber = order.restaurant_tables?.table_number ?? '?';
   const itemRows = (order.order_items ?? [])
-    .map(
-      (item) => `
+    .map((item) => {
+      const optsText = item.selected_options && (item.selected_options as any[]).length > 0
+        ? (item.selected_options as any[]).map((o: any) => o.choice_name_zh || o.choice_name_en || o.choice_name_el).join('、')
+        : '';
+      return `
         <div class="item">
           <strong>${escapeTicketText(item.quantity)} × ${escapeTicketText(item.item_name_zh || item.item_name_en || item.item_name_el)}</strong>
+          ${optsText ? `<small>${escapeTicketText(optsText)}</small>` : ''}
           ${item.note ? `<small>备注：${escapeTicketText(item.note)}</small>` : ''}
-        </div>`,
-    )
+        </div>`;
+    })
     .join('');
 
   return `<!doctype html>

@@ -41,6 +41,34 @@ export type MenuCategory = {
   deleted_at?: string | null;
 };
 
+export type MenuItemOption = {
+  id: string;
+  name_zh: string;
+  name_en: string;
+  name_el: string;
+};
+
+export type MenuItemOptionGroup = {
+  id: string;
+  name_zh: string;
+  name_en: string;
+  name_el: string;
+  type: 'single' | 'multiple';
+  required: boolean;
+  choices: MenuItemOption[];
+};
+
+export type SelectedOption = {
+  group_id: string;
+  group_name_zh: string;
+  group_name_en: string;
+  group_name_el: string;
+  choice_id: string;
+  choice_name_zh: string;
+  choice_name_en: string;
+  choice_name_el: string;
+};
+
 export type MenuItem = {
   id: string;
   category_id: string | null;
@@ -55,6 +83,7 @@ export type MenuItem = {
   is_available: boolean;
   is_sold_out?: boolean;
   sort_order: number;
+  options?: MenuItemOptionGroup[] | null;
   deleted_at?: string | null;
 };
 
@@ -131,6 +160,7 @@ export type CartItem = {
   added_by: string | null;
   quantity: number;
   note: string | null;
+  selected_options?: SelectedOption[] | null;
   unit_price: number;
   created_at: string;
   updated_at: string;
@@ -148,6 +178,7 @@ export type OrderItem = {
   item_name_el: string | null;
   quantity: number;
   note: string | null;
+  selected_options?: SelectedOption[] | null;
   unit_price: number;
   line_total: number;
 };

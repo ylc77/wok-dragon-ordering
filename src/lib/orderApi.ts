@@ -80,13 +80,20 @@ export async function fetchCart(sessionId: string): Promise<CartItem[]> {
   return (data ?? []) as CartItem[];
 }
 
-export async function addCartItem(sessionId: string, menuItemId: string, quantity = 1, note = '') {
+export async function addCartItem(
+  sessionId: string,
+  menuItemId: string,
+  quantity = 1,
+  note = '',
+  selectedOptions: import('./types').SelectedOption[] = [],
+) {
   const client = requireClient();
   const { error } = await client.rpc('add_cart_item', {
     p_session_id: sessionId,
     p_menu_item_id: menuItemId,
     p_quantity: quantity,
     p_note: note,
+    p_selected_options: selectedOptions.length > 0 ? selectedOptions : [],
   });
   if (error) throw error;
 }

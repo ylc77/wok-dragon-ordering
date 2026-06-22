@@ -43,7 +43,7 @@ export async function getPublicMenu(): Promise<MenuGroup[]> {
         .order('sort_order', { ascending: true }),
       supabase
         .from('menu_items')
-        .select('*')
+        .select('*, options')
         .is('deleted_at', null)
         .eq('is_available', true)
         .order('sort_order', { ascending: true }),
