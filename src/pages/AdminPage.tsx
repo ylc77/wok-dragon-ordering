@@ -385,7 +385,7 @@ export function AdminPage() {
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
-          {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
+          {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} toast={showAdminToast} requestSync={requestSync} /> : null}
         </section>
       </div>
     </main>
@@ -2759,10 +2759,36 @@ function wrapCanvasText(
 function SystemSettings({
   realtimeStatus,
   adminRole,
+  toast,
+  requestSync,
 }: {
   realtimeStatus: RealtimeConnectionStatus;
   adminRole: 'admin' | 'staff' | null;
+  toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
+  requestSync: () => void;
 }) {
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+
+  async function executeReset() {
+    if (resetConfirm !== 'RESET_DEMO_DATA') return;
+    if (!supabase) return;
+    try {
+      setResetting(true);
+      const { data, error } = await supabase.rpc('reset_demo_data', { p_confirm: resetConfirm });
+      if (error) throw error;
+      const r = data as Record<string, number>;
+      toast(`已重置：${r.orders_soft_deleted} 订单, ${r.cart_items_deleted} 购物车, ${r.sessions_closed} 旧会话关闭, ${r.sessions_created} 新会话创建`);
+      setResetDialogOpen(false);
+      setResetConfirm('');
+      requestSync();
+    } catch (err) {
+      toast(formatUnknownError(err), 'error');
+    } finally {
+      setResetting(false);
+    }
+  }
   return (
     <AdminSection title="系统设置">
       <div className="admin-panel-card system-settings-card">
@@ -2777,6 +2803,50 @@ function SystemSettings({
         <div><strong>桌台会话</strong><span>清桌与二维码继续使用现有安全函数</span></div>
         <div><strong>访问控制</strong><span>管理员登录与 RLS 策略保持不变</span></div>
       </div>
+      <div className="admin-panel-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>重置演示数据</h3>
+            <p style={{ color: '#6b7280', fontSize: 13, margin: '4px 0 0' }}>清除所有测试订单、购物车和会话，为每张桌重建新会话。不会删除菜单、分类、桌台和二维码。</p>
+          </div>
+          <button className="settings-danger-btn" type="button" onClick={() => setResetDialogOpen(true)}>重置演示数据</button>
+        </div>
+      </div>
+
+      {resetDialogOpen ? (
+        <div className="print-confirm-overlay" onClick={() => { if (!resetting) { setResetDialogOpen(false); setResetConfirm(''); } }}>
+          <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h2>⚠ 重置演示数据</h2>
+            <p className="dialog-warning-text">此操作将：</p>
+            <ul style={{ textAlign: 'left', fontSize: 14, lineHeight: 1.8 }}>
+              <li>软删除所有订单（可恢复）</li>
+              <li>清空购物车</li>
+              <li>清空付款请求和加入桌台请求</li>
+              <li>关闭所有活跃桌台会话，为每张桌重建新会话</li>
+            </ul>
+            <p style={{ color: '#16a34a', fontSize: 13, fontWeight: 600 }}>✅ 不会删除菜单、分类、桌台、二维码和餐馆设置</p>
+            <label className="dialog-password-label" style={{ marginTop: 12 }}>
+              请输入 RESET_DEMO_DATA 确认
+            </label>
+            <input
+              className="text-field"
+              value={resetConfirm}
+              onChange={(e) => setResetConfirm(e.target.value)}
+              placeholder="RESET_DEMO_DATA"
+              disabled={resetting}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter' && resetConfirm === 'RESET_DEMO_DATA' && !resetting) void executeReset(); }}
+            />
+            <div className="print-confirm-actions" style={{ marginTop: 16 }}>
+              <button className="secondary-button" type="button" disabled={resetting} onClick={() => { setResetDialogOpen(false); setResetConfirm(''); }}>取消</button>
+              <button className="settings-danger-btn" type="button" disabled={resetConfirm !== 'RESET_DEMO_DATA' || resetting} onClick={executeReset}>
+                {resetting ? '执行中...' : '确认重置'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <SystemHealthSection realtimeStatus={realtimeStatus} />
       {adminRole === 'admin' ? (
         <DataBackupSection />
