@@ -3317,10 +3317,12 @@ function ItemForm({
           style={{ fontFamily: 'monospace', fontSize: 12 }}
           value={JSON.stringify(value.options ?? [], null, 2)}
           onChange={(e) => {
+            const raw = e.target.value.trim();
+            if (!raw) { onChange({ ...value, options: [] }); return; }
             try {
-              const parsed = JSON.parse(e.target.value);
-              onChange({ ...value, options: parsed });
-            } catch { /* 允许编辑中暂存非法 JSON */ }
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) onChange({ ...value, options: parsed });
+            } catch { /* 非法 JSON 忽略，不覆盖 */ }
           }}
           placeholder={'[{"id":"spicy","name_zh":"辣度","name_en":"Spicy level","name_el":"Επίπεδο καυτερού","type":"single","required":true,"choices":[{"id":"mild","name_zh":"微辣","name_en":"Mild spicy","name_el":"Λίγο καυτερό"}]}]'}
         />
