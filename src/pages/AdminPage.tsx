@@ -37,6 +37,7 @@ import type {
   AdminOrderStats,
   MenuCategory,
   MenuItem,
+  MenuItemOptionGroup,
   Order,
   OrderItem,
   OrderStatus,
@@ -1173,7 +1174,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
     if (!supabase) return;
     const [catResult, itemResult] = await Promise.all([
       supabase.from('menu_categories').select('*').is('deleted_at', null).order('sort_order'),
-      supabase.from('menu_items').select('*').is('deleted_at', null).order('sort_order'),
+      supabase.from('menu_items').select('*, options').is('deleted_at', null).order('sort_order'),
     ]);
     if (catResult.error) onMessage(catResult.error.message);
     if (itemResult.error) onMessage(itemResult.error.message);
@@ -1436,6 +1437,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
       is_available: Boolean(item.is_available),
       is_sold_out: Boolean(item.is_sold_out),
       sort_order: Number(item.sort_order ?? 0),
+      options: item.options ?? [],
     };
     const { error } = item.id
       ? await supabase.from('menu_items').update(payload).eq('id', item.id)
@@ -3219,6 +3221,18 @@ function ItemRow({
   );
 }
 
+const SPICY_TEMPLATE: MenuItemOptionGroup[] = [
+  {
+    id: 'spicy', name_zh: '辣度', name_en: 'Spicy level', name_el: 'Επίπεδο καυτερού',
+    type: 'single', required: true,
+    choices: [
+      { id: 'no', name_zh: '不辣', name_en: 'No spicy', name_el: 'Χωρίς καυτερό' },
+      { id: 'mild', name_zh: '微辣', name_en: 'Mild spicy', name_el: 'Λίγο καυτερό' },
+      { id: 'hot', name_zh: '大辣', name_en: 'Very spicy', name_el: 'Πολύ καυτερό' },
+    ],
+  },
+];
+
 function ItemForm({
   value, categories, onChange, onToast,
 }: {
@@ -3293,6 +3307,34 @@ function ItemForm({
         <TextField label="Όνομα" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
         <TextField label="Περιγραφή" value={value.description_el} onChange={(v) => onChange({ ...value, description_el: v })} />
       </div>
+      <details className="item-options-editor">
+        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14, marginBottom: 8 }}>
+          口味选项（JSON 编辑）
+        </summary>
+        <textarea
+          className="text-field"
+          rows={8}
+          style={{ fontFamily: 'monospace', fontSize: 12 }}
+          value={JSON.stringify(value.options ?? [], null, 2)}
+          onChange={(e) => {
+            try {
+              const parsed = JSON.parse(e.target.value);
+              onChange({ ...value, options: parsed });
+            } catch { /* 允许编辑中暂存非法 JSON */ }
+          }}
+          placeholder={'[{"id":"spicy","name_zh":"辣度","name_en":"Spicy level","name_el":"Επίπεδο καυτερού","type":"single","required":true,"choices":[{"id":"mild","name_zh":"微辣","name_en":"Mild spicy","name_el":"Λίγο καυτερό"}]}]'}
+        />
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button type="button" className="secondary-button" style={{ fontSize: 12 }}
+            onClick={() => onChange({ ...value, options: SPICY_TEMPLATE })}>
+            辣度模板
+          </button>
+          <button type="button" className="secondary-button" style={{ fontSize: 12 }}
+            onClick={() => onChange({ ...value, options: [] })}>
+            清除选项
+          </button>
+        </div>
+      </details>
     </div>
   );
 }
