@@ -252,7 +252,13 @@ export function MenuPage() {
   const [search, setSearch] = useState('');
   const [showBackTop, setShowBackTop] = useState(false);
 
-  const filteredGroups = useFilteredGroups(groups, search, lang);
+  // 过滤掉不适合公开菜单展示的分类（如餐具）
+  const publicGroups = useMemo(() => groups.filter((g) => {
+    const name = (g.name_en + g.name_el + g.name_zh).toLowerCase();
+    return !name.includes('μαχαιροπίρουνα') && !name.includes('utensil') && !name.includes('餐具');
+  }), [groups]);
+
+  const filteredGroups = useFilteredGroups(publicGroups, search, lang);
   const visibleGroups = filteredGroups.filter((g) => g.items.length > 0);
 
   // 移动端锁定 body 滚动
