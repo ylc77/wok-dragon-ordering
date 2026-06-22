@@ -4631,9 +4631,5 @@ textarea.text-field:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(18
 @media (min-width: 768px) { .menu-mobile-root { display: none; } }
 .menu-mobile-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 .mobile-rail { width: 80px; flex-shrink: 0; overflow-y: auto; }
-.menu-mobile-root { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-@media (min-width: 768px) { .menu-mobile-root { display: none; } }
-.menu-mobile-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-.mobile-rail { width: 80px; flex-shrink: 0; overflow-y: auto; }
 .menu-desktop-only { display: none; }
 @media (min-width: 768px) { .menu-desktop-only { display: block; } }
