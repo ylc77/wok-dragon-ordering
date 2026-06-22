@@ -4,6 +4,7 @@ import { Ban, Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { SafeImage } from '../components/SafeImage';
+import { playSuccessSound } from '../lib/audio';
 import { getPublicMenu, getRestaurantSettings, requireAnonymousSession } from '../lib/menuApi';
 import { hasSupabaseConfig } from '../lib/supabase';
 import { formatPrice, getLocalizedField } from '../lib/localized';
@@ -62,6 +63,16 @@ export function TableOrderPage() {
   const [reentryRequest, setReentryRequest] = useState<TableReentryRequest | null>(null);
   const [requestingReentry, setRequestingReentry] = useState(false);
   const cartRefreshSequence = useRef(0);
+  const [cartSound, setCartSound] = useState(() => {
+    try { return localStorage.getItem('wok-dragon:cart-sound') !== '0'; } catch { return true; }
+  });
+  const toggleCartSound = () => {
+    setCartSound((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('wok-dragon:cart-sound', next ? '1' : '0'); } catch { /* noop */ }
+      return next;
+    });
+  };
   const categoryNavRef = useRef<HTMLElement>(null);
   const menuGroupsRef = useRef<HTMLDivElement>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
@@ -359,6 +370,7 @@ export function TableOrderPage() {
     try {
       await addCartItem(sessionInfo.session_id, item.id, 1, '', []);
       await refreshCart(sessionInfo.session_id);
+      if (cartSound) playSuccessSound();
     } catch (err) {
       setMessage(sanitizeError(err));
     }
@@ -416,6 +428,7 @@ export function TableOrderPage() {
     try {
       await addCartItem(sessionInfo.session_id, optionsItem.id, 1, '', selected);
       await refreshCart(sessionInfo.session_id);
+      if (cartSound) playSuccessSound();
       setOptionsItem(null);
       setOptionsPicked({});
     } catch (err) {
@@ -444,6 +457,7 @@ export function TableOrderPage() {
         await updateCartItemQuantity(line.id, nextQuantity);
       }
       await refreshCart(sessionInfo.session_id);
+      if (nextQuantity > 0 && cartSound) playSuccessSound();
     } catch (err) {
       setMessage(sanitizeError(err));
     }
@@ -712,6 +726,15 @@ export function TableOrderPage() {
             <X size={18} />
           </button>
         </div>
+        <button
+          type="button"
+          className="cart-sound-toggle"
+          onClick={toggleCartSound}
+          aria-label={cartSound ? '关闭操作音效' : '开启操作音效'}
+          title={cartSound ? '音效已开启' : '音效已关闭'}
+        >
+          {cartSound ? '🔔' : '🔕'}
+        </button>
         <p className="muted">{t('order.liveCart')}</p>
         {cart.length === 0 ? <p className="muted">{t('order.cartEmpty')}</p> : null}
         {cart.map((line) => {

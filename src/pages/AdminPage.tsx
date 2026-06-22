@@ -2329,31 +2329,7 @@ function dateToKey(value: string) {
   return `${year}-${month}-${day}`;
 }
 
-function playOrderNotification() {
-  const AudioContextClass =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextClass) return;
-  const audioContext = new AudioContextClass();
-  const gain = audioContext.createGain();
-  gain.gain.setValueAtTime(0.001, audioContext.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.25, audioContext.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.32);
-  gain.connect(audioContext.destination);
-
-  const playTone = (frequency: number, start: number, duration: number) => {
-    const oscillator = audioContext.createOscillator();
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime + start);
-    oscillator.connect(gain);
-    oscillator.start(audioContext.currentTime + start);
-    oscillator.stop(audioContext.currentTime + start + duration);
-  };
-
-  playTone(880, 0, 0.12);
-  playTone(1175, 0.16, 0.16);
-  window.setTimeout(() => audioContext.close(), 650);
-}
+import { playOrderNotification } from '../lib/audio';
 
 function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number }) {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
