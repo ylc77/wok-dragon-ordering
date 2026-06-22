@@ -143,7 +143,15 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
   const scrollTo = useCallback((id: string) => {
     setActiveCat(id);
     manualRef.current = true;
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const target = document.getElementById(id);
+    const container = mainRef.current;
+    if (target && container) {
+      const ct = container.getBoundingClientRect().top;
+      const tt = target.getBoundingClientRect().top;
+      const next = container.scrollTop + (tt - ct);
+      const max = container.scrollHeight - container.clientHeight;
+      container.scrollTo({ top: Math.min(next, max), behavior: 'smooth' });
+    }
     setTimeout(() => { manualRef.current = false; }, 800);
   }, []);
 
