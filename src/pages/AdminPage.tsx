@@ -804,6 +804,17 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
         </div>
       </div>
 
+      {/* ── 品牌外观 ── */}
+      <div className="settings-card">
+        <div className="settings-card-head"><h3>品牌外观</h3><p className="settings-card-desc">自定义网站主色调、浏览器标题栏和图标。</p></div>
+        <div className="settings-grid-2">
+          <TextField label="主色调" value={settings.brand_color} onChange={(v) => setSettings({ ...settings, brand_color: v })} />
+          <TextField label="网页标题" value={settings.meta_title} onChange={(v) => setSettings({ ...settings, meta_title: v })} />
+          <TextField label="浏览器图标 URL" value={settings.favicon_url} onChange={(v) => setSettings({ ...settings, favicon_url: v })} />
+        </div>
+        <p className="settings-image-tip">主色调留空则使用默认红色；网页标题留空则使用餐馆名称。</p>
+      </div>
+
       {/* ── 联系方式 ── */}
       <div className="settings-card">
         <div className="settings-card-head"><h3>联系方式</h3></div>

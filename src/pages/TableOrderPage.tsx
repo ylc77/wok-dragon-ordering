@@ -64,12 +64,12 @@ export function TableOrderPage() {
   const [requestingReentry, setRequestingReentry] = useState(false);
   const cartRefreshSequence = useRef(0);
   const [cartSound, setCartSound] = useState(() => {
-    try { return localStorage.getItem('wok-dragon:cart-sound') !== '0'; } catch { return true; }
+    try { return localStorage.getItem('restaurant:cart-sound') !== '0'; } catch { return true; }
   });
   const toggleCartSound = () => {
     setCartSound((prev) => {
       const next = !prev;
-      try { localStorage.setItem('wok-dragon:cart-sound', next ? '1' : '0'); } catch { /* noop */ }
+      try { localStorage.setItem('restaurant:cart-sound', next ? '1' : '0'); } catch { /* noop */ }
       return next;
     });
   };
@@ -1109,7 +1109,7 @@ type SavedTableSession = {
 };
 
 function tableSessionStorageKey(qrToken: string) {
-  return `wok-dragon:table-session:${qrToken}`;
+  return `restaurant:table-session:${qrToken}`;
 }
 
 function readSavedTableSession(qrToken: string): SavedTableSession | null {

@@ -32,10 +32,20 @@ function PublicShell() {
     return subscribeToRestaurantSettings(setSettings);
   }, []);
 
+  // 品牌色 + 标题 + favicon
   useEffect(() => {
-    document.title = restaurantName;
-    document.querySelector('meta[name="description"]')?.setAttribute('content', `${restaurantName} restaurant website and QR table ordering.`);
-  }, [restaurantName]);
+    if (settings?.brand_color) {
+      document.documentElement.style.setProperty('--accent', settings.brand_color);
+    } else {
+      document.documentElement.style.removeProperty('--accent');
+    }
+    document.title = settings?.meta_title || restaurantName;
+    if (settings?.favicon_url) {
+      const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]') || document.createElement('link');
+      link.rel = 'icon'; link.href = settings.favicon_url;
+      if (!document.querySelector('link[rel="icon"]')) document.head.appendChild(link);
+    }
+  }, [settings, restaurantName]);
 
   useEffect(() => {
     setMobileNavOpen(false);

@@ -27,6 +27,12 @@ export type RestaurantSettings = {
   accept_cash_payment: boolean;
   ordering_enabled: boolean;
   ordering_paused_at: string | null;
+  brand_color?: string | null;
+  favicon_url?: string | null;
+  meta_title?: string | null;
+  footer_text_zh?: string | null;
+  footer_text_en?: string | null;
+  footer_text_el?: string | null;
   delete_password?: string | null;
 };
 
