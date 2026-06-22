@@ -1079,3 +1079,94 @@ Do not prioritize visual redesign over business correctness.
 | `supabase/client-init.sql` | 一键数据库初始化 |
 | `supabase/demo-menu.sql` | 演示菜单数据 |
 | `README_CLIENT_DATABASE.md` | 数据库部署英文指南 |
+
+## 2026-06-23/24 新增功能
+
+### 菜品口味选项 (Menu Options)
+
+- `menu_items.options` jsonb — 菜品可选口味配置
+- `cart_items.selected_options` jsonb — 购物车中已选口味
+- `order_items.selected_options` jsonb — 订单口味快照
+- 顾客端：有 options 的菜弹窗选择，无 options 直接加购
+- 购物车：同菜同口味合并数量，不同口味分行
+- 后台：模板按钮（辣度/特殊要求/饮料温度）+ JSON 编辑器
+- SQL: `supabase/patches/2026-06-23-menu-options.sql`
+
+### 后台移动端优化
+
+- 菜品管理卡片化 (≤600px)
+- 订单管理卡片化 (≤600px)
+- 仪表盘 30 天统计卡片化
+- 桌台 QR 缩小、维护按钮触控加高
+- 全部 CSS only，不改 TSX
+
+### POS 前台点单
+
+- 新 tab "前台点单 POS" (/admin)
+- 堂食/外带 + 桌号可选
+- 本地购物车 state，不使用 cart_items 表
+- `pos_submit_order` RPC (staff/admin 专用)
+- 支持口味选择、付款方式（未付款/现金/刷卡）
+- 搜索菜品（中/英/希三语）
+- SQL: `supabase/patches/2026-06-24-pos-submit-order.sql`
+- SQL: `supabase/patches/2026-06-24-pos-order-type.sql`
+
+### 后台手动确认收款
+
+- 订单卡片优先显示 payment_status（已收款·现金/刷卡/未付款）
+- "收款" 红色按钮 + 弹窗选现金/刷卡
+- 有 session 订单：收款并清桌（关闭旧 session + 新建）
+- 无 session 订单（外带/无桌号）：仅标记已收款
+- SQL: `supabase/patches/2026-06-24-admin-confirm-payment.sql`
+
+### 支付适配器骨架
+
+- `src/lib/payments/` — types, adapters, index
+- 当前实现：manual/cash/pos 手动模式
+- 未来扩展：viva/nexi/cardlink (TODO)
+- 不接真实第三方支付
+
+### 打印优化
+
+- 纸张宽度选择 80mm/58mm (localStorage)
+- 预览小票按钮
+- 小票含餐馆名、总价、口味、备注
+- SQL: `supabase/patches/2026-06-24-admin-order-null-table.sql` (LEFT JOIN 修复)
+
+### 统计和筛选修复
+
+- 已付款/营业额统一基于 `payment_status='paid'`
+- 待处理/制作中等筛选排除已付款订单
+- SQL: `supabase/patches/2026-06-24-payment-status-stats.sql`
+
+### 声音和刷新优化
+
+- 轮询间隔：30s → 5s (顾客端 + 后台)
+- visibilitychange 切回立即刷新
+- POS 提交后播放声音提醒
+- 加餐自动打印修复
+
+## 架构约定 (重要)
+
+| 概念 | 说明 |
+|------|------|
+| `status` | 订单处理状态 (pending/preparing/served/cancelled)，**不再作为收款判断** |
+| `payment_status` | 收款状态 (unpaid/paid)，已收款/营业额/筛选都基于此 |
+| 顾客扫码订单 | 使用 table_session + cart_items + submit_order |
+| POS 订单 | 使用本地购物车 + pos_submit_order (不经过 cart_items) |
+| POS 外带/无桌号 | 允许 session_id/table_id 为 null |
+| 有 session 收款 | 关闭 session + 清空 cart + 创建新 session |
+| 无 session 收款 | 仅标记该订单 payment_status='paid' |
+| 支付适配器 | 骨架，不接真实 Viva/Nexi/Cardlink |
+| 报税小票 | 不由厨房小票替代，未来对接客户 POS/收银/AADE |
+
+## 需要执行的 SQL Patch
+
+| Patch | 说明 | 状态 |
+|-------|------|:---:|
+| `2026-06-23-menu-options.sql` | menu/cart/order items options 字段 | ✅ 已执行 |
+| `2026-06-24-pos-submit-order.sql` | pos_submit_order RPC | ✅ 已执行 |
+| `2026-06-24-pos-order-type.sql` | order_type + nullable table/session | ✅ 已执行 |
+| `2026-06-24-admin-order-null-table.sql` | admin_order_page LEFT JOIN | ✅ 已执行 |
+| `2026-06-24-admin-confirm-payment.sql` | 确认收款 RPC + update_order_status | ⚠️ 需执行 |
+| `2026-06-24-payment-status-stats.sql` | 统计/筛选 payment_status | ⚠️ 需执行 |
