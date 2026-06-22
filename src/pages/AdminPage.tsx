@@ -2199,8 +2199,9 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
         ) : groupedOrders.map((group) => (
           <article className={`order-card-new${group.isClosed ? ' closed' : ''}`} key={group.sessionId}>
             {group.orders.map((order) => {
-              const borderColor = { pending: '#dc2626', preparing: '#2563eb', served: '#16a34a', paid: '#16a34a', cancelled: '#9ca3af' }[order.status] || '#6b7280';
               const s = order.status;
+              const isPaid = order.payment_status === 'paid';
+              const borderColor = isPaid ? '#16a34a' : s === 'cancelled' ? '#9ca3af' : s === 'pending' ? '#f59e0b' : '#6b7280';
               return (
                 <div className={`order-card-row status-${s}`} key={order.id} style={{ borderLeftColor: borderColor }}>
                   <div className="ocr-left">
@@ -2211,8 +2212,10 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                     </span>
                     <span className="ocr-number">#{order.order_number}</span>
                     <span className="ocr-time">{new Date(order.created_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                    <span className="ocr-status" style={{ background: borderColor }}>{statusLabels[s]}</span>
-                    {order.payment_method ? <span className="ocr-pay">{order.payment_method === 'pos' ? '💳 刷卡' : '💵 现金'}</span> : null}
+                    <span className="ocr-status" style={{ background: isPaid ? (order.payment_method === 'cash' ? '#16a34a' : '#2563eb') : s === 'cancelled' ? '#9ca3af' : '#f59e0b' }}>
+                      {isPaid ? (order.payment_method === 'cash' ? '已收款 · 现金' : order.payment_method === 'pos' ? '已收款 · 刷卡' : '已收款') : s === 'cancelled' ? '已取消' : '未付款'}
+                    </span>
+                    <span className="ocr-status-sub">{statusLabels[s]}</span>
                   </div>
                   <div className="ocr-items">
                     {(order.order_items ?? []).map((item) => (
@@ -2230,38 +2233,14 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                   <div className="ocr-right">
                     <strong className="ocr-price">{formatPrice(Number(order.total_price))}</strong>
                     <div className="ocr-actions">
-                      {(s === 'pending' || s === 'preparing') ? (
-                        <>
-                          {s === 'pending' ? <button className="mini-btn primary" onClick={() => changeStatus(order.id, 'preparing')}>接单</button> : null}
-                          {order.payment_status === 'paid' ? (
-                            <span className="ocr-paid-label">{order.payment_method === 'cash' ? '💵 已收款' : '💳 已收款'}</span>
-                          ) : (
-                            <button className="mini-btn" style={{ background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}
-                              onClick={() => setPayOrder(order)}>收款</button>
-                          )}
-                          <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
-                          <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
-                          <button className="mini-btn danger-text" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
-                        </>
-                      ) : s === 'paid' ? (
-                        <>
-                          <span className="ocr-paid-label">{order.payment_method === 'cash' ? '💵 已收款' : '💳 已收款'}</span>
-                          <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
-                          <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
-                        </>
-                      ) : (
-                        <>
-                          {order.payment_status === 'paid' ? (
-                            <span className="ocr-paid-label">{order.payment_method === 'cash' ? '💵 已收款' : '💳 已收款'}</span>
-                          ) : (
-                            <button className="mini-btn" style={{ background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}
-                              onClick={() => setPayOrder(order)}>收款</button>
-                          )}
-                          <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
-                          <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
-                          <button className="mini-btn danger-text" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
-                        </>
-                      )}
+                      {s === 'pending' ? <button className="mini-btn primary" onClick={() => changeStatus(order.id, 'preparing')}>接单</button> : null}
+                      {!isPaid ? (
+                        <button className="mini-btn" style={{ background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}
+                          onClick={() => setPayOrder(order)}>收款</button>
+                      ) : null}
+                      <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
+                      <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
+                      <button className="mini-btn danger-text" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
                       <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `删除订单 #${order.order_number}`)}><Trash2 size={13} /></button>
                     </div>
                   </div>
