@@ -89,7 +89,7 @@ function DishImage({ item, alt }: { item: MenuItem; alt: string }) {
 
 /* ── 移动端菜单 ── */
 
-function MobileMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups: MenuGroup[]; lang: Language; search: string; setSearch: (v: string) => void }) {
+function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visibleGroups: MenuGroup[]; lang: Language; search: string; setSearch: (v: string) => void; settings: RestaurantSettings | null; }) {
   const [activeCat, setActiveCat] = useState('');
   const mainRef = useRef<HTMLDivElement>(null);
   const manualRef = useRef(false);
@@ -128,9 +128,6 @@ function MobileMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups:
 
   return (
     <div className="menu-mobile-root">
-      <div style={{ flexShrink: 0 }}>
-        <SearchBar search={search} setSearch={setSearch} count={visibleGroups.reduce((s, g) => s + g.items.length, 0)} lang={lang} />
-      </div>
       <div className="menu-mobile-body">
         {visibleGroups.length > 1 ? (
           <aside className="mobile-rail">
@@ -142,6 +139,10 @@ function MobileMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups:
           </aside>
         ) : null}
         <main ref={mainRef} className="mobile-main">
+          <div className="mobile-main-head">
+            {settings?.logo_url ? <img className="mobile-head-logo" src={settings.logo_url} alt="" /> : null}
+            <SearchBar search={search} setSearch={setSearch} count={visibleGroups.reduce((s, g) => s + g.items.length, 0)} lang={lang} />
+          </div>
           {visibleGroups.map((g) => (
             <section className="menu-group" id={`mcat-${g.id}`} key={g.id}>
               <h2>{getLocalizedField(lang, { zh: g.name_zh, en: g.name_en, el: g.name_el })}</h2>
@@ -245,14 +246,14 @@ export function MenuPage() {
 
   return (
     <main className="page-shell">
-      <MenuIntro settings={settings} />
+      <div className="menu-desktop-only"><MenuIntro settings={settings} /></div>
 
       {loading ? <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>{t('common.loading')}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
       {!loading && visibleGroups.length === 0 ? <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>{search ? (lang === 'el' ? 'Δεν βρέθηκαν πιάτα' : 'No dishes found') : t('common.empty')}</p> : null}
 
       {/* 移动端 */}
-      <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} />
+      <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} settings={settings} />
 
       {/* 桌面端 */}
       <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} />
