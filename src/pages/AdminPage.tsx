@@ -3221,17 +3221,47 @@ function ItemRow({
   );
 }
 
-const SPICY_TEMPLATE: MenuItemOptionGroup[] = [
-  {
+const OPTION_TEMPLATES: Record<string, MenuItemOptionGroup> = {
+  spicy: {
     id: 'spicy', name_zh: '辣度', name_en: 'Spicy level', name_el: 'Επίπεδο καυτερού',
     type: 'single', required: true,
     choices: [
       { id: 'no', name_zh: '不辣', name_en: 'No spicy', name_el: 'Χωρίς καυτερό' },
       { id: 'mild', name_zh: '微辣', name_en: 'Mild spicy', name_el: 'Λίγο καυτερό' },
+      { id: 'medium', name_zh: '中辣', name_en: 'Medium spicy', name_el: 'Μέτρια καυτερό' },
       { id: 'hot', name_zh: '大辣', name_en: 'Very spicy', name_el: 'Πολύ καυτερό' },
     ],
   },
-];
+  special: {
+    id: 'special', name_zh: '特殊要求', name_en: 'Special request', name_el: 'Ειδικό αίτημα',
+    type: 'multiple', required: false,
+    choices: [
+      { id: 'less_salt', name_zh: '少盐', name_en: 'Less salt', name_el: 'Λιγότερο αλάτι' },
+      { id: 'no_onion', name_zh: '不要葱', name_en: 'No onion', name_el: 'Χωρίς κρεμμύδι' },
+      { id: 'no_cilantro', name_zh: '不要香菜', name_en: 'No cilantro', name_el: 'Χωρίς κόλιανδρο' },
+      { id: 'less_oil', name_zh: '少油', name_en: 'Less oil', name_el: 'Λιγότερο λάδι' },
+    ],
+  },
+  temperature: {
+    id: 'temperature', name_zh: '温度', name_en: 'Temperature', name_el: 'Θερμοκρασία',
+    type: 'single', required: false,
+    choices: [
+      { id: 'iced', name_zh: '冰', name_en: 'Iced', name_el: 'Παγωμένο' },
+      { id: 'room_temp', name_zh: '常温', name_en: 'Room temperature', name_el: 'Θερμοκρασία δωματίου' },
+    ],
+  },
+};
+
+function addOptionTemplate(current: MenuItemOptionGroup[], templateKey: string): MenuItemOptionGroup[] {
+  const tmpl = OPTION_TEMPLATES[templateKey];
+  if (!tmpl) return current;
+  if (current.some((g) => g.id === tmpl.id)) return current; // 防止重复
+  return [...current, JSON.parse(JSON.stringify(tmpl))];
+}
+
+function removeOptionGroup(current: MenuItemOptionGroup[], groupId: string): MenuItemOptionGroup[] {
+  return current.filter((g) => g.id !== groupId);
+}
 
 function ItemForm({
   value, categories, onChange, onToast,
@@ -3307,36 +3337,71 @@ function ItemForm({
         <TextField label="Όνομα" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
         <TextField label="Περιγραφή" value={value.description_el} onChange={(v) => onChange({ ...value, description_el: v })} />
       </div>
-      <details className="item-options-editor">
-        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14, marginBottom: 8 }}>
-          口味选项（JSON 编辑）
-        </summary>
-        <textarea
-          className="text-field"
-          rows={8}
-          style={{ fontFamily: 'monospace', fontSize: 12 }}
-          value={JSON.stringify(value.options ?? [], null, 2)}
-          onChange={(e) => {
-            const raw = e.target.value.trim();
-            if (!raw) { onChange({ ...value, options: [] }); return; }
-            try {
-              const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed)) onChange({ ...value, options: parsed });
-            } catch { /* 非法 JSON 忽略，不覆盖 */ }
-          }}
-          placeholder={'[{"id":"spicy","name_zh":"辣度","name_en":"Spicy level","name_el":"Επίπεδο καυτερού","type":"single","required":true,"choices":[{"id":"mild","name_zh":"微辣","name_en":"Mild spicy","name_el":"Λίγο καυτερό"}]}]'}
-        />
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button type="button" className="secondary-button" style={{ fontSize: 12 }}
-            onClick={() => onChange({ ...value, options: SPICY_TEMPLATE })}>
-            辣度模板
+      <div className="item-options-section">
+        <strong style={{ fontSize: 14 }}>口味选项</strong>
+
+        {/* 模板按钮 */}
+        <div className="options-template-row">
+          <button type="button" className="secondary-button"
+            onClick={() => onChange({ ...value, options: addOptionTemplate(value.options ?? [], 'spicy') })}>
+            添加辣度选项
           </button>
-          <button type="button" className="secondary-button" style={{ fontSize: 12 }}
+          <button type="button" className="secondary-button"
+            onClick={() => onChange({ ...value, options: addOptionTemplate(value.options ?? [], 'special') })}>
+            添加特殊要求
+          </button>
+          <button type="button" className="secondary-button"
+            onClick={() => onChange({ ...value, options: addOptionTemplate(value.options ?? [], 'temperature') })}>
+            添加饮料温度
+          </button>
+          <button type="button" className="secondary-button"
+            style={{ color: '#dc2626' }}
             onClick={() => onChange({ ...value, options: [] })}>
-            清除选项
+            清除全部选项
           </button>
         </div>
-      </details>
+
+        {/* 已添加的选项组卡片 */}
+        {((value.options ?? []) as MenuItemOptionGroup[]).map((group) => (
+          <div className="option-group-card" key={group.id}>
+            <div className="ogc-head">
+              <strong>{group.name_zh}</strong>
+              <span className="ogc-meta">
+                {group.type === 'single' ? '单选' : '多选'} · {group.required ? '必选' : '非必选'}
+              </span>
+              <button type="button" className="ogc-delete"
+                onClick={() => onChange({ ...value, options: removeOptionGroup((value.options ?? []) as MenuItemOptionGroup[], group.id) })}>
+                删除
+              </button>
+            </div>
+            <div className="ogc-choices">
+              {group.choices.map((c) => (
+                <span className="ogc-chip" key={c.id}>{c.name_zh}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* 高级 JSON 编辑（收起） */}
+        <details className="item-options-json">
+          <summary>高级 JSON 编辑</summary>
+          <textarea
+            className="text-field"
+            rows={8}
+            style={{ fontFamily: 'monospace', fontSize: 12 }}
+            value={JSON.stringify(value.options ?? [], null, 2)}
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              if (!raw) { onChange({ ...value, options: [] }); return; }
+              try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) onChange({ ...value, options: parsed });
+              } catch { /* 非法 JSON 忽略，不覆盖 */ }
+            }}
+          />
+          <p className="options-json-hint">格式错误时不会保存，非数组会被忽略。</p>
+        </details>
+      </div>
     </div>
   );
 }

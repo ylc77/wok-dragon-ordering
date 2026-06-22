@@ -4700,6 +4700,20 @@ body {
 .table-card-body .availability-badge { display: inline-block; margin-bottom: 6px; }
 .maintenance-button { min-height: 32px; }
 .clear-table-button { min-height: 34px; }
+
+/* 口味选项编辑器 */
+.item-options-section { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.options-template-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.option-group-card { background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; }
+.ogc-head { align-items: center; display: flex; gap: 10px; margin-bottom: 8px; }
+.ogc-head strong { font-size: 14px; }
+.ogc-meta { color: #6b7280; font-size: 12px; font-weight: 600; }
+.ogc-delete { background: none; border: 0; color: #dc2626; cursor: pointer; font-size: 12px; font-weight: 600; margin-left: auto; padding: 2px 6px; }
+.ogc-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.ogc-chip { background: #f3f4f6; border-radius: 6px; color: #374151; font-size: 12px; font-weight: 600; padding: 3px 10px; }
+.item-options-json { font-size: 13px; margin-top: 4px; }
+.item-options-json summary { color: #9ca3af; cursor: pointer; font-weight: 600; }
+.options-json-hint { color: #9ca3af; font-size: 11px; margin: 4px 0 0; }
 .settings-save-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; display: flex; justify-content: flex-end; margin-top: 16px; padding: 14px; }
 .text-field { border: 1px solid #d7d7d0; border-radius: 6px; font-size: 14px; padding: 8px 10px; width: 100%; resize: vertical; }
 /* mobile order page polish */
