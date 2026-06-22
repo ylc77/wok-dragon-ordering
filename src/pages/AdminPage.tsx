@@ -1695,6 +1695,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const knownOrderItemIdsRef = useRef<Set<string>>(new Set());
   const knownBillRequestIdsRef = useRef<Set<string>>(new Set());
   const soundEnabledRef = useRef(false);
   const autoPrintEnabledRef = useRef(false);
@@ -1751,12 +1752,18 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
         fetchRestaurantTables(),
       ]);
       const previousIds = knownOrderIdsRef.current;
+      const previousItemIds = knownOrderItemIdsRef.current;
       const previousBillIds = knownBillRequestIdsRef.current;
       const insertedPendingOrders = options?.initial
         ? []
         : pendingOrders.filter((order) => !previousIds.has(order.id));
+      const allOrderItems = pendingOrders.flatMap((order) => (order.order_items ?? []));
+      const newOrderItems = options?.initial
+        ? []
+        : allOrderItems.filter((item) => !previousItemIds.has(item.id));
 
       knownOrderIdsRef.current = new Set(pendingOrders.map((order) => order.id));
+      knownOrderItemIdsRef.current = new Set(allOrderItems.map((item) => item.id));
       knownBillRequestIdsRef.current = new Set(nextBillRequests.map((request) => request.id));
       setOrders(orderPage.orders);
       setStats(nextStats);
@@ -1767,7 +1774,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
       setBillRequests(nextBillRequests.filter((r) => !confirmingBillIdsRef.current.has(r.id)));
 
       const hasNewBillRequest = !options?.initial && nextBillRequests.some((request) => !previousBillIds.has(request.id));
-      if (insertedPendingOrders.length > 0 || hasNewBillRequest) {
+      if (insertedPendingOrders.length > 0 || newOrderItems.length > 0 || hasNewBillRequest) {
         setNewOrderIds((current) => {
           const next = new Set(current);
           insertedPendingOrders.forEach((order) => next.add(order.id));
