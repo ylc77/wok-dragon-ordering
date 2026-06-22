@@ -473,3 +473,25 @@ export async function closeTableSession(sessionId: string) {
     deleted_cart_count: number;
   };
 }
+
+export async function posSubmitOrder(
+  tableId: string,
+  items: { menu_item_id: string; quantity: number; selected_options?: import('./types').SelectedOption[]; note?: string }[],
+  note?: string,
+) {
+  const client = requireClient();
+  const { data, error } = await client.rpc('pos_submit_order', {
+    p_table_id: tableId,
+    p_items: items.map((item) => ({
+      menu_item_id: item.menu_item_id,
+      quantity: item.quantity,
+      selected_options: item.selected_options ?? [],
+      note: item.note ?? '',
+    })),
+    p_note: note ?? null,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('Order was not returned.');
+  return row as { order_id: string; order_number: number };
+}

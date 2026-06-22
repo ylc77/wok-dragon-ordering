@@ -3,9 +3,9 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
-import { formatPrice } from '../lib/localized';
-import { adminHardDeleteMenuCategory, adminHardDeleteMenuItem, getRestaurantSettings, uploadCategoryImage, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
+import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, Minus, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, ShoppingBag, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
+import { formatPrice, getLocalizedField } from '../lib/localized';
+import { getPublicMenu, getRestaurantSettings, adminHardDeleteMenuCategory, adminHardDeleteMenuItem, uploadCategoryImage, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { downloadFile, exportRowsToCSV, exportRowsToJSON, fetchAllTableData, generateBackupFilename } from '../lib/dataExport';
 import {
@@ -24,6 +24,7 @@ import {
   fetchPendingTableReentryRequests,
   fetchRestaurantTables,
   markOrderKitchenPrinted,
+  posSubmitOrder,
   regenerateTableQrToken,
   rejectTableReentry,
   saveRestaurantTable,
@@ -36,6 +37,7 @@ import type {
   AdminDashboardSummary,
   AdminOrderStats,
   MenuCategory,
+  MenuGroup,
   MenuItem,
   MenuItemOptionGroup,
   Order,
@@ -44,11 +46,12 @@ import type {
   RealtimeConnectionStatus,
   RestaurantSettings,
   RestaurantTable,
+  SelectedOption,
   TableReentryRequest,
   TableSession,
 } from '../lib/types';
 
-type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'system';
+type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'system' | 'pos';
 
 const emptySettings: Partial<RestaurantSettings> = {
   name_zh: '',
@@ -332,6 +335,7 @@ export function AdminPage() {
           <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton>
           <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
           <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
+          <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton>
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>
           <LogOut size={15} />
@@ -352,6 +356,7 @@ export function AdminPage() {
           <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton>
           <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
           <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
+          <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton>
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>退出登录</button>
       </aside>
@@ -386,6 +391,7 @@ export function AdminPage() {
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
+          {tab === 'pos' ? <POSTab toast={showAdminToast} requestSync={requestSync} /> : null}
         </section>
       </div>
     </main>
@@ -3468,5 +3474,209 @@ function ItemForm({
         </details>
       </div>
     </div>
+  );
+}
+
+/* ── 前台点单 POS ── */
+
+type POSCartEntry = {
+  menuItemId: string;
+  nameZh: string;
+  nameEn: string | null;
+  nameEl: string | null;
+  price: number;
+  quantity: number;
+  selectedOptions: SelectedOption[];
+};
+
+function posEntryKey(menuItemId: string, options: SelectedOption[]) {
+  return `${menuItemId}::${JSON.stringify(options)}`;
+}
+
+function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; }) {
+  const [tables, setTables] = useState<RestaurantTable[]>([]);
+  const [selectedTableId, setSelectedTableId] = useState<string>('');
+  const [groups, setGroups] = useState<MenuGroup[]>([]);
+  const [cart, setCart] = useState<POSCartEntry[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
+  const [optionsPicked, setOptionsPicked] = useState<Record<string, string | string[]>>({});
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchRestaurantTables().then(setTables).catch(() => {});
+    getPublicMenu().then(setGroups).catch(() => {});
+  }, []);
+
+  const cartTotal = cart.reduce((s, e) => s + e.quantity * e.price, 0);
+  const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
+
+  function addToCart(item: MenuItem, selectedOptions: SelectedOption[] = []) {
+    setCart((prev) => {
+      const key = posEntryKey(item.id, selectedOptions);
+      const idx = prev.findIndex((e) => posEntryKey(e.menuItemId, e.selectedOptions) === key);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
+        return next;
+      }
+      return [...prev, {
+        menuItemId: item.id, nameZh: item.name_zh, nameEn: item.name_en, nameEl: item.name_el,
+        price: Number(item.price), quantity: 1, selectedOptions,
+      }];
+    });
+  }
+
+  function openOptions(item: MenuItem) {
+    const initial: Record<string, string | string[]> = {};
+    for (const g of (item.options ?? [])) initial[g.id] = g.type === 'multiple' ? [] : '';
+    setOptionsPicked(initial); setOptionsError(null); setOptionsItem(item);
+  }
+
+  function toggleOption(groupId: string, choiceId: string, multi: boolean) {
+    setOptionsPicked((prev) => {
+      if (multi) {
+        const cur = (prev[groupId] as string[]) || [];
+        return { ...prev, [groupId]: cur.includes(choiceId) ? cur.filter((c) => c !== choiceId) : [...cur, choiceId] };
+      }
+      return { ...prev, [groupId]: prev[groupId] === choiceId ? '' : choiceId };
+    });
+    setOptionsError(null);
+  }
+
+  function confirmOptions() {
+    if (!optionsItem) return;
+    const groups = optionsItem.options ?? [];
+    for (const g of groups) {
+      if (!g.required) continue;
+      const v = optionsPicked[g.id];
+      if (!v || (Array.isArray(v) && v.length === 0)) { setOptionsError('请完成所有必选项'); return; }
+    }
+    const selected: SelectedOption[] = [];
+    for (const g of groups) {
+      const v = optionsPicked[g.id];
+      if (!v || (Array.isArray(v) && v.length === 0)) continue;
+      for (const cid of (Array.isArray(v) ? v : [v])) {
+        const c = g.choices.find((x) => x.id === cid);
+        if (!c) continue;
+        selected.push({ group_id: g.id, group_name_zh: g.name_zh, group_name_en: g.name_en, group_name_el: g.name_el, choice_id: c.id, choice_name_zh: c.name_zh, choice_name_en: c.name_en, choice_name_el: c.name_el });
+      }
+    }
+    addToCart(optionsItem, selected);
+    setOptionsItem(null); setOptionsPicked({});
+  }
+
+  async function submitPOS() {
+    if (!selectedTableId || cart.length === 0) return;
+    try {
+      setSubmitting(true);
+      const items = cart.map((e) => ({ menu_item_id: e.menuItemId, quantity: e.quantity, selected_options: e.selectedOptions, note: '' }));
+      const result = await posSubmitOrder(selectedTableId, items);
+      toast(`POS 订单 #${result.order_number} 已提交`);
+      setCart([]);
+      requestSync();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), 'error');
+    } finally { setSubmitting(false); }
+  }
+
+  return (
+    <main className="pos-shell">
+      <div className="pos-menu">
+        <div className="pos-toolbar">
+          <label className="filter-label">桌号
+            <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
+              <option value="">选择桌号</option>
+              {tables.filter((t) => t.is_active).map((t) => (
+                <option value={t.id} key={t.id}>{t.table_number} 号桌{t.label ? ` (${t.label})` : ''}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <nav className="pos-category-tabs">
+          {groups.map((g) => (
+            <a href={`#pos-cat-${g.id}`} key={g.id} className="pos-cat-tab" onClick={(e) => { e.preventDefault(); document.getElementById(`pos-cat-${g.id}`)?.scrollIntoView({ behavior: 'smooth' }); }}>{g.name_zh || g.name_en}</a>
+          ))}
+        </nav>
+        <div className="pos-menu-list">
+          {groups.map((g) => (
+            <section key={g.id} id={`pos-cat-${g.id}`} className="pos-category">
+              <h3>{g.name_zh || g.name_en}</h3>
+              <div className="pos-items">
+                {g.items.map((item) => {
+                  const soldOut = item.is_sold_out || !item.is_available;
+                  return (
+                    <div key={item.id} className={`pos-item${soldOut ? ' sold-out' : ''}`}>
+                      <div className="pos-item-info">
+                        <strong>{item.name_zh || item.name_en}</strong>
+                        <span>{formatPrice(Number(item.price))}</span>
+                        {soldOut ? <span className="pos-soldout">售罄</span> : null}
+                      </div>
+                      <button className="pos-add-btn" disabled={soldOut}
+                        onClick={() => (item.options && item.options.length > 0) ? openOptions(item) : addToCart(item)}>
+                        <Plus size={14} />添加
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+
+      <aside className="pos-cart">
+        <h2>当前点单{selectedTableId ? ` · ${tables.find((t) => t.id === selectedTableId)?.table_number ?? '?'} 号桌` : ''}</h2>
+        {cart.length === 0 ? <p className="muted">购物车为空</p> : (
+          <>
+            <div className="pos-cart-lines">
+              {cart.map((e, i) => (
+                <div key={i} className="pos-cart-line">
+                  <div className="pcl-info">
+                    <strong>{e.nameZh || e.nameEn}</strong>
+                    {e.selectedOptions.length > 0 ? <small>{e.selectedOptions.map((o) => o.choice_name_zh).join('、')}</small> : null}
+                    <span>{formatPrice(e.price)} × {e.quantity} = {formatPrice(e.price * e.quantity)}</span>
+                  </div>
+                  <div className="pcl-actions">
+                    <button onClick={() => setCart((prev) => { const next = [...prev]; if (next[i].quantity <= 1) { next.splice(i, 1); return next; } next[i] = { ...next[i], quantity: next[i].quantity - 1 }; return next; })} disabled={e.quantity <= 1}><Minus size={12} /></button>
+                    <strong>{e.quantity}</strong>
+                    <button onClick={() => setCart((prev) => { const next = [...prev]; next[i] = { ...next[i], quantity: next[i].quantity + 1 }; return next; })} disabled={e.quantity >= 99}><Plus size={12} /></button>
+                    <button className="pcl-del" onClick={() => setCart((prev) => prev.filter((_, j) => j !== i))}><Trash2 size={12} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="pos-cart-total"><span>{cartCount} 件</span><strong>{formatPrice(cartTotal)}</strong></div>
+            <div className="pos-cart-actions">
+              <button className="secondary-button" onClick={() => setCart([])} disabled={submitting}>清空</button>
+              <button className="primary-button" disabled={!selectedTableId || cart.length === 0 || submitting} onClick={submitPOS}>{submitting ? '提交中...' : '提交订单'}</button>
+            </div>
+          </>
+        )}
+      </aside>
+
+      {optionsItem ? (
+        <div className="cart-note-backdrop" onClick={() => { setOptionsItem(null); setOptionsError(null); }}>
+          <div className="cart-note-panel options-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-note-head"><h3>{optionsItem.name_zh || optionsItem.name_en}</h3><button onClick={() => { setOptionsItem(null); setOptionsError(null); }}><X size={18} /></button></div>
+            <div className="options-groups">
+              {(optionsItem.options ?? []).map((group) => (
+                <div className="options-group" key={group.id}>
+                  <div className="options-group-head"><strong>{group.name_zh}</strong>{group.required ? <span className="options-required">必选</span> : null}</div>
+                  <div className="options-choices">
+                    {group.choices.map((c) => {
+                      const active = group.type === 'multiple' ? ((optionsPicked[group.id] as string[]) || []).includes(c.id) : optionsPicked[group.id] === c.id;
+                      return <button key={c.id} className={`option-chip${active ? ' active' : ''}`} onClick={() => toggleOption(group.id, c.id, group.type === 'multiple')}>{c.name_zh}</button>;
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {optionsError ? <p className="options-error">{optionsError}</p> : null}
+            <div className="cart-note-actions"><button className="secondary-button" onClick={() => { setOptionsItem(null); setOptionsError(null); }}>取消</button><button className="primary-button" onClick={confirmOptions}>确定</button></div>
+          </div>
+        </div>
+      ) : null}
+    </main>
   );
 }

@@ -4714,6 +4714,49 @@ body {
 .item-options-json { font-size: 13px; margin-top: 4px; }
 .item-options-json summary { color: #9ca3af; cursor: pointer; font-weight: 600; }
 .options-json-hint { color: #9ca3af; font-size: 11px; margin: 4px 0 0; }
+
+/* ── POS 前台点单 ── */
+.pos-shell { display: grid; gap: 16px; grid-template-columns: 1fr 360px; height: calc(100vh - 120px); overflow: hidden; }
+.pos-menu { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.pos-toolbar { margin-bottom: 10px; }
+.pos-category-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.pos-cat-tab { background: #f3f4f6; border-radius: 6px; color: #374151; font-size: 13px; font-weight: 600; padding: 6px 14px; text-decoration: none; white-space: nowrap; }
+.pos-cat-tab:hover { background: #e5e7eb; }
+.pos-menu-list { flex: 1; overflow-y: auto; }
+.pos-category { margin-bottom: 16px; }
+.pos-category h3 { font-size: 16px; margin: 0 0 8px; }
+.pos-items { display: flex; flex-direction: column; gap: 4px; }
+.pos-item { align-items: center; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; display: flex; justify-content: space-between; padding: 10px 14px; }
+.pos-item.sold-out { opacity: .5; }
+.pos-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pos-item-info strong { font-size: 15px; }
+.pos-item-info span { color: #6b7280; font-size: 13px; }
+.pos-soldout { color: #dc2626; font-size: 12px; font-weight: 700; }
+.pos-add-btn { align-items: center; background: var(--accent); border: 0; border-radius: 6px; color: #fff; cursor: pointer; display: inline-flex; flex-shrink: 0; font-size: 13px; font-weight: 700; gap: 4px; padding: 6px 16px; }
+.pos-add-btn:disabled { background: #d1d5db; cursor: default; }
+
+.pos-cart { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; padding: 16px; }
+.pos-cart h2 { font-size: 16px; margin: 0 0 12px; }
+.pos-cart-lines { flex: 1; overflow-y: auto; }
+.pos-cart-line { border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; padding: 10px 0; }
+.pcl-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pcl-info strong { font-size: 14px; }
+.pcl-info small { color: var(--accent); font-size: 12px; }
+.pcl-info span { color: #6b7280; font-size: 12px; }
+.pcl-actions { align-items: center; display: flex; flex-shrink: 0; gap: 6px; }
+.pcl-actions button { align-items: center; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; display: inline-flex; height: 28px; justify-content: center; width: 28px; }
+.pcl-actions strong { font-size: 14px; min-width: 20px; text-align: center; }
+.pcl-del { color: #dc2626 !important; }
+.pos-cart-total { align-items: center; border-top: 2px solid #e5e7eb; display: flex; justify-content: space-between; margin-top: 8px; padding-top: 10px; }
+.pos-cart-total span { color: #6b7280; font-size: 14px; }
+.pos-cart-total strong { font-size: 20px; }
+.pos-cart-actions { display: flex; gap: 8px; margin-top: 10px; }
+.pos-cart-actions button { flex: 1; }
+
+@media (max-width: 900px) {
+  .pos-shell { grid-template-columns: 1fr; height: auto; }
+  .pos-cart { max-height: 50vh; }
+}
 .settings-save-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; display: flex; justify-content: flex-end; margin-top: 16px; padding: 14px; }
 .text-field { border: 1px solid #d7d7d0; border-radius: 6px; font-size: 14px; padding: 8px 10px; width: 100%; resize: vertical; }
 /* mobile order page polish */
