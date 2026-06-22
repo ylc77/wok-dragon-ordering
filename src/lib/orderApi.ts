@@ -60,7 +60,7 @@ export async function fetchSessionOrders(sessionId: string): Promise<Order[]> {
   const client = requireClient();
   const { data, error } = await client
     .from('orders')
-    .select('*, order_items(*)')
+    .select('*, order_items(*, selected_options)')
     .eq('session_id', sessionId)
     .neq('status', 'cancelled')
     .is('deleted_at', null)
@@ -73,7 +73,7 @@ export async function fetchCart(sessionId: string): Promise<CartItem[]> {
   const client = requireClient();
   const { data, error } = await client
     .from('cart_items')
-    .select('*, menu_items(*)')
+    .select('*, selected_options, menu_items(*, options)')
     .eq('session_id', sessionId)
     .order('created_at', { ascending: true });
   if (error) throw error;

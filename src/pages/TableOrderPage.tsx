@@ -670,6 +670,7 @@ export function TableOrderPage() {
                           onAdd={() => addItem(item)}
                           onChange={updateQuantity}
                           addLabel={item.is_sold_out ? t('common.soldOut') : t('order.add')}
+                          hasOptions={Boolean(item.options && item.options.length > 0)}
                         />
                       }
                     />
@@ -1012,6 +1013,7 @@ function DishQuantityControl({
   onAdd,
   onChange,
   addLabel,
+  hasOptions,
 }: {
   item: MenuItem;
   line?: CartItem;
@@ -1021,7 +1023,19 @@ function DishQuantityControl({
   onAdd: () => void;
   onChange: (line: CartItem, nextQuantity: number) => void;
   addLabel: string;
+  hasOptions?: boolean;
 }) {
+  // 有 options → 永远走 onAdd 弹窗选择，不直接增减
+  if (hasOptions) {
+    const totalQty = line ? line.quantity : 0;
+    return (
+      <button className="dish-add-button" type="button" onClick={onAdd} disabled={disabled}>
+        <Plus size={17} />
+        <span>{totalQty > 0 ? `${addLabel} (${totalQty})` : addLabel}</span>
+      </button>
+    );
+  }
+
   if (!line) {
     return (
       <button className="dish-add-button" type="button" onClick={onAdd} disabled={disabled}>
