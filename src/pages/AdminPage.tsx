@@ -1687,7 +1687,9 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
   const [stats, setStats] = useState<AdminOrderStats>({
     total_orders: 0, pending: 0, preparing: 0, served: 0, paid: 0, cancelled: 0, paid_total: 0,
   });
-  const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
+    try { return localStorage.getItem('restaurant_auto_print_enabled') === '1'; } catch { return false; }
+  });
   const [printWarning, setPrintWarning] = useState<string | null>(null);
   const [confirmingBillIds, setConfirmingBillIds] = useState<Set<string>>(new Set());
   const confirmingBillIdsRef = useRef<Set<string>>(new Set());
@@ -1865,6 +1867,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
     if (autoPrintEnabledRef.current) {
       autoPrintEnabledRef.current = false;
       setAutoPrintEnabled(false);
+      try { localStorage.setItem('restaurant_auto_print_enabled', '0'); } catch { /* noop */ }
       if (autoPrintWindowRef.current && !autoPrintWindowRef.current.closed) {
         autoPrintWindowRef.current.close();
       }
@@ -1885,6 +1888,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
     autoPrintWindowRef.current = printWindow;
     autoPrintEnabledRef.current = true;
     setAutoPrintEnabled(true);
+    try { localStorage.setItem('restaurant_auto_print_enabled', '1'); } catch { /* noop */ }
     toast('自动打印厨房小票已开启');
   }
 
