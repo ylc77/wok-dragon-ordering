@@ -4750,6 +4750,11 @@ body {
 .pos-cart-total { align-items: center; border-top: 2px solid #e5e7eb; display: flex; justify-content: space-between; margin-top: 8px; padding-top: 10px; }
 .pos-cart-total span { color: #6b7280; font-size: 14px; }
 .pos-cart-total strong { font-size: 20px; }
+.pos-payment-row { display: flex; gap: 6px; margin-top: 6px; }
+.pos-pay-opt { align-items: center; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 6px; cursor: pointer; display: flex; flex: 1; font-size: 13px; font-weight: 600; gap: 4px; justify-content: center; padding: 8px 6px; }
+.pos-pay-opt input { accent-color: var(--accent); }
+.pos-pay-opt.selected { background: #fef2f2; border-color: var(--accent); color: var(--accent); }
+
 .pos-cart-actions { display: flex; gap: 8px; margin-top: 10px; }
 .pos-cart-actions button { flex: 1; }
 

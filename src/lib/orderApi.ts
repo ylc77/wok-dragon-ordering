@@ -478,6 +478,7 @@ export async function posSubmitOrder(
   tableId: string,
   items: { menu_item_id: string; quantity: number; selected_options?: import('./types').SelectedOption[]; note?: string }[],
   note?: string,
+  paymentMethod?: 'cash' | 'pos' | null,
 ) {
   const client = requireClient();
   const { data, error } = await client.rpc('pos_submit_order', {
@@ -489,6 +490,7 @@ export async function posSubmitOrder(
       note: item.note ?? '',
     })),
     p_note: note ?? null,
+    p_payment_method: paymentMethod ?? null,
   });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;

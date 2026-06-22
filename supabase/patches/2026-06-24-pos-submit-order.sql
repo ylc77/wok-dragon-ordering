@@ -4,7 +4,8 @@
 create or replace function public.pos_submit_order(
   p_table_id uuid,
   p_items jsonb,
-  p_note text default null
+  p_note text default null,
+  p_payment_method text default null
 )
 returns table(order_id uuid, order_number bigint)
 language plpgsql
@@ -28,6 +29,11 @@ begin
   select role into v_role from profiles where id = v_user_id;
   if v_role not in ('admin', 'staff') then
     raise exception '只有管理员或员工可以执行此操作';
+  end if;
+
+  -- 校验付款方式
+  if p_payment_method is not null and p_payment_method not in ('cash', 'pos') then
+    raise exception '付款方式只能是 cash 或 pos';
   end if;
 
   -- 验证桌台存在
@@ -88,8 +94,12 @@ begin
   end if;
 
   -- 创建订单
-  insert into orders (session_id, table_id, submitted_by, client_request_id, status, total_price)
-  values (v_session_id, p_table_id, v_user_id, gen_random_uuid(), 'pending', v_total)
+  insert into orders (session_id, table_id, submitted_by, client_request_id, status, total_price,
+    payment_status, payment_method, paid_at)
+  values (v_session_id, p_table_id, v_user_id, gen_random_uuid(), 'pending', v_total,
+    case when p_payment_method in ('cash', 'pos') then 'paid' else 'unpaid' end,
+    p_payment_method,
+    case when p_payment_method in ('cash', 'pos') then now() else null end)
   returning id, orders.order_number into v_order_id, v_order_number;
 
   -- 写入订单明细

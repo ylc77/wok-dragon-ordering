@@ -3498,6 +3498,7 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [cart, setCart] = useState<POSCartEntry[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pos' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
   const [optionsPicked, setOptionsPicked] = useState<Record<string, string | string[]>>({});
@@ -3571,9 +3572,10 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
     try {
       setSubmitting(true);
       const items = cart.map((e) => ({ menu_item_id: e.menuItemId, quantity: e.quantity, selected_options: e.selectedOptions, note: '' }));
-      const result = await posSubmitOrder(selectedTableId, items);
-      toast(`POS 订单 #${result.order_number} 已提交`);
+      const result = await posSubmitOrder(selectedTableId, items, undefined, paymentMethod);
+      toast(`POS 订单 #${result.order_number} 已提交${paymentMethod === 'cash' ? '（现金）' : paymentMethod === 'pos' ? '（刷卡）' : ''}`);
       setCart([]);
+      setPaymentMethod(null);
       requestSync();
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), 'error');
@@ -3647,6 +3649,17 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
               ))}
             </div>
             <div className="pos-cart-total"><span>{cartCount} 件</span><strong>{formatPrice(cartTotal)}</strong></div>
+            <div className="pos-payment-row">
+              <label className={`pos-pay-opt${paymentMethod === null ? ' selected' : ''}`}>
+                <input type="radio" name="pos-payment" checked={paymentMethod === null} onChange={() => setPaymentMethod(null)} />未付款
+              </label>
+              <label className={`pos-pay-opt${paymentMethod === 'cash' ? ' selected' : ''}`}>
+                <input type="radio" name="pos-payment" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} />现金
+              </label>
+              <label className={`pos-pay-opt${paymentMethod === 'pos' ? ' selected' : ''}`}>
+                <input type="radio" name="pos-payment" checked={paymentMethod === 'pos'} onChange={() => setPaymentMethod('pos')} />刷卡
+              </label>
+            </div>
             <div className="pos-cart-actions">
               <button className="secondary-button" onClick={() => setCart([])} disabled={submitting}>清空</button>
               <button className="primary-button" disabled={!selectedTableId || cart.length === 0 || submitting} onClick={submitPOS}>{submitting ? '提交中...' : '提交订单'}</button>
