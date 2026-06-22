@@ -131,7 +131,7 @@ begin
       and (
         p_status is null
         or (p_status = 'paid' and o.payment_status = 'paid')
-        or (p_status <> 'paid' and o.status = p_status)
+        or (p_status <> 'paid' and o.status = p_status and o.payment_status <> 'paid')
       )
   ), ranked_sessions as (
     select coalesce(fo.session_id::text, fo.id::text) as session_key,
