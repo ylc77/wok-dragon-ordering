@@ -1,6 +1,7 @@
 -- 重置演示数据 RPC
 -- 清理测试订单/session/购物车/付款请求，重建每桌 active session
 -- 不删除菜单、分类、桌台、二维码、设置、账户
+-- paid 订单保留作为历史营业记录
 
 create or replace function public.reset_demo_data(p_confirm text)
 returns jsonb
@@ -12,6 +13,7 @@ declare
   v_user_id uuid := auth.uid();
   v_role text;
   v_orders_deleted int;
+  v_paid_skipped int;
   v_cart_deleted int;
   v_sessions_closed int;
   v_sessions_created int;
@@ -30,11 +32,16 @@ begin
     raise exception '只有管理员或员工可以执行此操作';
   end if;
 
-  -- 1. 软删除所有 orders
+  -- 统计已付款订单数量
+  select count(*) into v_paid_skipped
+  from orders
+  where deleted_at is null and status = 'paid';
+
+  -- 1. 软删除非 paid 订单（pending/preparing/served/cancelled）
   with updated as (
     update orders
     set deleted_at = now()
-    where deleted_at is null
+    where deleted_at is null and status <> 'paid'
     returning id
   )
   select count(*) into v_orders_deleted from updated;
@@ -66,7 +73,7 @@ begin
   )
   select count(*) into v_sessions_closed from updated;
 
-  -- 6. 清理 table_session_participants（关闭 session 后参与者记录已无意义）
+  -- 6. 清理 table_session_participants
   delete from table_session_participants;
 
   -- 7. 为每张桌创建新的 active session
@@ -80,6 +87,7 @@ begin
 
   return jsonb_build_object(
     'orders_soft_deleted', v_orders_deleted,
+    'paid_orders_skipped', v_paid_skipped,
     'cart_items_deleted', v_cart_deleted,
     'sessions_closed', v_sessions_closed,
     'sessions_created', v_sessions_created,
@@ -89,6 +97,6 @@ begin
 end;
 $$;
 
--- 权限：仅 authenticated 可执行（函数内部检查 admin/staff）
-revoke execute on function public.reset_demo_data(text) from public, anon;
-grant execute on function public.reset_demo_data(text) to authenticated;
+-- 权限：仅 authenticated 和 service_role 可执行（函数内部检查 admin/staff）
+revoke execute on function public.reset_demo_data(text) from public, anon, authenticated;
+grant execute on function public.reset_demo_data(text) to authenticated, service_role;

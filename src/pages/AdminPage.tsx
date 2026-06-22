@@ -2779,7 +2779,7 @@ function SystemSettings({
       const { data, error } = await supabase.rpc('reset_demo_data', { p_confirm: resetConfirm });
       if (error) throw error;
       const r = data as Record<string, number>;
-      toast(`已重置：${r.orders_soft_deleted} 订单, ${r.cart_items_deleted} 购物车, ${r.sessions_closed} 旧会话关闭, ${r.sessions_created} 新会话创建`);
+      toast(`已重置：${r.orders_soft_deleted} 订单清理, ${r.paid_orders_skipped ?? 0} 已付款保留, ${r.cart_items_deleted} 购物车, ${r.sessions_closed} 旧会话关闭, ${r.sessions_created} 新会话创建`);
       setResetDialogOpen(false);
       setResetConfirm('');
       requestSync();
@@ -2819,12 +2819,13 @@ function SystemSettings({
             <h2>⚠ 重置演示数据</h2>
             <p className="dialog-warning-text">此操作将：</p>
             <ul style={{ textAlign: 'left', fontSize: 14, lineHeight: 1.8 }}>
-              <li>软删除所有订单（可恢复）</li>
+              <li>软删除未付款订单（pending/preparing/served/cancelled）</li>
               <li>清空购物车</li>
               <li>清空付款请求和加入桌台请求</li>
               <li>关闭所有活跃桌台会话，为每张桌重建新会话</li>
             </ul>
             <p style={{ color: '#16a34a', fontSize: 13, fontWeight: 600 }}>✅ 不会删除菜单、分类、桌台、二维码和餐馆设置</p>
+            <p style={{ color: '#16a34a', fontSize: 13, fontWeight: 600 }}>✅ 已付款订单会保留，不会被清理</p>
             <label className="dialog-password-label" style={{ marginTop: 12 }}>
               请输入 RESET_DEMO_DATA 确认
             </label>
