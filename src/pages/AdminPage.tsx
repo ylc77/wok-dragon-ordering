@@ -394,7 +394,7 @@ export function AdminPage() {
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
-          {tab === 'pos' ? <POSTab toast={showAdminToast} requestSync={requestSync} /> : null}
+          {tab === 'pos' ? <POSTab toast={showAdminToast} requestSync={requestSync} soundEnabled={soundEnabled} /> : null}
         </section>
       </div>
     </main>
@@ -3539,7 +3539,7 @@ function posEntryKey(menuItemId: string, options: SelectedOption[]) {
   return `${menuItemId}::${JSON.stringify(options)}`;
 }
 
-function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; }) {
+function POSTab({ toast, requestSync, soundEnabled }: { toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; soundEnabled: boolean; }) {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   const [groups, setGroups] = useState<MenuGroup[]>([]);
@@ -3640,6 +3640,7 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
       setCart([]);
       setPaymentMethod(null);
       requestSync();
+      if (soundEnabled) playOrderNotification();
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), 'error');
     } finally { setSubmitting(false); }
