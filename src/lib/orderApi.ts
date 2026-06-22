@@ -499,3 +499,18 @@ export async function posSubmitOrder(
   if (!row) throw new Error('Order was not returned.');
   return row as { order_id: string; order_number: number };
 }
+
+export async function adminConfirmOrderPayment(orderId: string, paymentMethod: 'cash' | 'pos') {
+  const client = requireClient();
+  const { data, error } = await client.rpc('admin_confirm_order_payment', {
+    p_order_id: orderId,
+    p_payment_method: paymentMethod,
+  });
+  if (error) throw error;
+  return data as {
+    paid_orders_count: number;
+    session_closed: boolean;
+    cart_cleared: boolean;
+    new_session_id: string | null;
+  };
+}

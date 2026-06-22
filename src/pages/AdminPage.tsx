@@ -9,6 +9,7 @@ import { getPublicMenu, getRestaurantSettings, adminHardDeleteMenuCategory, admi
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { downloadFile, exportRowsToCSV, exportRowsToJSON, fetchAllTableData, generateBackupFilename } from '../lib/dataExport';
 import {
+  adminConfirmOrderPayment,
   adminHardDeleteOrder,
   approveTableReentry,
   closeTableSession,
@@ -1837,6 +1838,27 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
     }
   }
 
+  const [payOrder, setPayOrder] = useState<Order | null>(null);
+  const [paying, setPaying] = useState(false);
+
+  async function confirmPayment(method: 'cash' | 'pos') {
+    if (!payOrder) return;
+    try {
+      setPaying(true);
+      const result = await adminConfirmOrderPayment(payOrder.id, method);
+      const msg = result.session_closed
+        ? `已收款 ${result.paid_orders_count} 笔订单并清桌`
+        : `已收款`;
+      toast(msg);
+      setPayOrder(null);
+      load();
+    } catch (err) {
+      toast(formatUnknownError(err), 'error');
+    } finally {
+      setPaying(false);
+    }
+  }
+
   async function confirmBillPayment(request: BillRequest) {
     const nextConfirming = new Set(confirmingBillIdsRef.current).add(request.id);
     confirmingBillIdsRef.current = nextConfirming;
@@ -2214,6 +2236,10 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                           <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
                           <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
                           <button className="mini-btn danger" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
+                          {order.payment_status !== 'paid' ? (
+                            <button className="mini-btn" style={{ background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}
+                              onClick={() => setPayOrder(order)}>收款</button>
+                          ) : null}
                         </>
                       ) : s === 'paid' ? (
                         <>
@@ -2225,6 +2251,10 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                         <>
                           <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
                           <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
+                          {order.payment_status !== 'paid' ? (
+                            <button className="mini-btn" style={{ background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}
+                              onClick={() => setPayOrder(order)}>收款</button>
+                          ) : null}
                         </>
                       )}
                       <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `删除订单 #${order.order_number}`)}><Trash2 size={13} /></button>
@@ -2264,6 +2294,29 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
             <div className="print-confirm-actions">
               <button className="secondary-button" onClick={() => setPrintConfirmOrder(null)}>取消</button>
               <button className="primary-button" onClick={() => { const o = printConfirmOrder; setPrintConfirmOrder(null); void doPrintKitchenTicket(o); }}><Printer size={16} />确认打印</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ─ 确认收款弹窗 ─ */}
+      {payOrder ? (
+        <div className="print-confirm-overlay" onClick={() => { if (!paying) setPayOrder(null); }}>
+          <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
+            <h2>确认收款</h2>
+            <p style={{ margin: '8px 0' }}>
+              订单 <strong>#{payOrder.order_number}</strong>
+              {payOrder.restaurant_tables?.table_number ? ` · ${payOrder.restaurant_tables.table_number} 号桌` : ''}
+            </p>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: '8px 0' }}>
+              {payOrder.session_id
+                ? '确认后将收款并清桌，同一桌所有未付款订单将被标记为已付款，旧顾客将不能继续点餐。'
+                : '该订单无桌台会话，只会标记为已收款。'}
+            </p>
+            <div className="print-confirm-actions" style={{ marginTop: 16 }}>
+              <button className="secondary-button" type="button" disabled={paying} onClick={() => setPayOrder(null)}>取消</button>
+              <button className="primary-button" type="button" disabled={paying} onClick={() => confirmPayment('cash')}>现金</button>
+              <button className="mini-btn primary" type="button" disabled={paying} onClick={() => confirmPayment('pos')}>刷卡</button>
             </div>
           </div>
         </div>
