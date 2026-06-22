@@ -139,10 +139,7 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
           </aside>
         ) : null}
         <main ref={mainRef} className="mobile-main">
-          <div className="mobile-main-head">
-            {settings?.logo_url ? <img className="mobile-head-logo" src={settings.logo_url} alt="" /> : null}
-            <SearchBar search={search} setSearch={setSearch} count={visibleGroups.reduce((s, g) => s + g.items.length, 0)} lang={lang} />
-          </div>
+          {settings?.logo_url ? <img className="mobile-head-logo" src={settings.logo_url} alt="" /> : null}
           {visibleGroups.map((g) => (
             <section className="menu-group" id={`mcat-${g.id}`} key={g.id}>
               <h2>{getLocalizedField(lang, { zh: g.name_zh, en: g.name_en, el: g.name_el })}</h2>
@@ -194,7 +191,6 @@ function DesktopMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups
 
   return (
     <div className="menu-desktop-only">
-      <SearchBar search={search} setSearch={setSearch} count={visibleGroups.reduce((s, g) => s + g.items.length, 0)} lang={lang} />
       <div className="menu-layout">
         {visibleGroups.length > 1 ? (
           <aside className="menu-category-rail">
