@@ -3614,22 +3614,6 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
       <div className="pos-menu">
         <div className="pos-toolbar">
           <input className="pos-search" type="text" placeholder="搜索菜品…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <label className="filter-label">类型
-            <select value={orderType} onChange={(e) => { setOrderType(e.target.value as 'dine_in' | 'takeaway'); if (e.target.value === 'takeaway') setSelectedTableId(''); }}>
-              <option value="dine_in">堂食</option>
-              <option value="takeaway">外带</option>
-            </select>
-          </label>
-          {orderType === 'dine_in' ? (
-            <label className="filter-label">桌号
-              <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
-                <option value="">未指定</option>
-                {tables.filter((t) => t.is_active).map((t) => (
-                  <option value={t.id} key={t.id}>{t.table_number} 号桌{t.label ? ` (${t.label})` : ''}</option>
-                ))}
-              </select>
-            </label>
-          ) : null}
         </div>
         <nav className="pos-category-tabs">
           {filteredGroups.map((g) => (
@@ -3665,6 +3649,22 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
 
       <aside className="pos-cart">
         <h2>当前点单{orderType === 'takeaway' ? ' · 外带' : selectedTableId ? ` · ${tables.find((t) => t.id === selectedTableId)?.table_number ?? '?'} 号桌` : ' · 堂食'}</h2>
+        <div className="pos-meta">
+          <div className="pos-type-row">
+            <button className={`pos-type-btn${orderType === 'dine_in' ? ' active' : ''}`} onClick={() => setOrderType('dine_in')}>堂食</button>
+            <button className={`pos-type-btn${orderType === 'takeaway' ? ' active' : ''}`} onClick={() => { setOrderType('takeaway'); setSelectedTableId(''); }}>外带</button>
+          </div>
+          {orderType === 'dine_in' ? (
+            <label className="filter-label">桌号
+              <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)} style={{ width: '100%' }}>
+                <option value="">未指定</option>
+                {tables.filter((t) => t.is_active).map((t) => (
+                  <option value={t.id} key={t.id}>{t.table_number} 号桌{t.label ? ` (${t.label})` : ''}</option>
+                ))}
+              </select>
+            </label>
+          ) : <p className="muted" style={{ margin: 0 }}>外带订单，无需选择桌号</p>}
+        </div>
         {cart.length === 0 ? <p className="muted">购物车为空</p> : (
           <>
             <div className="pos-cart-lines">
@@ -3698,7 +3698,7 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
             </div>
             <div className="pos-cart-actions">
               <button className="secondary-button" onClick={() => setCart([])} disabled={submitting}>清空</button>
-              <button className="primary-button" disabled={!selectedTableId || cart.length === 0 || submitting} onClick={submitPOS}>{submitting ? '提交中...' : '提交订单'}</button>
+              <button className="primary-button" disabled={cart.length === 0 || submitting} onClick={submitPOS}>{submitting ? '提交中...' : '提交订单'}</button>
             </div>
           </>
         )}

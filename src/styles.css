@@ -4738,7 +4738,13 @@ body {
 .pos-add-btn:disabled { background: #d1d5db; cursor: default; }
 
 .pos-cart { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; padding: 16px; }
-.pos-cart h2 { font-size: 16px; margin: 0 0 12px; }
+.pos-cart h2 { font-size: 16px; margin: 0 0 8px; }
+.pos-meta { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.pos-type-row { display: flex; gap: 0; }
+.pos-type-btn { background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 0; color: #374151; cursor: pointer; flex: 1; font-size: 14px; font-weight: 700; padding: 8px 12px; }
+.pos-type-btn:first-child { border-radius: 6px 0 0 6px; }
+.pos-type-btn:last-child { border-radius: 0 6px 6px 0; }
+.pos-type-btn.active { background: #fef2f2; border-color: var(--accent); color: var(--accent); }
 .pos-cart-lines { flex: 1; overflow-y: auto; }
 .pos-cart-line { border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; padding: 10px 0; }
 .pcl-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
