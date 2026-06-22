@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
@@ -219,6 +219,7 @@ export function AdminPage() {
   const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [syncVersion, setSyncVersion] = useState(0);
+  const requestSync = useCallback(() => setSyncVersion((c) => c + 1), []);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const closeDrawer = () => setMobileDrawerOpen(false);
@@ -268,15 +269,19 @@ export function AdminPage() {
   useEffect(() => {
     if (!loggedIn) return;
     let previousStatus: RealtimeConnectionStatus = 'connecting';
-    const requestSync = () => setSyncVersion((current) => current + 1);
     const unsubscribe = subscribeToAdminOrders(requestSync, (status) => {
       setRealtimeStatus(status);
       if (status === 'connected' && previousStatus !== 'connected') requestSync();
       previousStatus = status;
     });
-    const interval = window.setInterval(requestSync, 30_000);
+    const interval = window.setInterval(requestSync, 5_000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') requestSync();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsubscribe();
     };
   }, [loggedIn]);
@@ -364,7 +369,7 @@ export function AdminPage() {
           {adminToast ? <div className={`admin-toast toast-${adminToast.type}`}>{adminToast.msg}</div> : null}
           {message ? <p className="admin-message">{message}<button type="button" className="print-warning-dismiss" style={{marginLeft:8}} onClick={()=>setMessage(null)}>×</button></p> : null}
           {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} /> : null}
-          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} /> : null}
+          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} /> : null}
           {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
@@ -1668,7 +1673,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
   );
 }
 
-function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnabledChange }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; }) {
+function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled, onSoundEnabledChange }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; requestSync: () => void; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -1796,6 +1801,7 @@ function OrderManager({ onMessage, toast, syncVersion, soundEnabled, onSoundEnab
     try {
       const result = await confirmBillAndCloseSession(request.session_id);
       toast(`已付款并清桌：${result.paid_order_count} 张订单已结清`);
+      load();
     } catch (err) {
       const msg = formatUnknownError(err);
       if (!msg.includes('already closed')) {
