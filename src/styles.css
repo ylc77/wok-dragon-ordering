@@ -4637,3 +4637,8 @@ textarea.text-field:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(18
 @media (min-width: 768px) { .menu-desktop-only { display: block; } }
 .mobile-main-head { padding-bottom: 8px; text-align: center; }
 .mobile-head-logo { height: 40px; margin-bottom: 8px; max-width: 160px; object-fit: contain; }
+.menu-card-fallback { background: linear-gradient(135deg, #faf7f2, #efe7dc) !important; color: transparent !important; }
+.menu-card-fallback::after { display: none !important; }
+.mcf-icon { align-items: center; background: none !important; display: flex; font-size: 28px; height: auto; justify-content: center; opacity: .4; width: auto; }
+.mcf-icon::after { display: none !important; }
+@media (min-width: 768px) { .mcf-icon { font-size: 36px; } }
