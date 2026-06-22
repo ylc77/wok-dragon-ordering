@@ -152,8 +152,8 @@ export function TableOrderPage() {
 
         if (restored?.session_status === 'closed') {
           clearSavedTableSession(qrToken);
-          restored = null;
           sessionId = null;
+          // 保留 restored 对象以便 sessionEnded 状态正确显示结束页
         }
         if (cancelled) return;
         const nextEntryState = restored?.session_status === 'active' ? null : await fetchTableEntryState(qrToken);
