@@ -186,8 +186,8 @@ export type OrderItem = {
 export type Order = {
   id: string;
   order_number: number;
-  session_id: string;
-  table_id: string;
+  session_id: string | null;
+  table_id: string | null;
   submitted_by: string | null;
   client_request_id: string;
   status: OrderStatus;
@@ -199,6 +199,7 @@ export type Order = {
   updated_at: string;
   deleted_at?: string | null;
   kitchen_printed_at?: string | null;
+  order_type?: string | null;
   restaurant_tables?: Pick<RestaurantTable, 'table_number' | 'label'> | null;
   order_items?: OrderItem[];
 };

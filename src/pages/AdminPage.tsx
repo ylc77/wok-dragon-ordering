@@ -128,7 +128,7 @@ type AggregatedOrderItem = Pick<OrderItem, 'menu_item_id' | 'item_name_zh' | 'it
 };
 
 type OrderSessionGroup = {
-  sessionId: string;
+  sessionId: string | null;
   tableNumber: number | null;
   orders: Order[];
   total: number;
@@ -145,7 +145,9 @@ function groupOrdersBySession(orders: Order[]): OrderSessionGroup[] {
   const groups = new Map<string, OrderSessionGroup>();
 
   for (const order of orders) {
-    let group = groups.get(order.session_id);
+    // POS 订单无 session_id → 每单独立分组
+    const groupKey = order.session_id || order.id;
+    let group = groups.get(groupKey);
     if (!group) {
       group = {
         sessionId: order.session_id,
@@ -158,7 +160,7 @@ function groupOrdersBySession(orders: Order[]): OrderSessionGroup[] {
         primaryStatus: order.status,
         isClosed: false,
       };
-      groups.set(order.session_id, group);
+      groups.set(groupKey, group);
     }
 
     group.orders.push(order);
@@ -2044,6 +2046,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
     setExpandedSessionIds((current) => {
       const next = new Set(current);
       groupedOrders.forEach((group) => {
+        if (group.sessionId === null) return; // POS 无 session 订单跳过
         if (!initializedSessionIdsRef.current.has(group.sessionId)) {
           initializedSessionIdsRef.current.add(group.sessionId);
           if (!group.isClosed) next.add(group.sessionId);
@@ -2179,7 +2182,11 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
               return (
                 <div className={`order-card-row status-${s}`} key={order.id} style={{ borderLeftColor: borderColor }}>
                   <div className="ocr-left">
-                    <span className="ocr-table">{group.tableNumber ? `${group.tableNumber} 号桌` : '—'}</span>
+                    <span className="ocr-table">
+                      {order.order_type === 'takeaway' ? '外带'
+                        : group.tableNumber ? `${group.tableNumber} 号桌`
+                        : '堂食'}
+                    </span>
                     <span className="ocr-number">#{order.order_number}</span>
                     <span className="ocr-time">{new Date(order.created_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     <span className="ocr-status" style={{ background: borderColor }}>{statusLabels[s]}</span>
@@ -2309,7 +2316,10 @@ function buildKitchenTicket(
   paperWidth = '80',
 ) {
   const is58 = paperWidth === '58';
-  const tableNumber = order.restaurant_tables?.table_number ?? '?';
+  const tableNumber = order.restaurant_tables?.table_number ?? null;
+  const tableLabel = order.order_type === 'takeaway' ? '外带'
+    : tableNumber ? `${tableNumber} 号桌`
+    : '堂食';
   const totalPrice = formatPrice(Number(order.total_price));
   const itemRows = (order.order_items ?? [])
     .map((item) => {
@@ -2352,7 +2362,7 @@ function buildKitchenTicket(
         ${isReprint ? '<div class="reprint">重打 / Reprint</div>' : ''}
         ${isAdditional ? '<div class="additional">加餐 / Additional</div>' : ''}
         ${restaurantName ? `<div class="restaurant">${escapeTicketText(restaurantName)}</div>` : ''}
-        <h1>${escapeTicketText(tableNumber)} 号桌</h1>
+        <h1>${escapeTicketText(tableLabel)}</h1>
         <div class="meta">
           <strong>订单 #${escapeTicketText(order.order_number)}</strong>
           <span>下单：${escapeTicketText(new Date(order.created_at).toLocaleString('zh-CN'))}</span>
@@ -3498,6 +3508,7 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [cart, setCart] = useState<POSCartEntry[]>([]);
+  const [orderType, setOrderType] = useState<'dine_in' | 'takeaway'>('dine_in');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pos' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
@@ -3588,7 +3599,7 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
     try {
       setSubmitting(true);
       const items = cart.map((e) => ({ menu_item_id: e.menuItemId, quantity: e.quantity, selected_options: e.selectedOptions, note: '' }));
-      const result = await posSubmitOrder(selectedTableId, items, undefined, paymentMethod);
+      const result = await posSubmitOrder(selectedTableId || null, items, undefined, paymentMethod, orderType);
       toast(`POS 订单 #${result.order_number} 已提交${paymentMethod === 'cash' ? '（现金）' : paymentMethod === 'pos' ? '（刷卡）' : ''}`);
       setCart([]);
       setPaymentMethod(null);
@@ -3603,14 +3614,22 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
       <div className="pos-menu">
         <div className="pos-toolbar">
           <input className="pos-search" type="text" placeholder="搜索菜品…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <label className="filter-label">桌号
-            <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
-              <option value="">选择桌号</option>
-              {tables.filter((t) => t.is_active).map((t) => (
-                <option value={t.id} key={t.id}>{t.table_number} 号桌{t.label ? ` (${t.label})` : ''}</option>
-              ))}
+          <label className="filter-label">类型
+            <select value={orderType} onChange={(e) => { setOrderType(e.target.value as 'dine_in' | 'takeaway'); if (e.target.value === 'takeaway') setSelectedTableId(''); }}>
+              <option value="dine_in">堂食</option>
+              <option value="takeaway">外带</option>
             </select>
           </label>
+          {orderType === 'dine_in' ? (
+            <label className="filter-label">桌号
+              <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
+                <option value="">未指定</option>
+                {tables.filter((t) => t.is_active).map((t) => (
+                  <option value={t.id} key={t.id}>{t.table_number} 号桌{t.label ? ` (${t.label})` : ''}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
         <nav className="pos-category-tabs">
           {filteredGroups.map((g) => (
@@ -3645,7 +3664,7 @@ function POSTab({ toast, requestSync }: { toast: (msg: string, type?: 'success' 
       </div>
 
       <aside className="pos-cart">
-        <h2>当前点单{selectedTableId ? ` · ${tables.find((t) => t.id === selectedTableId)?.table_number ?? '?'} 号桌` : ''}</h2>
+        <h2>当前点单{orderType === 'takeaway' ? ' · 外带' : selectedTableId ? ` · ${tables.find((t) => t.id === selectedTableId)?.table_number ?? '?'} 号桌` : ' · 堂食'}</h2>
         {cart.length === 0 ? <p className="muted">购物车为空</p> : (
           <>
             <div className="pos-cart-lines">
