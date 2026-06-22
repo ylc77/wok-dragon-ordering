@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Search, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getPublicMenu } from '../lib/menuApi';
 import { formatPrice, getLocalizedField } from '../lib/localized';
@@ -14,6 +15,8 @@ export function MenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCat, setActiveCat] = useState('');
+  const [search, setSearch] = useState('');
+  const [showBackTop, setShowBackTop] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,38 +27,55 @@ export function MenuPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const visibleGroups = groups.filter((group) => group.items.length > 0);
-
   useEffect(() => {
-    if (!location.hash || visibleGroups.length === 0) return;
+    if (!location.hash || groups.length === 0) return;
     const target = document.getElementById(location.hash.slice(1));
     target?.scrollIntoView({ block: 'start' });
-  }, [location.hash, visibleGroups.length]);
+  }, [location.hash, groups.length]);
 
-  // 滚动联动：监听右侧菜品列表滚动，更新左侧分类高亮
+  // 搜索过滤
+  const filteredGroups = useMemo(() => {
+    const kw = search.toLowerCase().trim();
+    if (!kw) return groups;
+    return groups.map((g) => ({
+      ...g,
+      items: g.items.filter((item) => {
+        const name = getLocalizedField(lang, { zh: item.name_zh, en: item.name_en, el: item.name_el }).toLowerCase();
+        const desc = getLocalizedField(lang, { zh: item.description_zh, en: item.description_en, el: item.description_el }).toLowerCase();
+        return name.includes(kw) || desc.includes(kw);
+      }),
+    })).filter((g) => g.items.length > 0);
+  }, [groups, search, lang]);
+
+  const visibleGroups = filteredGroups.filter((group) => group.items.length > 0);
+
+  // 滚动联动 highlight
   useEffect(() => {
-    if (visibleGroups.length === 0) return;
+    if (visibleGroups.length === 0 || search) return;
     const container = listRef.current;
     if (!container) return;
-    const headers = visibleGroups.map((g) => document.getElementById(`category-${g.id}`)).filter(Boolean) as HTMLElement[];
+    const headers = visibleGroups.map((g) => document.getElementById(`cat-${g.id}`)).filter(Boolean) as HTMLElement[];
     if (headers.length === 0) return;
-
     const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) {
-          setActiveCat(visible[0].target.id);
-        }
-      },
-      { root: container, threshold: 0.3, rootMargin: '-20% 0px -70% 0px' },
+      (entries) => { const v = entries.filter((e) => e.isIntersecting); if (v.length > 0) setActiveCat(v[0].target.id); },
+      { root: container, threshold: 0.3, rootMargin: '-15% 0px -75% 0px' },
     );
     headers.forEach((h) => observer.observe(h));
     return () => observer.disconnect();
-  }, [visibleGroups]);
+  }, [visibleGroups, search]);
 
-  const scrollToCategory = (id: string) => {
+  // 返回顶部
+  useEffect(() => {
+    const onScroll = () => setShowBackTop(window.scrollY > 600);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToCat = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  const hasResults = visibleGroups.length > 0;
 
   return (
     <main className="page-shell">
@@ -69,39 +89,42 @@ export function MenuPage() {
         </div>
       </section>
 
-      {loading ? <p className="muted">{t('common.loading')}</p> : null}
+      <div className="menu-search-bar">
+        <span className="search-input-wrap menu-search-wrap"><Search size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'el' ? 'Αναζήτηση...' : 'Search dishes...'} /></span>
+        {search ? <span className="menu-search-count">{visibleGroups.reduce((sum, g) => sum + g.items.length, 0)} {lang === 'el' ? 'αποτελέσματα' : 'results'}</span> : null}
+      </div>
+
+      {loading ? <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>{t('common.loading')}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
-      {!loading && groups.length === 0 ? <p className="muted">{t('common.empty')}</p> : null}
+      {!loading && !hasResults ? <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>{search ? (lang === 'el' ? 'Δεν βρέθηκαν πιάτα' : 'No dishes found') : t('common.empty')}</p> : null}
 
       <div className="menu-layout">
         {visibleGroups.length > 1 ? (
         <aside className="menu-category-rail">
           {visibleGroups.map((group) => (
-            <button
-              key={group.id}
-              className={activeCat === `category-${group.id}` ? 'active' : ''}
-              onClick={() => scrollToCategory(`category-${group.id}`)}
-            >
+            <button key={group.id} className={activeCat === `cat-${group.id}` ? 'active' : ''} onClick={() => { scrollToCat(`cat-${group.id}`); setActiveCat(`cat-${group.id}`); }}>
               {getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}
             </button>
           ))}
         </aside>
         ) : null}
         <div className="menu-list-column" ref={listRef}>
-          {visibleGroups.map((group) =>
-            group.items.length ? (
-              <section className="menu-group" id={`category-${group.id}`} key={group.id}>
-                <h2>{getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}</h2>
-                <div className="menu-list">
-                  {group.items.map((item) => (
-                    <MenuCard item={item} lang={lang} key={item.id} />
-                  ))}
-                </div>
-              </section>
-            ) : null,
-          )}
+          {visibleGroups.map((group) => (
+            <section className="menu-group" id={`cat-${group.id}`} key={group.id}>
+              <h2>{getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}</h2>
+              <div className="menu-list">
+                {group.items.map((item) => <MenuCard item={item} lang={lang} key={item.id} />)}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
+
+      {showBackTop ? (
+        <button className="menu-back-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title={lang === 'el' ? 'Πίσω στην κορυφή' : 'Back to top'}>
+          <ChevronUp size={20} />
+        </button>
+      ) : null}
     </main>
   );
 }
