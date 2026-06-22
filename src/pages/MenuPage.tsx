@@ -229,6 +229,14 @@ export function MenuPage() {
   const filteredGroups = useFilteredGroups(groups, search, lang);
   const visibleGroups = filteredGroups.filter((g) => g.items.length > 0);
 
+  // 移动端锁定 body 滚动
+  useEffect(() => {
+    const lock = () => { if (window.innerWidth < 768) document.body.style.overflow = 'hidden'; };
+    lock();
+    window.addEventListener('resize', lock);
+    return () => { document.body.style.overflow = ''; window.removeEventListener('resize', lock); };
+  }, []);
+
   useEffect(() => {
     const onScroll = () => setShowBackTop(window.scrollY > 600);
     window.addEventListener('scroll', onScroll, { passive: true });
