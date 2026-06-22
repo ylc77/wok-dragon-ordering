@@ -3,15 +3,16 @@ import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { getPublicMenu } from '../lib/menuApi';
+import { getPublicMenu, getRestaurantSettings } from '../lib/menuApi';
 import { formatPrice, getLocalizedField } from '../lib/localized';
-import type { Language, MenuGroup, MenuItem } from '../lib/types';
+import type { Language, MenuGroup, MenuItem, RestaurantSettings } from '../lib/types';
 
 export function MenuPage() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const lang: Language = i18n.language?.startsWith('zh') ? 'zh' : i18n.language?.startsWith('en') ? 'en' : 'el';
   const [groups, setGroups] = useState<MenuGroup[]>([]);
+  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCat, setActiveCat] = useState('');
@@ -21,6 +22,7 @@ export function MenuPage() {
 
   useEffect(() => {
     document.title = 'Menu';
+    getRestaurantSettings().then(setSettings).catch(() => {});
     getPublicMenu()
       .then(setGroups)
       .catch((err) => setError(err.message))
@@ -51,33 +53,35 @@ export function MenuPage() {
 
   const manualRef = useRef(false);
 
-  // 滚动联动 highlight（仅自动滚动时生效）
+  // 滚动联动 highlight — 桌面端用 window scroll，移动端用容器 scroll
   useEffect(() => {
     if (visibleGroups.length === 0 || search) return;
-    const container = listRef.current;
-    if (!container) return;
     const headers = visibleGroups.map((g) => document.getElementById(`cat-${g.id}`)).filter(Boolean) as HTMLElement[];
     if (headers.length === 0) return;
 
-    const onIntersect = () => {
-      if (manualRef.current) return; // 手动点击分类时跳过
-      // 找离顶部最近的可见 section
+    const findClosest = () => {
+      if (manualRef.current) return;
       let closest: string | null = null;
       let minDist = Infinity;
       for (const h of headers) {
         const rect = h.getBoundingClientRect();
-        if (rect.bottom > 0 && rect.top < window.innerHeight) {
-          const dist = Math.abs(rect.top - 120); // 120px = 顶部导航高度
+        if (rect.bottom > 60 && rect.top < window.innerHeight) {
+          const dist = Math.abs(rect.top - 120);
           if (dist < minDist) { minDist = dist; closest = h.id; }
         }
       }
       if (closest) setActiveCat(closest);
     };
 
-    // 用滚动事件代替 IntersectionObserver，更精确
-    container.addEventListener('scroll', onIntersect, { passive: true });
-    onIntersect(); // 初始触发
-    return () => container.removeEventListener('scroll', onIntersect);
+    // 监听 window 滚动（桌面端）和容器滚动（移动端）
+    window.addEventListener('scroll', findClosest, { passive: true });
+    const container = listRef.current;
+    if (container) container.addEventListener('scroll', findClosest, { passive: true });
+    findClosest();
+    return () => {
+      window.removeEventListener('scroll', findClosest);
+      if (container) container.removeEventListener('scroll', findClosest);
+    };
   }, [visibleGroups, search]);
 
   // 返回顶部
@@ -100,7 +104,7 @@ export function MenuPage() {
     <main className="page-shell">
       <section className="page-heading">
         <div>
-          <span className="page-brand-mark">菜</span>
+          {settings?.logo_url ? <img className="brand-logo" src={settings.logo_url} alt="" /> : <span className="page-brand-mark">菜</span>}
           <div>
             <h1>{t('nav.menu')}</h1>
             <p>{t('common.priceNote')}</p>
