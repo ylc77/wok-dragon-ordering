@@ -346,6 +346,10 @@ export function TableOrderPage() {
       setMessage(t('order.orderingPausedText'));
       return;
     }
+    if (nextQuantity >= line.quantity && (line.menu_items?.is_sold_out || line.menu_items?.is_available === false)) {
+      setMessage(t('order.cartSoldOutIncrease'));
+      return;
+    }
     try {
       if (nextQuantity <= 0) {
         await removeCartItem(line.id);
@@ -366,6 +370,13 @@ export function TableOrderPage() {
     }
     if (orderingLocked) {
       setMessage(t('order.billOrderingLocked'));
+      return;
+    }
+    const unavailableInCart = cart.filter(
+      (line) => line.menu_items?.is_sold_out || line.menu_items?.is_available === false,
+    );
+    if (unavailableInCart.length > 0) {
+      setMessage(t('order.cartSoldOutPrompt'));
       return;
     }
     try {
@@ -618,7 +629,11 @@ export function TableOrderPage() {
                       el: item.name_el,
                     })
                   : line.menu_item_id}
-                {item?.is_sold_out ? <span className="cart-soldout-mark">{t('common.soldOut')}</span> : null}
+                {item?.is_sold_out || item?.is_available === false ? (
+                  <span className="cart-soldout-mark">
+                    {item?.is_available === false ? t('order.delisted') : t('common.soldOut')}
+                  </span>
+                ) : null}
               </strong>
               <strong className="cart-line-subtotal">{formatPrice(Number(line.unit_price) * line.quantity)}</strong>
               <div className="cart-controls">
@@ -626,7 +641,13 @@ export function TableOrderPage() {
                   <Minus size={15} />
                 </button>
                 <span>{line.quantity}</span>
-                <button type="button" disabled={billRequested || !orderingEnabled} onClick={() => updateQuantity(line, line.quantity + 1)}>
+                <button
+                  type="button"
+                  disabled={
+                    billRequested || !orderingEnabled || Boolean(item?.is_sold_out) || item?.is_available === false
+                  }
+                  onClick={() => updateQuantity(line, line.quantity + 1)}
+                >
                   <Plus size={15} />
                 </button>
                 <button type="button" disabled={billRequested} onClick={() => updateQuantity(line, 0)}>

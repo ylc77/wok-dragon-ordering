@@ -2,10 +2,13 @@
 // 用法:
 //   node scripts/fix-menu-translations.mjs --dry-run   (预览)
 //   node scripts/fix-menu-translations.mjs --apply      (执行修复)
-// 环境变量:
-//   DEEPSEEK_API_KEY            翻译 API 密钥
-//   VITE_SUPABASE_URL           Supabase URL
-//   VITE_SUPABASE_PUBLISHABLE_KEY   Supabase anon key (需 admin 权限)
+// 环境变量 (从 .env.local 读取):
+//   DEEPSEEK_API_KEY              翻译 API 密钥
+//   VITE_SUPABASE_URL             Supabase URL
+//   VITE_SUPABASE_PUBLISHABLE_KEY Supabase anon key (优先)
+//   SUPABASE_ANON_KEY             Supabase anon key (备选)
+//   SUPABASE_SERVICE_KEY          Supabase service_role key (优先，本脚本写库用)
+//   SUPABASE_SERVICE_ROLE_KEY     Supabase service_role key (备选)
 
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
@@ -25,41 +28,56 @@ loadEnv();
 
 const API_KEY = process.env.DEEPSEEK_API_KEY;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DRY_RUN = process.argv.includes('--dry-run');
 const APPLY = process.argv.includes('--apply');
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('请设置 VITE_SUPABASE_URL 和 VITE_SUPABASE_PUBLISHABLE_KEY');
+if (!SUPABASE_URL || (!SUPABASE_ANON_KEY && !SUPABASE_SERVICE_KEY)) {
+  console.error('请设置 VITE_SUPABASE_URL 以及至少一个 key (SUPABASE_SERVICE_KEY / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY / VITE_SUPABASE_PUBLISHABLE_KEY)');
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// 读用 anon key，写用 service_role key
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY);
 
-// 判断文本主要语言
-function detectLang(text) {
-  if (!text) return 'empty';
-  const hasGreek = /[α-ωΑ-Ω]/g;
-  const hasChinese = /[一-鿿]/g;
-  const gCount = (text.match(hasGreek) || []).length;
-  const cCount = (text.match(hasChinese) || []).length;
-  const total = text.replace(/\s/g, '').length;
-  if (total === 0) return 'empty';
-  if (gCount / total > 0.3) return 'el';
-  if (cCount / total > 0.2) return 'zh';
-  return 'en';
+// 统计各类字符数
+function charCounts(text) {
+  if (!text) return { chinese: 0, greek: 0, total: 0 };
+  const chinese = (text.match(/[一-鿿]/g) || []).length;
+  const greek = (text.match(/[α-ωΑ-Ω]/g) || []).length;
+  const total = text.replace(/\s/g, '').length || 1;
+  return { chinese, greek, total };
 }
 
-// 判断字段是否有"混语言"问题
-function isMixed(text, targetLang) {
+// name_zh 混语言检测：只有纯英文（零中文字符）才算混语言
+// "3. 汤 配 Won Ton" → 有中文 → 不算
+// "Menu A" → 零中文 → 算
+function isNameZhMixed(text) {
   if (!text) return false;
-  const detected = detectLang(text);
-  if (detected === 'empty') return false;
-  // targetLang=zh 但里面明显是英文或希腊语
-  if (targetLang === 'zh' && detected !== 'zh') return true;
-  if (targetLang === 'en' && detected !== 'en') return true;
-  if (targetLang === 'el' && detected !== 'el') return true;
-  return false;
+  const { chinese, total } = charCounts(text);
+  return chinese === 0; // 只要有一个中文字就不算混
+}
+
+// description_zh 混语言：包含大量希腊字母
+function isDescZhMixed(text) {
+  if (!text) return false;
+  const { greek, total } = charCounts(text);
+  return greek / total > 0.15; // 15%+ 希腊字母
+}
+
+// description_en 混语言：包含大量希腊字母
+function isDescEnMixed(text) {
+  if (!text) return false;
+  const { greek, total } = charCounts(text);
+  return greek / total > 0.15;
+}
+
+// name_el 混语言：零希腊字母 + 有英文 → 未翻译的英文分类
+function isNameElMixed(text) {
+  if (!text) return false;
+  const { greek, total } = charCounts(text);
+  return greek === 0 && total > 0; // 全是英文/数字
 }
 
 // 调用 DeepSeek 翻译
@@ -90,14 +108,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   console.log(DRY_RUN ? '*** DRY RUN MODE ***' : APPLY ? '*** APPLY MODE ***' : '*** 请指定 --dry-run 或 --apply ***');
-  if (!DRY_RUN && !APPLY) process.exit(0);
+  if (!DRY_RUN && !APPLY) { console.log('请指定 --dry-run 或 --apply'); return; }
 
   // 读取分类
-  const { data: categories } = await supabase.from('menu_categories').select('*').is('deleted_at', null);
+  const { data: categories, error: catErr } = await supabase.from('menu_categories').select('*').is('deleted_at', null);
+  if (catErr || !categories) { console.error('读取分类失败:', catErr?.message || '无数据'); return; }
   console.log(`读取到 ${categories.length} 个分类`);
 
   // 读取菜品
-  const { data: items } = await supabase.from('menu_items').select('*').is('deleted_at', null).order('sort_order');
+  const { data: items, error: itemErr } = await supabase.from('menu_items').select('*').is('deleted_at', null).order('sort_order');
+  if (itemErr || !items) { console.error('读取菜品失败:', itemErr?.message || '无数据'); return; }
   console.log(`读取到 ${items.length} 个菜品`);
 
   const fixes = [];
@@ -105,7 +125,7 @@ async function main() {
   // ---- 检查分类 ----
   for (const cat of categories) {
     // name_el 中混英文 → 翻译
-    if (isMixed(cat.name_el, 'el')) {
+    if (isNameElMixed(cat.name_el)) {
       fixes.push({
         table: 'menu_categories', id: cat.id,
         field: 'name_el', old: cat.name_el,
@@ -126,8 +146,8 @@ async function main() {
 
   // ---- 检查菜品 ----
   for (const item of items) {
-    // name_zh 混语言
-    if (isMixed(item.name_zh, 'zh')) {
+    // name_zh 混语言（纯英文如 "Menu A"）
+    if (isNameZhMixed(item.name_zh)) {
       fixes.push({
         table: 'menu_items', id: item.id,
         field: 'name_zh', old: item.name_zh,
@@ -145,7 +165,7 @@ async function main() {
       });
     }
     // description_en 混希腊语
-    if (isMixed(item.description_en, 'en')) {
+    if (isDescEnMixed(item.description_en)) {
       fixes.push({
         table: 'menu_items', id: item.id,
         field: 'description_en', old: item.description_en,
@@ -153,8 +173,8 @@ async function main() {
         new: null,
       });
     }
-    // description_zh 混希腊语或为空
-    if (isMixed(item.description_zh, 'zh')) {
+    // description_zh 混希腊语
+    if (isDescZhMixed(item.description_zh)) {
       fixes.push({
         table: 'menu_items', id: item.id,
         field: 'description_zh', old: item.description_zh,
@@ -181,7 +201,7 @@ async function main() {
   // ---- APPLY ----
   if (!API_KEY) {
     console.error('\n请设置 DEEPSEEK_API_KEY 环境变量');
-    process.exit(1);
+    return;
   }
 
   let applied = 0;
@@ -224,4 +244,4 @@ async function main() {
   console.log(`\n完成: ${applied}/${fixes.length} 处修复`);
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+main().catch((err) => { console.error(err); });

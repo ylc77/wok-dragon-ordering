@@ -95,6 +95,10 @@ const resources = {
         reentryPending: 'Σύνδεση σε εξέλιξη...',
         reentryRejected: 'Η συνεδρία έληξε. Σαρώστε ξανά το QR.',
         close: 'Κλείσιμο',
+        cartSoldOutPrompt:
+          'Ορισμένα είδη στο καλάθι έχουν εξαντληθεί ή δεν είναι διαθέσιμα. Αφαιρέστε τα πριν υποβάλετε την παραγγελία.',
+        cartSoldOutIncrease: 'Αυτό το είδος δεν είναι πλέον διαθέσιμο.',
+        delisted: 'Μη διαθέσιμο',
       },
       platforms: {
         wolt: 'Wolt',
@@ -196,6 +200,10 @@ const resources = {
         reentryPending: 'Joining in progress...',
         reentryRejected: 'Session expired. Please scan the QR code again.',
         close: 'Close',
+        cartSoldOutPrompt:
+          'Some items in your cart are sold out or unavailable. Please remove them before submitting.',
+        cartSoldOutIncrease: 'This item is no longer available.',
+        delisted: 'Unavailable',
       },
       platforms: {
         wolt: 'Wolt',
@@ -297,6 +305,9 @@ const resources = {
         reentryPending: '加入中…',
         reentryRejected: '本次已过期，请重新扫描二维码。',
         close: '关闭',
+        cartSoldOutPrompt: '购物车中有菜品已售罄或已下架，请先移除后再提交订单。',
+        cartSoldOutIncrease: '该菜品已不可售。',
+        delisted: '已下架',
       },
       platforms: {
         wolt: 'Wolt',
