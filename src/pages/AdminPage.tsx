@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
 import { formatPrice } from '../lib/localized';
 import { adminHardDeleteMenuCategory, adminHardDeleteMenuItem, getRestaurantSettings, uploadCategoryImage, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
@@ -325,6 +325,7 @@ export function AdminPage() {
       {mobileDrawerOpen ? <div className="admin-mobile-overlay" onClick={closeDrawer} /> : null}
       {/* 移动端抽屉 */}
       <aside className={`admin-mobile-drawer${mobileDrawerOpen ? ' open' : ''}`}>
+        <button className="admin-mobile-drawer-close" onClick={closeDrawer} aria-label="关闭"><X size={22} /></button>
         <Link className="admin-brand" to="/" onClick={closeDrawer}><span className="admin-brand-mark">餐</span><span>后台管理</span></Link>
         <nav className="admin-nav-list">
           <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton>
