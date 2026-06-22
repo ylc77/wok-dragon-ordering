@@ -127,13 +127,13 @@ function MobileMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups:
   }, []);
 
   return (
-    <div className="md:hidden h-dvh flex flex-col overflow-hidden menu-mobile-root">
-      <div className="shrink-0">
+    <div className="menu-mobile-root">
+      <div style={{ flexShrink: 0 }}>
         <SearchBar search={search} setSearch={setSearch} count={visibleGroups.reduce((s, g) => s + g.items.length, 0)} lang={lang} />
       </div>
-      <div className="flex-1 min-h-0 flex overflow-hidden">
+      <div className="menu-mobile-body">
         {visibleGroups.length > 1 ? (
-          <aside className="w-[80px] shrink-0 overflow-y-auto mobile-rail">
+          <aside className="mobile-rail">
             {visibleGroups.map((g) => (
               <button key={g.id} className={activeCat === `mcat-${g.id}` ? 'active' : ''} onClick={() => scrollTo(`mcat-${g.id}`)}>
                 {getLocalizedField(lang, { zh: g.name_zh, en: g.name_en, el: g.name_el })}
@@ -141,7 +141,7 @@ function MobileMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups:
             ))}
           </aside>
         ) : null}
-        <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto pb-24 mobile-main">
+        <main ref={mainRef} className="mobile-main">
           {visibleGroups.map((g) => (
             <section className="menu-group" id={`mcat-${g.id}`} key={g.id}>
               <h2>{getLocalizedField(lang, { zh: g.name_zh, en: g.name_en, el: g.name_el })}</h2>
@@ -192,7 +192,7 @@ function DesktopMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups
   }, []);
 
   return (
-    <div className="hidden md:block">
+    <div className="menu-desktop-only">
       <SearchBar search={search} setSearch={setSearch} count={visibleGroups.reduce((s, g) => s + g.items.length, 0)} lang={lang} />
       <div className="menu-layout">
         {visibleGroups.length > 1 ? (
