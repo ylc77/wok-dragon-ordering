@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,8 @@ export function MenuPage() {
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeCat, setActiveCat] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.title = 'Menu';
@@ -30,11 +32,36 @@ export function MenuPage() {
     target?.scrollIntoView({ block: 'start' });
   }, [location.hash, visibleGroups.length]);
 
+  // 滚动联动：监听右侧菜品列表滚动，更新左侧分类高亮
+  useEffect(() => {
+    if (visibleGroups.length === 0) return;
+    const container = listRef.current;
+    if (!container) return;
+    const headers = visibleGroups.map((g) => document.getElementById(`category-${g.id}`)).filter(Boolean) as HTMLElement[];
+    if (headers.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) {
+          setActiveCat(visible[0].target.id);
+        }
+      },
+      { root: container, threshold: 0.3, rootMargin: '-20% 0px -70% 0px' },
+    );
+    headers.forEach((h) => observer.observe(h));
+    return () => observer.disconnect();
+  }, [visibleGroups]);
+
+  const scrollToCategory = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <main className="page-shell">
       <section className="page-heading">
         <div>
-          <span className="page-brand-mark">龙</span>
+          <span className="page-brand-mark">菜</span>
           <div>
             <h1>{t('nav.menu')}</h1>
             <p>{t('common.priceNote')}</p>
@@ -50,27 +77,21 @@ export function MenuPage() {
         {visibleGroups.length > 1 ? (
         <aside className="menu-category-rail">
           {visibleGroups.map((group) => (
-              <a href={`#category-${group.id}`} key={group.id}>
-                {getLocalizedField(lang, {
-                  zh: group.name_zh,
-                  en: group.name_en,
-                  el: group.name_el,
-                })}
-              </a>
-            ))}
+            <button
+              key={group.id}
+              className={activeCat === `category-${group.id}` ? 'active' : ''}
+              onClick={() => scrollToCategory(`category-${group.id}`)}
+            >
+              {getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}
+            </button>
+          ))}
         </aside>
         ) : null}
-        <div className="menu-list-column">
+        <div className="menu-list-column" ref={listRef}>
           {visibleGroups.map((group) =>
             group.items.length ? (
               <section className="menu-group" id={`category-${group.id}`} key={group.id}>
-                <h2>
-                  {getLocalizedField(lang, {
-                    zh: group.name_zh,
-                    en: group.name_en,
-                    el: group.name_el,
-                  })}
-                </h2>
+                <h2>{getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}</h2>
                 <div className="menu-list">
                   {group.items.map((item) => (
                     <MenuCard item={item} lang={lang} key={item.id} />
