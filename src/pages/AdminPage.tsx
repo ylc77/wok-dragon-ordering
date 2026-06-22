@@ -218,6 +218,7 @@ export function AdminPage() {
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
   const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [restaurantName, setRestaurantName] = useState('餐馆');
   const [syncVersion, setSyncVersion] = useState(0);
   const requestSync = useCallback(() => setSyncVersion((c) => c + 1), []);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -264,6 +265,13 @@ export function AdminPage() {
       active = false;
       listener.subscription.unsubscribe();
     };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    getRestaurantSettings().then((s) => {
+      setRestaurantName(s?.name_zh || s?.name_en || s?.name_el || '餐馆');
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -369,7 +377,7 @@ export function AdminPage() {
           {adminToast ? <div className={`admin-toast toast-${adminToast.type}`}>{adminToast.msg}</div> : null}
           {message ? <p className="admin-message">{message}<button type="button" className="print-warning-dismiss" style={{marginLeft:8}} onClick={()=>setMessage(null)}>×</button></p> : null}
           {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} /> : null}
-          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} /> : null}
+          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} /> : null}
           {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
@@ -1673,7 +1681,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
   );
 }
 
-function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled, onSoundEnabledChange }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; requestSync: () => void; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; }) {
+function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled, onSoundEnabledChange, restaurantName }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; requestSync: () => void; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; restaurantName: string; }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -1854,7 +1862,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
     printWindow.document.write('<p style="font-family:sans-serif;padding:20px">正在准备厨房小票...</p>');
     try {
       const isReprint = Boolean(order.kitchen_printed_at);
-      await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, isReprint, new Date().toISOString()));
+      await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, isReprint, new Date().toISOString(), restaurantName));
       printWindow.close();
       await markOrderKitchenPrinted(order.id);
       toast(isReprint ? `订单 #${order.order_number} 已重打厨房小票` : `订单 #${order.order_number} 厨房小票已打印`);
@@ -1867,6 +1875,20 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
 
   function printKitchenTicket(order: Order) {
     setPrintConfirmOrder(order);
+  }
+
+  function previewKitchenTicket(order: Order) {
+    const isReprint = Boolean(order.kitchen_printed_at);
+    const ticketHtml = buildKitchenTicket(order, isReprint, new Date().toISOString(), restaurantName);
+    const previewWindow = window.open('', 'kitchen-ticket-preview', 'width=420,height=720');
+    if (!previewWindow) {
+      toast('浏览器阻止了预览窗口，请允许弹窗');
+      return;
+    }
+    previewWindow.document.open();
+    previewWindow.document.write(ticketHtml);
+    previewWindow.document.close();
+    previewWindow.focus();
   }
 
   function toggleAutoPrint() {
@@ -1921,7 +1943,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
       return;
     }
 
-    await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, false, new Date().toISOString()));
+    await renderAndPrintKitchenTicket(printWindow, buildKitchenTicket(order, false, new Date().toISOString(), restaurantName));
     await markOrderKitchenPrinted(order.id);
     toast(`新订单 #${order.order_number} 已触发自动打印厨房小票`);
     load();
@@ -2166,16 +2188,21 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                       {(s === 'pending' || s === 'preparing') ? (
                         <>
                           {s === 'pending' ? <button className="mini-btn primary" onClick={() => changeStatus(order.id, 'preparing')}>接单</button> : null}
+                          <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
                           <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
                           <button className="mini-btn danger" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
                         </>
                       ) : s === 'paid' ? (
                         <>
                           <span className="ocr-paid-label">✓ 已收款</span>
+                          <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
                           <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
                         </>
                       ) : (
-                        <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
+                        <>
+                          <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
+                          <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
+                        </>
                       )}
                       <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `删除订单 #${order.order_number}`)}><Trash2 size={13} /></button>
                     </div>
@@ -2257,8 +2284,15 @@ function formatUnknownError(value: unknown) {
   return String(value);
 }
 
-function buildKitchenTicket(order: Order, isReprint: boolean, printedAt: string) {
+function buildKitchenTicket(
+  order: Order,
+  isReprint: boolean,
+  printedAt: string,
+  restaurantName?: string,
+  isAdditional?: boolean,
+) {
   const tableNumber = order.restaurant_tables?.table_number ?? '?';
+  const totalPrice = formatPrice(Number(order.total_price));
   const itemRows = (order.order_items ?? [])
     .map((item) => {
       const optsText = item.selected_options && (item.selected_options as any[]).length > 0
@@ -2266,9 +2300,11 @@ function buildKitchenTicket(order: Order, isReprint: boolean, printedAt: string)
         : '';
       return `
         <div class="item">
-          <strong>${escapeTicketText(item.quantity)} × ${escapeTicketText(item.item_name_zh || item.item_name_en || item.item_name_el)}</strong>
-          ${optsText ? `<small>${escapeTicketText(optsText)}</small>` : ''}
-          ${item.note ? `<small>备注：${escapeTicketText(item.note)}</small>` : ''}
+          <div class="item-head">
+            <strong>${escapeTicketText(item.quantity)} × ${escapeTicketText(item.item_name_zh || item.item_name_en || item.item_name_el)}</strong>
+          </div>
+          ${optsText ? `<div class="item-opts">${escapeTicketText(optsText)}</div>` : ''}
+          ${item.note ? `<div class="item-note">备注：${escapeTicketText(item.note)}</div>` : ''}
         </div>`;
     })
     .join('');
@@ -2281,16 +2317,23 @@ function buildKitchenTicket(order: Order, isReprint: boolean, printedAt: string)
         <style>
           @page { size: 80mm auto; margin: 5mm; }
           body { color: #000; font-family: Arial, "Microsoft YaHei", sans-serif; margin: 0; width: 70mm; }
-          h1 { border-bottom: 2px dashed #000; font-size: 24px; margin: 0 0 8px; padding-bottom: 8px; text-align: center; }
+          h1 { border-bottom: 2px dashed #000; font-size: 22px; margin: 0 0 8px; padding-bottom: 8px; text-align: center; }
+          .restaurant { font-size: 14px; font-weight: 700; margin-bottom: 2px; text-align: center; }
           .reprint { border: 3px solid #000; font-size: 20px; font-weight: 900; margin-bottom: 8px; padding: 5px; text-align: center; }
+          .additional { border: 2px solid #000; font-size: 16px; font-weight: 900; margin-bottom: 8px; padding: 4px; text-align: center; }
           .meta { border-bottom: 1px dashed #000; display: grid; gap: 4px; padding-bottom: 8px; }
-          .item { border-bottom: 1px dashed #777; display: grid; font-size: 18px; gap: 4px; padding: 10px 0; }
-          .item small { font-size: 15px; }
+          .item { border-bottom: 1px dashed #777; padding: 10px 0; }
+          .item-head { font-size: 18px; font-weight: 700; }
+          .item-opts { color: #444; font-size: 15px; margin-top: 2px; }
+          .item-note { color: #666; font-size: 14px; margin-top: 1px; }
+          .total { border-top: 2px solid #000; font-size: 20px; font-weight: 900; margin-top: 8px; padding-top: 8px; text-align: right; }
           footer { font-size: 11px; margin-top: 12px; text-align: center; }
         </style>
       </head>
       <body>
         ${isReprint ? '<div class="reprint">重打 / Reprint</div>' : ''}
+        ${isAdditional ? '<div class="additional">加餐 / Additional</div>' : ''}
+        ${restaurantName ? `<div class="restaurant">${escapeTicketText(restaurantName)}</div>` : ''}
         <h1>${escapeTicketText(tableNumber)} 号桌</h1>
         <div class="meta">
           <strong>订单 #${escapeTicketText(order.order_number)}</strong>
@@ -2298,6 +2341,7 @@ function buildKitchenTicket(order: Order, isReprint: boolean, printedAt: string)
           <span>打印：${escapeTicketText(new Date(printedAt).toLocaleString('zh-CN'))}</span>
         </div>
         ${itemRows}
+        <div class="total">合计 ${escapeTicketText(totalPrice)}</div>
         <footer>厨房点菜单 · 非正式税务收据</footer>
       </body>
     </html>`;
