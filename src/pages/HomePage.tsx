@@ -86,7 +86,7 @@ export function HomePage() {
       <div className="section-title-row">
         <div>
           <h2>{t('home.categoriesTitle')}</h2>
-          <p>{t('home.orderHint')}</p>
+          {settings?.enable_qr_ordering !== false ? <p>{t('home.orderHint')}</p> : null}
         </div>
       </div>
       <div className="home-category-grid">
@@ -124,7 +124,7 @@ export function HomePage() {
             <Link className="primary-button" to="/menu"><UtensilsCrossed size={18} />{t('home.menuCta')}</Link>
             {settings?.map_url ? <a className="secondary-button" href={settings.map_url} target="_blank" rel="noreferrer"><MapPin size={18} />{t('common.viewMap')}</a> : null}
           </div>
-          <p className="muted">{t('home.orderHint')}</p>
+          {settings?.enable_qr_ordering !== false ? <p className="muted">{t('home.orderHint')}</p> : null}
           {error ? <p className="error-text">{error}</p> : null}
         </div>
         <div className="hero-media">

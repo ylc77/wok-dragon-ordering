@@ -228,6 +228,8 @@ export function AdminPage() {
   const [paperWidth, setPaperWidth] = useState(() => {
     try { const v = localStorage.getItem('restaurant_ticket_paper_width'); return v === '58' ? '58' : '80'; } catch { return '80'; }
   });
+  const [enablePos, setEnablePos] = useState(true);
+  const [enableQrOrdering, setEnableQrOrdering] = useState(true);
   const [syncVersion, setSyncVersion] = useState(0);
   const requestSync = useCallback(() => setSyncVersion((c) => c + 1), []);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -280,6 +282,8 @@ export function AdminPage() {
     if (!supabase) return;
     getRestaurantSettings().then((s) => {
       setRestaurantName(s?.name_zh || s?.name_en || s?.name_el || '餐馆');
+      setEnablePos(s?.enable_pos !== false);
+      setEnableQrOrdering(s?.enable_qr_ordering !== false);
     }).catch(() => {});
   }, []);
 
@@ -338,7 +342,7 @@ export function AdminPage() {
           <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton>
           <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
           <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
-          <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton>
+          {enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>
           <LogOut size={15} />
@@ -359,7 +363,7 @@ export function AdminPage() {
           <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton>
           <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
           <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
-          <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton>
+          {enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>退出登录</button>
       </aside>
@@ -812,7 +816,21 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
           <TextField label="网页标题" value={settings.meta_title} onChange={(v) => setSettings({ ...settings, meta_title: v })} />
           <TextField label="浏览器图标 URL" value={settings.favicon_url} onChange={(v) => setSettings({ ...settings, favicon_url: v })} />
         </div>
-        <p className="settings-image-tip">主色调留空则使用默认红色；网页标题留空则使用餐馆名称。</p>
+      </div>
+
+      {/* ── 模块开关 ── */}
+      <div className="settings-card">
+        <div className="settings-card-head"><h3>功能模块</h3><p className="settings-card-desc">按需启用或关闭餐厅功能。</p></div>
+        <div className="settings-checkbox-row">
+          <label>
+            <input type="checkbox" checked={settings.enable_pos !== false} onChange={(e) => setSettings({ ...settings, enable_pos: e.target.checked })} />
+            前台点单 POS
+          </label>
+          <label>
+            <input type="checkbox" checked={settings.enable_qr_ordering !== false} onChange={(e) => setSettings({ ...settings, enable_qr_ordering: e.target.checked })} />
+            扫码点餐
+          </label>
+        </div>
       </div>
 
       {/* ── 联系方式 ── */}

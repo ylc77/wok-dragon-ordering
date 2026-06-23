@@ -33,6 +33,8 @@ export type RestaurantSettings = {
   footer_text_zh?: string | null;
   footer_text_en?: string | null;
   footer_text_el?: string | null;
+  enable_pos?: boolean;
+  enable_qr_ordering?: boolean;
   delete_password?: string | null;
 };
 
