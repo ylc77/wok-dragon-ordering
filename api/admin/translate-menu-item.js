@@ -35,11 +35,12 @@ function normalizeItem(item) {
 }
 
 function onlyMissing(existing, translated) {
+  // 希腊文兜底：如果 DeepSeek 没返回希腊文，至少用英文填充（避免空字段）
   return {
     name_en: existing.name_en || translated.name_en || '',
     description_en: existing.description_en || translated.description_en || '',
-    name_el: existing.name_el || translated.name_el || '',
-    description_el: existing.description_el || translated.description_el || '',
+    name_el: existing.name_el || translated.name_el || translated.name_en || '',
+    description_el: existing.description_el || translated.description_el || translated.description_en || '',
   };
 }
 
@@ -112,7 +113,7 @@ export default async function handler(request, response) {
           {
             role: 'system',
             content:
-              'You translate Chinese restaurant menu items. Return strict json only. Produce natural English and natural Greek suitable for a restaurant menu. Do not add explanations.',
+              'You are a restaurant menu translator. Translate each item from Chinese to English AND Greek. You MUST provide name_en, description_en, name_el, description_el for EVERY item — never skip Greek even if the name seems untranslatable (use phonetic transliteration if needed). Return strict json only. Do not add explanations.',
           },
           {
             role: 'user',
