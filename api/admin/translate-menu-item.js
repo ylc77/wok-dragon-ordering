@@ -150,8 +150,8 @@ export default async function handler(request, response) {
     const parsed = JSON.parse(content || '{}');
     const rawTranslations = Array.isArray(parsed.translations) ? parsed.translations : [];
     // 按 _idx 匹配，不再依赖数组顺序
-    const translationByIndex = new Map<number, Record<string, string>>();
-    rawTranslations.forEach((t: any) => {
+    const translationByIndex = new Map();
+    rawTranslations.forEach((t) => {
       const idx = Number(t._idx);
       if (!Number.isNaN(idx)) translationByIndex.set(idx, t);
     });
