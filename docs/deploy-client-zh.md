@@ -195,9 +195,24 @@ DEEPSEEK_API_KEY=sk-xxx（可选，用于菜单自动翻译）
 supabase/patches/2026-06-25-brand-customization.sql
 ```
 
+## 十三、功能模块开关
+
+进入 `/admin` → **餐馆设置** → **功能模块**：
+
+- **前台点单 POS**：关闭后侧边栏 POS tab 消失
+- **扫码点餐**：关闭后首页不再显示扫码入口，/table 链接被拦截
+
+同时关闭两个开关 → 纯菜单展示模式（仅保留菜品/分类/设置）。
+
+## 十四、演示数据
+
+新客户可执行 `supabase/demo-menu.sql` 获得通用演示菜单（6 分类 12 菜品，含三语）。
+
+执行前先确保 `client-init.sql` 已完成。
+
 ## 重要提示
 
 - 新客户正式初始化只执行 `supabase/client-init.sql`
-- `supabase/demo-menu.sql` 仅用于演示
+- `supabase/demo-menu.sql` 用于演示或初始数据
 - 老客户升级不要执行 client-init.sql，应使用 `supabase/patches/` 下的升级补丁
 - 不要在 SQL Editor 手动改表结构而不提交 SQL 文件
