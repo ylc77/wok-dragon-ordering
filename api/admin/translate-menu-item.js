@@ -152,7 +152,8 @@ export default async function handler(request, response) {
     // 按 _idx 匹配，不再依赖数组顺序
     const translationByIndex = new Map<number, Record<string, string>>();
     rawTranslations.forEach((t: any) => {
-      if (typeof t._idx === 'number') translationByIndex.set(t._idx, t);
+      const idx = Number(t._idx);
+      if (!Number.isNaN(idx)) translationByIndex.set(idx, t);
     });
 
     sendJson(response, 200, {
