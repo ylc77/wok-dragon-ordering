@@ -92,11 +92,13 @@ export default async function handler(request, response) {
     }
 
     const body = await readBody(request);
-    const items = Array.isArray(body.items) ? body.items.map(normalizeItem).slice(0, MAX_ITEMS) : [];
-    if (items.length === 0) {
+    const rawItems = Array.isArray(body.items) ? body.items.map(normalizeItem).slice(0, MAX_ITEMS) : [];
+    if (rawItems.length === 0) {
       sendJson(response, 400, { error: 'No menu items were provided.' });
       return;
     }
+    // 给每个 item 加唯一标记，防止 LLM 返回顺序错乱
+    const items = rawItems.map((item, i) => ({ _idx: i, ...item }));
 
     const deepseekResponse = await fetch(DEEPSEEK_URL, {
       method: 'POST',
@@ -113,16 +115,17 @@ export default async function handler(request, response) {
           {
             role: 'system',
             content:
-              'You are a restaurant menu translator. Translate each item from Chinese to English AND Greek. You MUST provide name_en, description_en, name_el, description_el for EVERY item — never skip Greek even if the name seems untranslatable (use phonetic transliteration if needed). Return strict json only. Do not add explanations.',
+              'You are a restaurant menu translator. Translate each item from Chinese to English AND Greek. You MUST provide name_en, description_en, name_el, description_el for EVERY item — never skip Greek even if the name seems untranslatable (use phonetic transliteration if needed). Keep the _idx field unchanged in each translation. Return strict json only. Do not add explanations.',
           },
           {
             role: 'user',
             content: JSON.stringify({
               instruction:
-                'Return json with a translations array. Each item must include name_en, description_en, name_el, description_el. Preserve existing non-empty fields and only fill missing fields.',
+                'Return json with a translations array. Each translation must include _idx, name_en, description_en, name_el, description_el. Preserve existing non-empty fields and only fill missing fields. The _idx field must match the input item.',
               example: {
                 translations: [
                   {
+                    _idx: 0,
                     name_en: 'Sweet and Sour Chicken',
                     description_en: 'Crispy chicken with sweet and sour sauce.',
                     name_el: 'Γλυκόξινο Κοτόπουλο',
@@ -145,10 +148,15 @@ export default async function handler(request, response) {
     const completion = await deepseekResponse.json();
     const content = completion.choices?.[0]?.message?.content;
     const parsed = JSON.parse(content || '{}');
-    const translations = Array.isArray(parsed.translations) ? parsed.translations : [];
+    const rawTranslations = Array.isArray(parsed.translations) ? parsed.translations : [];
+    // 按 _idx 匹配，不再依赖数组顺序
+    const translationByIndex = new Map<number, Record<string, string>>();
+    rawTranslations.forEach((t: any) => {
+      if (typeof t._idx === 'number') translationByIndex.set(t._idx, t);
+    });
 
     sendJson(response, 200, {
-      translations: items.map((item, index) => onlyMissing(item, translations[index] ?? {})),
+      translations: items.map((item) => onlyMissing(item, translationByIndex.get(item._idx) ?? {})),
     });
   } catch (error) {
     sendJson(response, 500, { error: error instanceof Error ? error.message : String(error) });
