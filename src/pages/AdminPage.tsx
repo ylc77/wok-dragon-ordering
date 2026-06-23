@@ -285,7 +285,7 @@ export function AdminPage() {
       setEnablePos(s?.enable_pos !== false);
       setEnableQrOrdering(s?.enable_qr_ordering !== false);
     }).catch(() => {});
-  }, []);
+  }, [syncVersion]);
 
   useEffect(() => {
     if (!loggedIn) return;
@@ -394,7 +394,7 @@ export function AdminPage() {
           {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} /> : null}
           {tab === 'orders' ? <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} /> : null}
           {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : null}
-          {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} /> : null}
+          {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} requestSync={requestSync} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
@@ -705,7 +705,7 @@ function DailyStats({
   );
 }
 
-function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; }) {
+function SettingsEditor({ onMessage, toast, requestSync }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; }) {
   const [settings, setSettings] = useState<Partial<RestaurantSettings>>(emptySettings);
 
   useEffect(() => {
@@ -729,7 +729,7 @@ function SettingsEditor({ onMessage, toast }: { onMessage: (value: string | null
     const { error } = settings.id
       ? await supabase.from('restaurant_settings').update(payload).eq('id', settings.id)
       : await supabase.from('restaurant_settings').insert(payload);
-    if (error) onMessage(error.message); else toast('餐馆信息已保存');
+    if (error) onMessage(error.message); else { toast('餐馆信息已保存'); requestSync(); }
     if (!error) load();
   }
 
