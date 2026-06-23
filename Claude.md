@@ -1196,3 +1196,32 @@ Do not prioritize visual redesign over business correctness.
 - `.env.template` — Vercel 环境变量模板
 - `demo-menu.sql` — 通用演示数据（含默认餐馆设置）
 - `docs/deploy-client-zh.md` — 10 分钟快启指南
+
+## 2026-06-25 最后修复
+
+### 翻译功能修复
+
+- DeepSeek prompt 强化：必须返回希腊文，不可跳过
+- `_idx` 标记防止批量翻译时菜品顺序错乱
+- 希腊文为空时用英文兜底
+- 纯 JS 语法修复（api/ 目录不支持 TS 泛型）
+
+### POS 体验优化
+
+- 购物车 sticky 定位（不随菜单滚动丢失）
+- 清空购物车前 confirm 确认
+- 总价格 24px 醒目
+- 堂食不强制选桌号
+
+### 声音提醒完善
+
+- 声音开关 localStorage 持久化 (`restaurant:order-sound-enabled`)
+- 测试声音按钮 + 浏览器音频解锁
+- 新订单标题闪烁 "🔔 新订单 - 餐馆名"
+- AudioContext resume 处理
+
+### 客户文档
+
+- `docs/client-pricing-zh.md` — 四版本报价表
+- `docs/demo-script-zh.md` — 10 步演示流程
+- `docs/sales-pitch-zh.md` — 销售话术 + 广告文案 + Q&A
