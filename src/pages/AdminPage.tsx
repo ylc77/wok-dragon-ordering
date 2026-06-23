@@ -3683,9 +3683,6 @@ function POSTab({ toast, requestSync, soundEnabled }: { toast: (msg: string, typ
 
   async function submitPOS() {
     if (cart.length === 0) return;
-    if (orderType === 'dine_in' && !selectedTableId) {
-      toast('堂食请选择桌号', 'error'); return;
-    }
     try {
       setSubmitting(true);
       const items = cart.map((e) => ({ menu_item_id: e.menuItemId, quantity: e.quantity, selected_options: e.selectedOptions, note: '' }));
