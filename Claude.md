@@ -1168,5 +1168,31 @@ Do not prioritize visual redesign over business correctness.
 | `2026-06-24-pos-submit-order.sql` | pos_submit_order RPC | ✅ 已执行 |
 | `2026-06-24-pos-order-type.sql` | order_type + nullable table/session | ✅ 已执行 |
 | `2026-06-24-admin-order-null-table.sql` | admin_order_page LEFT JOIN | ✅ 已执行 |
-| `2026-06-24-admin-confirm-payment.sql` | 确认收款 RPC + update_order_status | ⚠️ 需执行 |
-| `2026-06-24-payment-status-stats.sql` | 统计/筛选 payment_status | ⚠️ 需执行 |
+| `2026-06-24-admin-confirm-payment.sql` | 确认收款 RPC + update_order_status | ✅ 已执行 |
+| `2026-06-24-payment-status-stats.sql` | 统计/筛选 payment_status | ✅ 已执行 |
+| `2026-06-25-brand-customization.sql` | 品牌外观：颜色/favicon/标题 | ✅ 已执行 |
+| `2026-06-25-module-toggles.sql` | 模块开关：POS/扫码点餐 | ✅ 已执行 |
+
+## 2026-06-25 商业化模板化
+
+### 品牌模板化 (P0)
+
+- `restaurant_settings.brand_color` — 主色调（覆盖 CSS --accent）
+- `restaurant_settings.meta_title` — 浏览器标题
+- `restaurant_settings.favicon_url` — 浏览器图标
+- App.tsx 自动应用品牌设置
+- localStorage 前缀 `wok-dragon:` → `restaurant:`（含旧 key 迁移）
+
+### 模块开关系统 (P1)
+
+- `restaurant_settings.enable_pos` — 前台点单 POS 开关
+- `restaurant_settings.enable_qr_ordering` — 扫码点餐开关
+- POS tab/桌台管理随开关隐藏
+- /table/:qrToken 在 QR 关闭时显示拦截提示
+- 双关时进入纯菜单展示模式（仅菜品/分类/设置）
+
+### 新客户部署 (P2)
+
+- `.env.template` — Vercel 环境变量模板
+- `demo-menu.sql` — 通用演示数据（含默认餐馆设置）
+- `docs/deploy-client-zh.md` — 10 分钟快启指南
