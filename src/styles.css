@@ -4737,7 +4737,7 @@ body {
 .pos-add-btn { align-items: center; background: var(--accent); border: 0; border-radius: 6px; color: #fff; cursor: pointer; display: inline-flex; flex-shrink: 0; font-size: 13px; font-weight: 700; gap: 4px; padding: 6px 16px; }
 .pos-add-btn:disabled { background: #d1d5db; cursor: default; }
 
-.pos-cart { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; padding: 16px; }
+.pos-cart { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; padding: 16px; position: sticky; top: 16px; max-height: calc(100vh - 140px); }
 .pos-cart h2 { font-size: 16px; margin: 0 0 8px; }
 .pos-meta { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .pos-type-row { display: flex; gap: 0; }
@@ -4757,7 +4757,7 @@ body {
 .pcl-del { color: #dc2626 !important; }
 .pos-cart-total { align-items: center; border-top: 2px solid #e5e7eb; display: flex; justify-content: space-between; margin-top: 8px; padding-top: 10px; }
 .pos-cart-total span { color: #6b7280; font-size: 14px; }
-.pos-cart-total strong { font-size: 20px; }
+.pos-cart-total strong { font-size: 24px; }
 .pos-payment-row { display: flex; gap: 6px; margin-top: 6px; }
 .pos-pay-opt { align-items: center; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 6px; cursor: pointer; display: flex; flex: 1; font-size: 13px; font-weight: 600; gap: 4px; justify-content: center; padding: 8px 6px; }
 .pos-pay-opt input { accent-color: var(--accent); }
