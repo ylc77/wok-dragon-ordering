@@ -64,7 +64,14 @@ export function TableOrderPage() {
   const [requestingReentry, setRequestingReentry] = useState(false);
   const cartRefreshSequence = useRef(0);
   const [cartSound, setCartSound] = useState(() => {
-    try { return localStorage.getItem('restaurant:cart-sound') !== '0'; } catch { return true; }
+    try {
+      const v = localStorage.getItem('restaurant:cart-sound');
+      if (v !== null) return v !== '0';
+      // 迁移旧 key
+      const old = localStorage.getItem('wok-dragon:cart-sound');
+      if (old !== null) { localStorage.setItem('restaurant:cart-sound', old); localStorage.removeItem('wok-dragon:cart-sound'); return old !== '0'; }
+      return true;
+    } catch { return true; }
   });
   const toggleCartSound = () => {
     setCartSound((prev) => {
@@ -1114,11 +1121,18 @@ function tableSessionStorageKey(qrToken: string) {
 
 function readSavedTableSession(qrToken: string): SavedTableSession | null {
   try {
-    const raw = window.localStorage.getItem(tableSessionStorageKey(qrToken));
+    const key = tableSessionStorageKey(qrToken);
+    let raw = window.localStorage.getItem(key);
+    // 迁移旧 key
+    if (!raw) {
+      const oldKey = `wok-dragon:table-session:${qrToken}`;
+      const oldRaw = window.localStorage.getItem(oldKey);
+      if (oldRaw) { window.localStorage.setItem(key, oldRaw); window.localStorage.removeItem(oldKey); raw = oldRaw; }
+    }
     if (!raw) return null;
     const value = JSON.parse(raw) as Partial<SavedTableSession>;
     if (typeof value.session_id !== 'string' || typeof value.table_id !== 'string' || typeof value.table_number !== 'number') {
-      window.localStorage.removeItem(tableSessionStorageKey(qrToken));
+      window.localStorage.removeItem(key);
       return null;
     }
     return value as SavedTableSession;
