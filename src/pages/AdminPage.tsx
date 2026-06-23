@@ -223,7 +223,9 @@ export function AdminPage() {
 
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
   const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return localStorage.getItem('restaurant:order-sound-enabled') !== '0'; } catch { return true; }
+  });
   const [restaurantName, setRestaurantName] = useState('餐馆');
   const [paperWidth, setPaperWidth] = useState(() => {
     try { const v = localStorage.getItem('restaurant_ticket_paper_width'); return v === '58' ? '58' : '80'; } catch { return '80'; }
@@ -1846,7 +1848,13 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
           insertedPendingOrders.forEach((order) => next.add(order.id));
           return next;
         });
-        if (soundEnabledRef.current) playOrderNotification();
+        if (soundEnabledRef.current) {
+          playOrderNotification();
+          // 闪烁标题提醒
+          const prevTitle = document.title;
+          document.title = '🔔 新订单 - ' + (restaurantName || '订单管理');
+          setTimeout(() => { document.title = prevTitle; }, 3000);
+        }
       }
       if (autoPrintEnabledRef.current) {
         // 新订单 + 加餐（已有订单中新增 order_items 且打印标记已重置）
@@ -2205,9 +2213,14 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
             自动打印
           </label>
           <label className="tool-row">
-            <input checked={soundEnabled} type="checkbox" onChange={() => { const n = !soundEnabled; onSoundEnabledChange(n); if (n) playOrderNotification(); toast(n ? '声音提醒已开启' : '声音提醒已关闭'); }} />
+            <input checked={soundEnabled} type="checkbox" onChange={() => { const n = !soundEnabled; onSoundEnabledChange(n); try { localStorage.setItem('restaurant:order-sound-enabled', n ? '1' : '0'); } catch { /* noop */ } if (n) { unlockAudio(); playOrderNotification(); } toast(n ? '声音提醒已开启' : '声音提醒已关闭'); }} />
             {soundEnabled ? '🔔 有声' : '🔕 静音'}
           </label>
+          <button type="button" className="tool-row" style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: '4px 10px' }}
+            onClick={() => { unlockAudio(); playOrderNotification(); }}>
+            🔈 测试声音
+          </button>
+          {!isAudioUnlocked() ? <small style={{ color: '#f59e0b', fontSize: 11 }}>浏览器需点击页面后启用声音</small> : null}
           <label className="tool-row">
             纸宽
             <select value={paperWidth} onChange={(e) => { const v = e.target.value; setPaperWidth(v); try { localStorage.setItem('restaurant_ticket_paper_width', v); } catch { /* noop */ } }}>
@@ -2502,7 +2515,7 @@ function dateToKey(value: string) {
   return `${year}-${month}-${day}`;
 }
 
-import { playOrderNotification } from '../lib/audio';
+import { isAudioUnlocked, playOrderNotification, unlockAudio } from '../lib/audio';
 
 function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number }) {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
