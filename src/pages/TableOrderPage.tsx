@@ -170,6 +170,13 @@ export function TableOrderPage() {
         }
 
         await requireAnonymousSession();
+        // 设备锁：旧 session 关闭后，该设备不能再加入新 session
+        try {
+          if (localStorage.getItem(`restaurant:ended:${qrToken}`) === '1') {
+            if (!cancelled) { setSessionEnded(true); setLoading(false); }
+            return;
+          }
+        } catch { /* noop */ }
         const savedSession = readSavedTableSession(qrToken);
         let restored: TableSessionState | null = null;
         let sessionId = savedSession?.session_id ?? null;
@@ -180,6 +187,8 @@ export function TableOrderPage() {
 
         if (restored?.session_status === 'closed') {
           clearSavedTableSession(qrToken);
+          // 设备锁：旧 session 关闭后不能再自动加入新 session
+          try { localStorage.setItem(`restaurant:ended:${qrToken}`, '1'); } catch { /* noop */ }
           sessionId = null;
           // 保留 restored 对象以便 sessionEnded 状态正确显示结束页
         }
@@ -591,7 +600,7 @@ export function TableOrderPage() {
     );
   }
 
-  if (sessionEnded && sessionInfo) {
+  if (sessionEnded) {
     return (
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card">
@@ -602,9 +611,6 @@ export function TableOrderPage() {
           <ReceiptText size={34} />
           <h1>{t('order.sessionEndedTitle')}</h1>
           <p>{t('order.sessionEnded')}</p>
-          <button className="primary-button stretch" type="button" onClick={() => { clearSavedTableSession(qrToken); window.location.reload(); }}>
-            {t('order.startOrdering')}
-          </button>
           <LanguageSwitch />
         </section>
       </main>
