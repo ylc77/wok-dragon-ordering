@@ -170,11 +170,16 @@ export function TableOrderPage() {
         }
 
         await requireAnonymousSession();
-        // 设备锁：旧 session 关闭后，该设备不能再加入新 session
+        // 设备锁：旧 session 关闭后 6 小时内不能重新加入
         try {
-          if (localStorage.getItem(`restaurant:ended:${qrToken}`) === '1') {
-            if (!cancelled) { setSessionEnded(true); setLoading(false); }
-            return;
+          const raw = localStorage.getItem(`restaurant:ended:${qrToken}`);
+          if (raw) {
+            const lock = JSON.parse(raw);
+            if (Date.now() - (lock.endedAt || 0) < 6 * 60 * 60 * 1000) {
+              if (!cancelled) { setSessionEnded(true); setLoading(false); }
+              return;
+            }
+            localStorage.removeItem(`restaurant:ended:${qrToken}`);
           }
         } catch { /* noop */ }
         const savedSession = readSavedTableSession(qrToken);
@@ -187,8 +192,8 @@ export function TableOrderPage() {
 
         if (restored?.session_status === 'closed') {
           clearSavedTableSession(qrToken);
-          // 设备锁：旧 session 关闭后不能再自动加入新 session
-          try { localStorage.setItem(`restaurant:ended:${qrToken}`, '1'); } catch { /* noop */ }
+          // 设备锁：记录关闭时间，6 小时后自动过期
+          try { localStorage.setItem(`restaurant:ended:${qrToken}`, JSON.stringify({ sessionId, endedAt: Date.now() })); } catch { /* noop */ }
           sessionId = null;
           // 保留 restored 对象以便 sessionEnded 状态正确显示结束页
         }
