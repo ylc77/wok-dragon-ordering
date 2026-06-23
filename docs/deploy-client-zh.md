@@ -1,5 +1,7 @@
 # 新客户部署指南
 
+> ⚡ **10 分钟快启**：创建 Supabase → 执行 SQL → 部署 Vercel → 填品牌信息 → 上线
+
 ## 一、新建 Supabase 项目
 
 1. 打开 https://supabase.com，登录你的账号
@@ -86,8 +88,8 @@ set delete_password = extensions.crypt('你的密码', extensions.gen_salt('bf')
 
 1. 打开 https://vercel.com
 2. 点击 **Add New** → **Project**
-3. 导入 GitHub 仓库 `ylc77/wok-dragon-ordering`
-4. 设置 **Environment Variables**：
+3. 导入 GitHub 仓库（Fork 或直接导入）
+4. 参考 `.env.template` 设置 **Environment Variables**：
 
 ```
 VITE_SUPABASE_URL=https://你的项目ID.supabase.co
