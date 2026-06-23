@@ -59,6 +59,7 @@ export function TableOrderPage() {
   const [billOrders, setBillOrders] = useState<Order[]>([]);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [entryState, setEntryState] = useState<TableEntryState | null>(null);
+  const [qrOrderingDisabled, setQrOrderingDisabled] = useState(false);
   const [enteringSession, setEnteringSession] = useState(false);
   const [reentryRequest, setReentryRequest] = useState<TableReentryRequest | null>(null);
   const [requestingReentry, setRequestingReentry] = useState(false);
@@ -144,6 +145,11 @@ export function TableOrderPage() {
       try {
         setLoading(true);
         setMessage(null);
+        // 检查扫码点餐是否关闭
+        try {
+          const st = await getRestaurantSettings();
+          if (st?.enable_qr_ordering === false) { setQrOrderingDisabled(true); setLoading(false); return; }
+        } catch { /* 加载失败继续 */ }
         const menuPromise = getPublicMenu();
         const settingsPromise = getRestaurantSettings();
         void settingsPromise
@@ -541,6 +547,20 @@ export function TableOrderPage() {
     } finally {
       setRequestingReentry(false);
     }
+  }
+
+  if (qrOrderingDisabled) {
+    return (
+      <main className="order-shell session-ended-shell">
+        <section className="session-ended-card table-entry-card">
+          <div className="session-brand">
+            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
+            <strong>{restaurantName}</strong>
+          </div>
+          <p style={{ textAlign: 'center', margin: '16px 0' }}>当前餐厅暂未开启扫码点餐，请联系店员。</p>
+        </section>
+      </main>
+    );
   }
 
   if (!sessionInfo && entryState) {
