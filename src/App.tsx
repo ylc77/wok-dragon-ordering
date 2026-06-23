@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { Menu, Settings, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { HomePage } from './pages/HomePage';
 import { MenuPage } from './pages/MenuPage';
@@ -91,9 +91,6 @@ function PublicShell() {
           </nav>
           <div className="site-header-actions">
           <LanguageSwitch />
-          <Link className="icon-button" to="/admin" title="Admin">
-            <Settings size={18} />
-          </Link>
           </div>
         </div>
       </header>

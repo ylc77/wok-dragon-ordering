@@ -35,7 +35,6 @@ export type RestaurantSettings = {
   footer_text_el?: string | null;
   enable_pos?: boolean;
   enable_qr_ordering?: boolean;
-  delete_password?: string | null;
 };
 
 export type MenuCategory = {
