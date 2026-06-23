@@ -339,7 +339,7 @@ export function AdminPage() {
           <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton>
           <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品</AdminNavButton>
           <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>分类</AdminNavButton>
-          <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton>
+          {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton> : null}
           <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
           <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
           {enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
@@ -360,7 +360,7 @@ export function AdminPage() {
           <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton>
           <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品</AdminNavButton>
           <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>分类</AdminNavButton>
-          <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton>
+          {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton> : null}
           <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
           <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
           {enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
@@ -391,9 +391,9 @@ export function AdminPage() {
         <section className="admin-content">
           {adminToast ? <div className={`admin-toast toast-${adminToast.type}`}>{adminToast.msg}</div> : null}
           {message ? <p className="admin-message">{message}<button type="button" className="print-warning-dismiss" style={{marginLeft:8}} onClick={()=>setMessage(null)}>×</button></p> : null}
-          {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} /> : null}
+          {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} enableQrOrdering={enableQrOrdering} /> : null}
           {tab === 'orders' ? <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} /> : null}
-          {tab === 'tables' ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : null}
+          {tab === 'tables' ? (enableQrOrdering ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : <AdminSection title="桌台管理"><p className="admin-message-muted">当前未启用扫码点餐功能，桌台管理已关闭。</p></AdminSection>) : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} requestSync={requestSync} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
@@ -456,13 +456,14 @@ function AdminLogin({ onMessage, message }: { onMessage: (value: string | null) 
 }
 
 function Dashboard({
-  onMessage, toast, onOpenOrders, syncVersion, setTab,
+  onMessage, toast, onOpenOrders, syncVersion, setTab, enableQrOrdering,
 }: {
   onMessage: (value: string | null) => void;
   toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
   onOpenOrders: () => void;
   syncVersion: number;
   setTab: (tab: AdminTab) => void;
+  enableQrOrdering: boolean;
 }) {
   const [summary, setSummary] = useState<AdminDashboardSummary>({
     today_order_count: 0,
@@ -546,7 +547,7 @@ function Dashboard({
       <div className="dash-quick-actions">
         <button className="quick-action-btn" onClick={() => setTab('orders')}><ClipboardList size={16} />查看订单</button>
         <button className="quick-action-btn" onClick={() => setTab('items')}><UtensilsCrossed size={16} />管理菜品</button>
-        <button className="quick-action-btn" onClick={() => setTab('tables')}><QrCode size={16} />管理桌台</button>
+        {enableQrOrdering ? <button className="quick-action-btn" onClick={() => setTab('tables')}><QrCode size={16} />管理桌台</button> : null}
         <button className="quick-action-btn" onClick={() => setTab('settings')}><Building2 size={16} />餐馆设置</button>
       </div>
 
