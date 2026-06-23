@@ -234,6 +234,14 @@ export function AdminPage() {
   const requestSync = useCallback(() => setSyncVersion((c) => c + 1), []);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  // 纯菜单模式：无 POS 且无扫码点餐 → 默认进菜品管理
+  const menuOnlyMode = !enablePos && !enableQrOrdering;
+  useEffect(() => {
+    if (menuOnlyMode && (tab === 'dashboard' || tab === 'orders' || tab === 'tables' || tab === 'pos')) {
+      setTab('items');
+    }
+  }, [menuOnlyMode, tab]);
+
   const closeDrawer = () => setMobileDrawerOpen(false);
   const onTabChange = (t: AdminTab) => { setTab(t); closeDrawer(); };
 
@@ -335,8 +343,8 @@ export function AdminPage() {
           <span>后台管理</span>
         </Link>
         <nav className="admin-nav-list">
-          <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton>
-          <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton>
+          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton> : null}
+          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton> : null}
           <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品</AdminNavButton>
           <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>分类</AdminNavButton>
           {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton> : null}
@@ -356,8 +364,8 @@ export function AdminPage() {
         <button className="admin-mobile-drawer-close" onClick={closeDrawer} aria-label="关闭"><X size={22} /></button>
         <Link className="admin-brand" to="/" onClick={closeDrawer}><span className="admin-brand-mark">餐</span><span>后台管理</span></Link>
         <nav className="admin-nav-list">
-          <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton>
-          <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton>
+          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton> : null}
+          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton> : null}
           <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品</AdminNavButton>
           <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>分类</AdminNavButton>
           {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton> : null}
@@ -391,8 +399,8 @@ export function AdminPage() {
         <section className="admin-content">
           {adminToast ? <div className={`admin-toast toast-${adminToast.type}`}>{adminToast.msg}</div> : null}
           {message ? <p className="admin-message">{message}<button type="button" className="print-warning-dismiss" style={{marginLeft:8}} onClick={()=>setMessage(null)}>×</button></p> : null}
-          {tab === 'dashboard' ? <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} enableQrOrdering={enableQrOrdering} /> : null}
-          {tab === 'orders' ? <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} /> : null}
+          {tab === 'dashboard' ? (menuOnlyMode ? <AdminSection title="仪表盘"><p className="admin-message-muted">当前为纯菜单展示模式，暂未启用点餐功能。</p></AdminSection> : <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} enableQrOrdering={enableQrOrdering} />) : null}
+          {tab === 'orders' ? (menuOnlyMode ? <AdminSection title="订单管理"><p className="admin-message-muted">当前为纯菜单展示模式，暂未启用点餐功能。</p></AdminSection> : <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} />) : null}
           {tab === 'tables' ? (enableQrOrdering ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : <AdminSection title="桌台管理"><p className="admin-message-muted">当前未启用扫码点餐功能，桌台管理已关闭。</p></AdminSection>) : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} requestSync={requestSync} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
