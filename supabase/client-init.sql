@@ -3816,3 +3816,15 @@ create trigger trg_protect_paid_order
   before update on public.orders
   for each row
   execute function private.protect_paid_order();
+-- 品牌自定义：颜色、favicon、标题
+alter table public.restaurant_settings
+  add column if not exists brand_color text,
+  add column if not exists favicon_url text,
+  add column if not exists meta_title text,
+  add column if not exists footer_text_zh text,
+  add column if not exists footer_text_en text,
+  add column if not exists footer_text_el text;
+-- 模块开关：控制 POS / 外卖 / 扫码点餐的启用
+alter table public.restaurant_settings
+  add column if not exists enable_pos boolean not null default true,
+  add column if not exists enable_qr_ordering boolean not null default true;

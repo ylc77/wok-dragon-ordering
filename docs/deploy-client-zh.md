@@ -222,7 +222,9 @@ supabase/patches/2026-06-25-brand-customization.sql
 
 ## 重要提示
 
-- 新客户正式初始化只执行 `supabase/client-init.sql`
-- `supabase/demo-menu.sql` 用于演示或初始数据
-- 老客户升级不要执行 client-init.sql，应使用 `supabase/patches/` 下的升级补丁
-- 不要在 SQL Editor 手动改表结构而不提交 SQL 文件
+- **新客户部署：** 只执行 `supabase/client-init.sql`（无需执行 patches 目录旧文件）
+- **老客户升级：** 不要执行 client-init.sql（会覆盖数据），参考 `supabase/patches-archive/` 按日期补丁升级
+- **演示数据：** `supabase/demo-menu.sql` 可选执行
+- **SQL Editor 操作：** 复制 SQL 文件内容粘贴执行，不是输入文件路径
+- **不要** 只在 Supabase SQL Editor 手动改表结构而不提交 SQL 文件
+- `supabase/patches/README.md` 有详细说明
