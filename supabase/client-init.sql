@@ -3630,7 +3630,11 @@ begin
       and (p_date_from is null or o.created_at >= p_date_from)
       and (p_date_to is null or o.created_at < p_date_to)
       and (p_table_number is null or (t.table_number = p_table_number))
-      and (p_status is null or o.status = p_status)
+      and (
+        p_status is null
+        or (p_status = 'paid' and o.payment_status = 'paid')
+        or (p_status <> 'paid' and o.status = p_status and o.payment_status <> 'paid')
+      )
   ), ranked_sessions as (
     select coalesce(fo.session_id::text, fo.id::text) as session_key,
            max(fo.created_at) as newest_at
@@ -3696,12 +3700,12 @@ begin
 
   select jsonb_build_object(
     'total_orders', count(*),
-    'pending', count(*) filter (where o.status = 'pending'),
-    'preparing', count(*) filter (where o.status = 'preparing'),
-    'served', count(*) filter (where o.status = 'served'),
-    'paid', count(*) filter (where o.status = 'paid'),
+    'pending', count(*) filter (where o.status = 'pending' and o.payment_status <> 'paid'),
+    'preparing', count(*) filter (where o.status = 'preparing' and o.payment_status <> 'paid'),
+    'served', count(*) filter (where o.status = 'served' and o.payment_status <> 'paid'),
+    'paid', count(*) filter (where o.payment_status = 'paid'),
     'cancelled', count(*) filter (where o.status = 'cancelled'),
-    'paid_total', coalesce(sum(o.total_price) filter (where o.status = 'paid'), 0)
+    'paid_total', coalesce(sum(o.total_price) filter (where o.payment_status = 'paid'), 0)
   ) into v_result
   from orders o
   left join restaurant_tables t on t.id = o.table_id

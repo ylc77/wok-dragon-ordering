@@ -1451,6 +1451,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           categoryRows.push(category);
         }
 
+        const existing = findMatchingItem(itemRows, row, category.id);
         const payload = {
           category_id: category.id,
           name_zh: row.name_zh,
@@ -1460,11 +1461,10 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           description_en: row.description_en || null,
           description_el: row.description_el || null,
           price,
-          image_url: row.image_url || null,
+          image_url: row.image_url || existing?.image_url || null,
           is_available: parseBoolean(row.is_available),
           sort_order: Number(row.sort_order || 0),
         };
-        const existing = findMatchingItem(itemRows, row, category.id);
         const { data, error } = existing
           ? await supabase.from('menu_items').update(payload).eq('id', existing.id).select('*').single()
           : await supabase.from('menu_items').insert(payload).select('*').single();
