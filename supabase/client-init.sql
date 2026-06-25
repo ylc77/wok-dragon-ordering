@@ -725,7 +725,9 @@ begin
   into v_price
   from menu_items
   where id = p_menu_item_id
-    and is_available = true;
+    and is_available = true
+    and coalesce(is_sold_out, false) = false
+    and deleted_at is null;
 
   if v_price is null then
     raise exception 'menu item is unavailable';
@@ -2740,7 +2742,9 @@ begin
   into v_price
   from menu_items
   where id = p_menu_item_id
-    and is_available = true;
+    and is_available = true
+    and coalesce(is_sold_out, false) = false
+    and deleted_at is null;
 
   if v_price is null then
     raise exception 'menu item is unavailable';
@@ -2837,6 +2841,20 @@ begin
 
   if v_total <= 0 then
     raise exception 'cart is empty';
+  end if;
+
+  if exists (
+    select 1
+    from cart_items ci
+    join menu_items mi on mi.id = ci.menu_item_id
+    where ci.session_id = p_session_id
+      and (
+        mi.deleted_at is not null
+        or mi.is_available = false
+        or coalesce(mi.is_sold_out, false) = true
+      )
+  ) then
+    raise exception 'cart contains unavailable menu items';
   end if;
 
   -- 检查该 session 是否已有 pending 订单，有则合并
