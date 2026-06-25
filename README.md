@@ -41,10 +41,12 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 见 [docs/deploy-client-zh.md](docs/deploy-client-zh.md)。
 
 简要流程：
-1. 新建 Supabase 项目 → 执行 `supabase/client-init.sql`
+1. 新建 Supabase 项目 → 只执行 `supabase/client-init.sql`
 2. 创建管理员账号
 3. 部署 Vercel
 4. 后台录入餐馆信息 + 菜单 + 桌台
+
+`supabase/client-init.sql` 是新客户初始化的唯一权威文件，已包含表结构、RLS、RPC、Storage bucket/policy 和默认数据。`supabase/schema.sql` 仅为 legacy 快照，不要用于新客户部署。
 
 ## 项目结构
 
@@ -53,7 +55,7 @@ src/pages/       # 前台: HomePage, MenuPage, TableOrderPage / 后台: AdminPag
 src/lib/         # API, 类型, 多语言, 图片压缩, 数据导出
 src/i18n.ts      # 三语资源 (el / en / zh)
 api/             # Vercel Serverless Functions
-supabase/        # client-init.sql, demo-menu.sql, schema.sql, patches/
+supabase/        # client-init.sql（新客户唯一初始化）, demo-menu.sql, schema.sql（legacy 快照）, patches-archive/
 docs/            # 部署指南, 操作指南, 维护说明
 ```
 

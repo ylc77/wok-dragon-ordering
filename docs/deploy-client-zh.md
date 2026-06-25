@@ -18,6 +18,8 @@
 3. 点击 **Run**，等待执行完成
 4. 确认没有报错
 
+> `supabase/client-init.sql` 是新客户初始化的唯一权威文件，已经包含完整表结构、RLS、RPC、Storage bucket/policy 和默认数据。不要执行 `supabase/schema.sql`，它只是 legacy 快照；也不要为新客户逐个执行 `supabase/patches-archive/`。
+
 > 如果报错 `publication supabase_realtime drop table restaurant_settings` 之类的，忽略即可——新项目还没有这个表在 Realtime 中。
 
 ## 三、可选：导入演示菜单
@@ -78,8 +80,9 @@ insert into public.profiles (id, role, display_name) values ('USER_UUID', 'admin
 ### 5.3 设置删除密码
 
 ```sql
-update public.restaurant_settings
-set delete_password = extensions.crypt('你的密码', extensions.gen_salt('bf'));
+insert into private.admin_settings (key, value)
+values ('delete_password', extensions.crypt('你的密码', extensions.gen_salt('bf')))
+on conflict (key) do update set value = excluded.value;
 ```
 
 ## 六、部署前端到 Vercel
@@ -222,7 +225,7 @@ supabase/patches/2026-06-25-brand-customization.sql
 
 ## 重要提示
 
-- **新客户部署：** 只执行 `supabase/client-init.sql`（无需执行 patches 目录旧文件）
+- **新客户部署：** 只执行 `supabase/client-init.sql`（不要执行 `schema.sql`，无需执行 patches 目录旧文件）
 - **老客户升级：** 不要执行 client-init.sql（会覆盖数据），参考 `supabase/patches-archive/` 按日期补丁升级
 - **演示数据：** `supabase/demo-menu.sql` 可选执行
 - **SQL Editor 操作：** 复制 SQL 文件内容粘贴执行，不是输入文件路径

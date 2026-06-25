@@ -26,7 +26,7 @@
 │       └── translate-menu-item.js # DeepSeek 翻译 API
 ├── supabase/
 │   ├── client-init.sql           # 新客户一键初始化
-│   ├── schema.sql                # 完整 schema（开发用）
+│   ├── schema.sql                # legacy schema 快照（不要用于新客户部署）
 │   ├── demo-menu.sql             # 演示菜单数据
 │   ├── seed.sql                  # 初始种子数据（仅第一客户）
 │   └── patches/                  # 老客户升级补丁
@@ -128,7 +128,7 @@
 
 ## Storage Bucket
 
-- `menu-images`：public read，authenticated upload
+- `menu-images`：public read，只有 admin/staff 可 upload/update/delete
 - 路径：`menu-items/`、`menu-categories/`、`restaurant/`
 - 上传文件类型限制：jpg/png/webp
 
@@ -209,6 +209,8 @@
 
 1. 新建 Supabase 项目
 2. 执行 `supabase/client-init.sql`
+   - 这是新客户初始化的唯一权威文件
+   - 不要执行 `supabase/schema.sql`，它只是 legacy 快照
 3. 创建管理员账号
 4. 部署 Vercel
 5. 后台录入餐馆信息 + 菜单 + 桌台

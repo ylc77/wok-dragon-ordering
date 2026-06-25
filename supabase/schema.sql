@@ -1,5 +1,10 @@
--- Wok Dragon Express / 龙城酒楼 schema.
--- Run this before supabase/seed.sql.
+-- LEGACY WARNING:
+-- This file is kept only as an old schema snapshot for reference.
+-- Do NOT use it to initialize a new customer database.
+-- New customer setup must run supabase/client-init.sql only.
+-- Historical customer upgrades should use supabase/patches-archive/.
+
+-- Wok Dragon Express / 龙城酒楼 legacy schema snapshot.
 
 create extension if not exists pgcrypto;
 create schema if not exists private;

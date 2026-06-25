@@ -1,5 +1,7 @@
 -- Restaurant QR ordering system - client initialization schema.
--- Run this to set up a new restaurant database.
+-- AUTHORITATIVE NEW CUSTOMER SETUP FILE.
+-- Run this file only to set up a new restaurant database.
+-- Do not run supabase/schema.sql for new customers; it is a legacy snapshot.
 
 create extension if not exists pgcrypto;
 create schema if not exists private;
@@ -450,7 +452,10 @@ begin
     or new.payment_status is distinct from old.payment_status
     or new.payment_method is distinct from old.payment_method
     or new.paid_at is distinct from old.paid_at
-    or new.deleted_at is distinct from old.deleted_at
+    or (
+      new.deleted_at is distinct from old.deleted_at
+      and nullif(current_setting('app.allow_order_archive', true), '') is distinct from 'true'
+    )
   ) then
     raise exception 'paid order payment history cannot be changed';
   end if;
@@ -2124,7 +2129,10 @@ grant execute on function public.confirm_bill_and_close_session(uuid) to authent
 grant execute on function public.handle_bill_request(uuid) to authenticated;
 grant execute on function public.mark_order_kitchen_printed(uuid) to authenticated;
 
--- Hard delete order with secondary password verification
+-- Legacy compatibility definition.
+-- It is superseded later in this file after private.admin_settings is created.
+-- Keep this block so older incremental sections can run in order; do not treat it as the final delete strategy.
+-- Final commercial behavior: archive orders with deleted_at and preserve order_items.
 create or replace function public.admin_hard_delete_order(
   p_order_id uuid,
   p_password text
@@ -2606,11 +2614,29 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('menu-images', 'menu-images', true, 5242880, '{image/jpeg,image/png,image/webp}')
 on conflict (id) do nothing;
 
--- Allow authenticated users to upload
-create policy "menu_images_auth_insert"
+-- Only staff/admin users may upload or manage images.
+-- Customer table QR sessions sign in anonymously and must not be able to write Storage.
+drop policy if exists "menu_images_auth_insert" on storage.objects;
+drop policy if exists "menu_images_staff_insert" on storage.objects;
+drop policy if exists "menu_images_staff_update" on storage.objects;
+drop policy if exists "menu_images_staff_delete" on storage.objects;
+drop policy if exists "menu_images_public_select" on storage.objects;
+
+create policy "menu_images_staff_insert"
 on storage.objects for insert
 to authenticated
-with check (bucket_id = 'menu-images' and auth.role() = 'authenticated');
+with check (bucket_id = 'menu-images' and (select private.is_staff()));
+
+create policy "menu_images_staff_update"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'menu-images' and (select private.is_staff()))
+with check (bucket_id = 'menu-images' and (select private.is_staff()));
+
+create policy "menu_images_staff_delete"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'menu-images' and (select private.is_staff()));
 
 -- Allow public read
 create policy "menu_images_public_select"
@@ -2743,6 +2769,9 @@ begin
   return v_cart_item_id;
 end;
 $$;
+
+revoke execute on function public.add_cart_item(uuid, uuid, int, text, jsonb) from public, anon;
+grant execute on function public.add_cart_item(uuid, uuid, int, text, jsonb) to authenticated;
 
 -- 7. 更新 submit_order RPC (两处 insert)
 create or replace function public.submit_order(
@@ -3710,11 +3739,15 @@ begin
     raise exception '删除密码不正确';
   end if;
 
-  delete from order_items where order_id = p_order_id;
-  delete from orders where id = p_order_id;
+  perform set_config('app.allow_order_archive', 'true', true);
 
-  -- cleanup bill requests
-  delete from bill_requests where session_id not in (select id from table_sessions);
+  update public.orders
+  set deleted_at = coalesce(deleted_at, now())
+  where id = p_order_id;
+
+  if not found then
+    raise exception '订单不存在';
+  end if;
 end;
 $$;
 
@@ -3801,7 +3834,10 @@ begin
       or coalesce(new.payment_method, '') <> coalesce(old.payment_method, '')
       or new.paid_at <> old.paid_at
       or new.total_price <> old.total_price
-      or new.deleted_at is distinct from old.deleted_at
+      or (
+        new.deleted_at is distinct from old.deleted_at
+        and nullif(current_setting('app.allow_order_archive', true), '') is distinct from 'true'
+      )
     then
       raise exception 'paid orders cannot be modified';
     end if;

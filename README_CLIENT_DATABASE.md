@@ -17,6 +17,8 @@
 4. 粘贴到 SQL Editor，点击 **Run**
 5. 等待执行完成，确认没有报错
 
+> `supabase/client-init.sql` 是新客户初始化的唯一权威文件，已经包含完整表结构、RLS、RPC、Storage bucket/policy 和默认数据。不要执行 `supabase/schema.sql`，它只是 legacy 快照。
+
 > 如果报错，检查是否有 `alter publication supabase_realtime drop table public.restaurant_settings` 报错，这是正常的（新项目还没有这个表在 Realtime 中），忽略即可。
 
 ## 3. 创建管理员账号
@@ -40,8 +42,9 @@ values ('USER_UUID', 'admin', '管理员');
 ### 3.3 设置删除密码
 
 ```sql
-update public.restaurant_settings
-set delete_password = extensions.crypt('你的密码', extensions.gen_salt('bf'));
+insert into private.admin_settings (key, value)
+values ('delete_password', extensions.crypt('你的密码', extensions.gen_salt('bf')))
+on conflict (key) do update set value = excluded.value;
 ```
 
 ## 4. 部署前端到 Vercel
