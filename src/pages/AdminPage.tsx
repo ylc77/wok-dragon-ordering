@@ -1078,7 +1078,7 @@ function buildMenuCsv(items: MenuItem[], categories: MenuCategory[]) {
       sort_order: String(item.sort_order ?? 0),
     } satisfies MenuCsvRow;
   });
-  return [menuCsvHeaders.join(','), ...rows.map((row) => menuCsvHeaders.map((header) => escapeCsv(row[header])).join(','))].join('\n');
+  return `\uFEFF${[menuCsvHeaders.join(','), ...rows.map((row) => menuCsvHeaders.map((header) => escapeCsv(row[header])).join(','))].join('\n')}`;
 }
 
 function parseMenuCsv(csvText: string): MenuCsvRow[] {
@@ -1454,12 +1454,12 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
         const existing = findMatchingItem(itemRows, row, category.id);
         const payload = {
           category_id: category.id,
-          name_zh: row.name_zh,
-          name_en: row.name_en || null,
-          name_el: row.name_el || null,
-          description_zh: row.description_zh || null,
-          description_en: row.description_en || null,
-          description_el: row.description_el || null,
+          name_zh: row.name_zh || existing?.name_zh || '',
+          name_en: row.name_en || existing?.name_en || null,
+          name_el: row.name_el || existing?.name_el || null,
+          description_zh: row.description_zh || existing?.description_zh || null,
+          description_en: row.description_en || existing?.description_en || null,
+          description_el: row.description_el || existing?.description_el || null,
           price,
           image_url: row.image_url || existing?.image_url || null,
           is_available: parseBoolean(row.is_available),
@@ -1573,7 +1573,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           className="secondary-button"
           type="button"
           onClick={() => {
-            const header = 'category_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order';
+            const header = '\uFEFFcategory_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order';
             downloadFile(header, 'menu-import-template.csv', 'text/csv;charset=utf-8');
           }}
         >

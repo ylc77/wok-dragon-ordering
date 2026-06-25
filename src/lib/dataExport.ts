@@ -15,12 +15,12 @@ export function exportRowsToCSV(
   rows: Record<string, unknown>[],
   columns: string[],
 ): string {
-  if (rows.length === 0) return columns.map(escapeCSV).join(',') + '\n';
+  if (rows.length === 0) return `\uFEFF${columns.map(escapeCSV).join(',')}\n`;
   const header = columns.map(escapeCSV).join(',');
   const body = rows.map((row) =>
     columns.map((col) => escapeCSV(String(row[col] ?? ''))).join(','),
   );
-  return [header, ...body].join('\n');
+  return `\uFEFF${[header, ...body].join('\n')}`;
 }
 
 /** 将对象数组转为美化的 JSON 字符串 */

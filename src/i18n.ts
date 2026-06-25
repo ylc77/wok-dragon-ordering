@@ -101,6 +101,7 @@ const resources = {
         delisted: 'Μη διαθέσιμο',
         selectOptions: 'Επιλογές',
         optionsRequired: 'Απαιτείται',
+        optionsMultiple: 'Πολλαπλή επιλογή',
         confirmSelection: 'Επιβεβαίωση',
       },
       platforms: {
@@ -209,6 +210,7 @@ const resources = {
         delisted: 'Unavailable',
         selectOptions: 'Select options',
         optionsRequired: 'Required',
+        optionsMultiple: 'Multiple choice',
         confirmSelection: 'Confirm',
       },
       platforms: {
@@ -316,6 +318,7 @@ const resources = {
         delisted: '已下架',
         selectOptions: '选择口味',
         optionsRequired: '必选',
+        optionsMultiple: '可多选',
         confirmSelection: '确定',
       },
       platforms: {

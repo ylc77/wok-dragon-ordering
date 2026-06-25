@@ -34,13 +34,21 @@ function normalizeItem(item) {
   };
 }
 
+function cleanTranslatedField(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function onlyMissing(existing, translated) {
   // 希腊文兜底：如果 DeepSeek 没返回希腊文，至少用英文填充（避免空字段）
+  const nameEn = cleanTranslatedField(translated.name_en);
+  const descriptionEn = cleanTranslatedField(translated.description_en);
+  const nameEl = cleanTranslatedField(translated.name_el);
+  const descriptionEl = cleanTranslatedField(translated.description_el);
   return {
-    name_en: existing.name_en || translated.name_en || '',
-    description_en: existing.description_en || translated.description_en || '',
-    name_el: existing.name_el || translated.name_el || translated.name_en || '',
-    description_el: existing.description_el || translated.description_el || translated.description_en || '',
+    name_en: existing.name_en || nameEn || '',
+    description_en: existing.description_en || descriptionEn || '',
+    name_el: existing.name_el || nameEl || nameEn || '',
+    description_el: existing.description_el || descriptionEl || descriptionEn || '',
   };
 }
 

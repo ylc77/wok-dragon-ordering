@@ -873,7 +873,7 @@ export function TableOrderPage() {
                   <div className="options-group-head">
                     <strong>{getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}</strong>
                     {group.required ? <span className="options-required">{t('order.optionsRequired')}</span> : null}
-                    {group.type === 'multiple' ? <small className="options-hint">（可多选）</small> : null}
+                    {group.type === 'multiple' ? <small className="options-hint">{t('order.optionsMultiple')}</small> : null}
                   </div>
                   <div className="options-choices">
                     {group.choices.map((choice) => {
