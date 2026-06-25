@@ -921,11 +921,11 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
 
   async function executeDeleteCategory() {
     if (!deleteTarget) return;
-    if (!deletePassword.trim()) { setDeleteError('请输入删除密码'); return; }
+    if (!deletePassword.trim()) { setDeleteError('请输入确认密码'); return; }
     setDeleting(true); setDeleteError(null);
     try {
       await adminHardDeleteMenuCategory(deleteTarget.id, deletePassword);
-      toast(`已删除分类"${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"`);
+      toast(`已归档分类"${deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"`);
       setDeleteDialogOpen(false); setDeleteTarget(null); load();
     } catch (err) { setDeleteError(formatUnknownError(err)); }
     finally { setDeleting(false); }
@@ -1002,7 +1002,7 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
                 <span className={`availability-badge${c.is_active ? ' active' : ''}`}>{c.is_active ? '启用' : '禁用'}</span>
                 <div className="item-row-actions">
                   <button type="button" onClick={() => setEditingId(c.id)}><Pencil size={14} />编辑</button>
-                  <button className="danger-text" type="button" onClick={() => promptDeleteCategory(c)}><Trash2 size={14} />删除</button>
+                  <button className="danger-text" type="button" onClick={() => promptDeleteCategory(c)}><Trash2 size={14} />归档</button>
                 </div>
               </div>
             )}
@@ -1014,18 +1014,18 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
       {deleteDialogOpen && deleteTarget ? (
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <h2>删除分类验证</h2>
+            <h2>归档分类确认</h2>
             <p className="dialog-warning-text">
-              ⚠ 此操作将<strong>永久删除</strong>分类"{deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"。旗下菜品将变为"未分类"。
+              ⚠ 归档后，分类"{deleteTarget.name_zh || deleteTarget.name_en || deleteTarget.name_el}"会从前台菜单隐藏，分类下菜品也会一并隐藏/归档；历史订单记录不受影响。
             </p>
             <div className="dialog-password-wrap">
-              <label className="dialog-password-label">请输入删除密码</label>
-              <input type="password" className="text-field" value={deletePassword} onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }} placeholder="输入删除密码" autoFocus disabled={deleting} onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteCategory(); }} />
+              <label className="dialog-password-label">请输入确认密码</label>
+              <input type="password" className="text-field" value={deletePassword} onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }} placeholder="输入确认密码" autoFocus disabled={deleting} onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteCategory(); }} />
             </div>
             {deleteError ? <p className="dialog-error-text">{deleteError}</p> : null}
             <div className="print-confirm-actions">
               <button className="secondary-button" type="button" onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>取消</button>
-              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} type="button" onClick={() => void executeDeleteCategory()} disabled={deleting}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
+              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} type="button" onClick={() => void executeDeleteCategory()} disabled={deleting}><Trash2 size={16} />{deleting ? '归档中…' : '确认归档'}</button>
             </div>
           </div>
         </div>
@@ -1336,7 +1336,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
   async function executeDeleteItems() {
     if (!deleteTarget || deleteTarget.ids.length === 0) return;
     if (!deletePassword.trim()) {
-      setDeleteError('请输入删除密码');
+      setDeleteError('请输入确认密码');
       return;
     }
     setDeleting(true);
@@ -1345,7 +1345,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
       for (const id of deleteTarget.ids) {
         await adminHardDeleteMenuItem(id, deletePassword);
       }
-      toast(`已永久删除 ${deleteTarget.ids.length} 个菜品`);
+      toast(`已隐藏 ${deleteTarget.ids.length} 个菜品`);
       setSelectedIds(new Set());
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -1656,8 +1656,8 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(true)}>标记有货</button>
           <button className="secondary-button" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateSoldOut(true)}>标记售罄</button>
           <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => bulkUpdateAvailability(false)}>批量下架</button>
-          <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => promptDeleteItems(Array.from(selectedIds), `批量删除 ${selectedIds.size} 个菜品`)}>
-            <Trash2 size={14} /> 删除
+          <button className="danger-inline" type="button" disabled={selectedIds.size === 0} onClick={() => promptDeleteItems(Array.from(selectedIds), `批量隐藏 ${selectedIds.size} 个菜品`)}>
+            <Trash2 size={14} /> 隐藏
           </button>
           {selectedIds.size > 0 ? <button className="secondary-button" type="button" onClick={() => setSelectedIds(new Set())}>取消选择</button> : null}
         </div>
@@ -1676,7 +1676,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
             onMessage={onMessage}
             onSave={saveItem}
             onDuplicate={duplicateItem}
-            onDelete={(target) => promptDeleteItems([target.id], `删除菜品"${target.name_zh || target.name_en || target.name_el}"`)}
+            onDelete={(target) => promptDeleteItems([target.id], `隐藏菜品"${target.name_zh || target.name_en || target.name_el}"`)}
             toast={toast}
             key={item.id}
           />
@@ -1700,20 +1700,20 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
       {deleteDialogOpen && deleteTarget ? (
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <h2>删除菜品验证</h2>
+            <h2>隐藏菜品确认</h2>
             <p className="dialog-warning-text">
-              ⚠ 此操作将<strong>永久删除</strong>{deleteTarget.ids.length} 个菜品。历史订单中的菜名快照不受影响。
+              ⚠ 隐藏后，这 {deleteTarget.ids.length} 个菜品会从前台菜单和常规后台列表隐藏；历史订单记录不受影响。如果只是临时不卖，建议使用“下架”或“售罄”。
             </p>
             <div className="dialog-password-wrap">
               <label className="dialog-password-label">
-                请输入删除密码
+                请输入确认密码
               </label>
               <input
                 type="password"
                 className="text-field"
                 value={deletePassword}
                 onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }}
-                placeholder="输入删除密码"
+                placeholder="输入确认密码"
                 autoFocus
                 disabled={deleting}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteItems(); }}
@@ -1724,7 +1724,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
             ) : null}
             <div className="print-confirm-actions">
               <button className="secondary-button" type="button" onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>取消</button>
-              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} type="button" onClick={() => void executeDeleteItems()} disabled={deleting}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
+              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} type="button" onClick={() => void executeDeleteItems()} disabled={deleting}><Trash2 size={16} />{deleting ? '隐藏中…' : '确认隐藏'}</button>
             </div>
           </div>
         </div>
@@ -2084,7 +2084,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
   async function executeDeleteOrders() {
     if (!deleteTarget || deleteTarget.ids.length === 0) return;
     if (!deletePassword.trim()) {
-      setDeleteError('请输入删除密码');
+      setDeleteError('请输入确认密码');
       return;
     }
     setDeleting(true);
@@ -2093,7 +2093,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
       for (const id of deleteTarget.ids) {
         await adminHardDeleteOrder(id, deletePassword);
       }
-      toast(`已永久删除 ${deleteTarget.ids.length} 张订单`);
+      toast(`已归档 ${deleteTarget.ids.length} 张订单`);
       setSelectedOrderIds(new Set());
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -2239,7 +2239,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
             全选
           </label>
           <strong>已选 {selectedOrderIds.size} 张</strong>
-          <button className="danger-inline" type="button" disabled={selectedOrderIds.size === 0} onClick={() => promptDeleteOrders(Array.from(selectedOrderIds), `批量删除 ${selectedOrderIds.size} 张订单`)}><Trash2 size={14} /> 批量删除</button>
+          <button className="danger-inline" type="button" disabled={selectedOrderIds.size === 0} onClick={() => promptDeleteOrders(Array.from(selectedOrderIds), `批量归档 ${selectedOrderIds.size} 张订单`)}><Trash2 size={14} /> 批量归档</button>
           {selectedOrderIds.size > 0 ? <button className="secondary-button" type="button" onClick={() => setSelectedOrderIds(new Set())}>取消</button> : null}
         </div>
 
@@ -2291,7 +2291,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                       {!isPaid && s !== 'cancelled' ? (
                         <button className="mini-btn danger-text" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
                       ) : null}
-                      <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `删除订单 #${order.order_number}`)}><Trash2 size={13} /></button>
+                      <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `归档订单 #${order.order_number}`)}><Trash2 size={13} /></button>
                     </div>
                   </div>
                 </div>
@@ -2356,21 +2356,21 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
         </div>
       ) : null}
 
-      {/* ─ 删除确认弹窗 ─ */}
+      {/* ─ 归档确认弹窗 ─ */}
       {deleteDialogOpen && deleteTarget ? (
         <div className="print-confirm-overlay" onClick={() => { if (!deleting) { setDeleteDialogOpen(false); setDeleteTarget(null); } }}>
           <div className="print-confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <h2>删除订单验证</h2>
-            <p className="dialog-warning-text">⚠ 此操作将<strong>永久删除</strong>{deleteTarget.ids.length} 张订单及关联数据，不可恢复。</p>
+            <h2>归档订单确认</h2>
+            <p className="dialog-warning-text">⚠ 归档后，这 {deleteTarget.ids.length} 张订单会从常规订单列表隐藏；历史订单明细和菜品快照仍会保留。如需查看归档数据，请从数据库或后续归档管理功能查看。</p>
             <div className="print-confirm-meta"><span>{deleteTarget.label}</span></div>
             <div className="dialog-password-wrap">
-              <label className="dialog-password-label">请输入删除密码</label>
-              <input type="password" className="text-field" value={deletePassword} onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }} placeholder="输入删除密码" autoFocus disabled={deleting} onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteOrders(); }} />
+              <label className="dialog-password-label">请输入确认密码</label>
+              <input type="password" className="text-field" value={deletePassword} onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }} placeholder="输入确认密码" autoFocus disabled={deleting} onKeyDown={(e) => { if (e.key === 'Enter' && !deleting) void executeDeleteOrders(); }} />
             </div>
             {deleteError ? <p className="dialog-error-text">{deleteError}</p> : null}
             <div className="print-confirm-actions">
               <button className="secondary-button" onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>取消</button>
-              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} onClick={() => void executeDeleteOrders()} disabled={deleting}><Trash2 size={16} />{deleting ? '删除中…' : '确认永久删除'}</button>
+              <button className={deleting ? 'primary-button' : 'primary-button dialog-danger-button'} onClick={() => void executeDeleteOrders()} disabled={deleting}><Trash2 size={16} />{deleting ? '归档中…' : '确认归档'}</button>
             </div>
           </div>
         </div>
@@ -3286,7 +3286,7 @@ function CategoryRow({
         </button>
         <button className="danger-inline" type="button" onClick={() => onDelete(category)}>
           <Trash2 size={15} />
-          删除分类
+          归档分类
         </button>
       </div>
     </div>
@@ -3371,7 +3371,7 @@ function ItemRow({
         <div className="item-row-actions">
           <button type="button" onClick={() => setEditing((open) => !open)}><Pencil size={14} />编辑</button>
           <button type="button" onClick={() => onDuplicate(item)}><Copy size={14} />复制</button>
-          <button className="danger-text" type="button" onClick={() => onDelete(item)}><Trash2 size={14} />删除</button>
+          <button className="danger-text" type="button" onClick={() => onDelete(item)}><Trash2 size={14} />隐藏</button>
         </div>
       </div>
       {editing ? (
