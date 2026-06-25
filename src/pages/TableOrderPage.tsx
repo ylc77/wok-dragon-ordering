@@ -625,7 +625,7 @@ export function TableOrderPage() {
   const billRequested = orderingLocked;
 
   return (
-    <main className="order-shell">
+    <main className={`order-shell ${cartSummary.isEmpty ? 'cart-empty' : 'cart-has-items'}`}>
       <header className="order-topbar">
         <div className="order-brand">
           <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
@@ -687,25 +687,29 @@ export function TableOrderPage() {
           </section>
         ) : null}
         <nav ref={categoryNavRef} className="order-category-tabs" id="order-categories" aria-label={t('nav.menu')}>
-          {visibleGroups.map((group) => (
+          {visibleGroups.map((group) => {
+            const categoryName = getLocalizedField(lang, {
+              zh: group.name_zh,
+              en: group.name_en,
+              el: group.name_el,
+            });
+            return (
               <a
                 href={`#order-category-${group.id}`}
                 key={group.id}
                 data-category-link={group.id}
                 className={activeCategoryId === group.id ? 'active' : undefined}
                 aria-current={activeCategoryId === group.id ? 'true' : undefined}
+                title={categoryName}
                 onClick={(event) => {
                   event.preventDefault();
                   selectCategory(group.id);
                 }}
               >
-                {getLocalizedField(lang, {
-                  zh: group.name_zh,
-                  en: group.name_en,
-                  el: group.name_el,
-                })}
+                {categoryName}
               </a>
-            ))}
+            );
+          })}
         </nav>
         <div ref={menuGroupsRef} className="order-menu-groups">
           {groups.map((group) =>
@@ -1032,24 +1036,25 @@ export function TableOrderPage() {
         </div>
       ) : null}
 
-      <button
-        className={`mobile-cart-bar ${cartSummary.isEmpty ? 'is-empty' : ''}`}
-        type="button"
-        disabled={cartSummary.isEmpty}
-        aria-label={t('order.cartBarSummary', {
-          count: cartSummary.totalQuantity,
-          total: formatPrice(cartSummary.totalPrice),
-        })}
-        onClick={() => setCartOpen(true)}
-      >
-        <span className="mobile-cart-summary">
-          <ShoppingBag size={18} />
-          {t('order.cartBarSummary', {
+      {!cartSummary.isEmpty ? (
+        <button
+          className="mobile-cart-bar"
+          type="button"
+          aria-label={t('order.cartBarSummary', {
             count: cartSummary.totalQuantity,
             total: formatPrice(cartSummary.totalPrice),
           })}
-        </span>
-      </button>
+          onClick={() => setCartOpen(true)}
+        >
+          <span className="mobile-cart-summary">
+            <ShoppingBag size={18} />
+            {t('order.cartBarSummary', {
+              count: cartSummary.totalQuantity,
+              total: formatPrice(cartSummary.totalPrice),
+            })}
+          </span>
+        </button>
+      ) : null}
     </main>
   );
 }
