@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { HomePage } from './pages/HomePage';
-import { MenuPage } from './pages/MenuPage';
-import { TableOrderPage } from './pages/TableOrderPage';
-import { AdminPage } from './pages/AdminPage';
 import { LanguageSwitch } from './components/LanguageSwitch';
 import { SafeImage } from './components/SafeImage';
 import { getRestaurantSettings, subscribeToRestaurantSettings } from './lib/menuApi';
 import { getLocalizedField } from './lib/localized';
 import type { Language, RestaurantSettings } from './lib/types';
+
+const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+const MenuPage = lazy(() => import('./pages/MenuPage').then((module) => ({ default: module.MenuPage })));
+const TableOrderPage = lazy(() => import('./pages/TableOrderPage').then((module) => ({ default: module.TableOrderPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
 
 function PublicShell() {
   const { t, i18n } = useTranslation();
@@ -52,15 +53,17 @@ function PublicShell() {
   }, [location.pathname, location.hash]);
 
   if (isAdmin) {
-    return <AdminPage />;
+    return <Suspense fallback={null}><AdminPage /></Suspense>;
   }
 
   if (isTableOrder) {
     return (
-      <Routes>
-        <Route path="/table/:qrToken" element={<TableOrderPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/table/:qrToken" element={<TableOrderPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
@@ -94,12 +97,14 @@ function PublicShell() {
           </div>
         </div>
       </header>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/menu" element={<MenuPage />} />
-        <Route path="/table/:qrToken" element={<TableOrderPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/table/:qrToken" element={<TableOrderPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

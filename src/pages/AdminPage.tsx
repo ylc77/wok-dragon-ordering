@@ -408,7 +408,7 @@ export function AdminPage() {
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
-          {tab === 'pos' ? <POSTab toast={showAdminToast} requestSync={requestSync} soundEnabled={soundEnabled} onOpenOrders={() => setTab('orders')} /> : null}
+          {tab === 'pos' ? <POSTab toast={showAdminToast} requestSync={requestSync} soundEnabled={soundEnabled} onOpenOrders={() => setTab('orders')} restaurantName={restaurantName} /> : null}
         </section>
       </div>
     </main>
@@ -1047,6 +1047,8 @@ const menuCsvHeaders = [
   'price',
   'image_url',
   'is_available',
+  'is_sold_out',
+  'options',
   'sort_order',
 ] as const;
 
@@ -1075,6 +1077,8 @@ function buildMenuCsv(items: MenuItem[], categories: MenuCategory[]) {
       price: String(item.price ?? ''),
       image_url: item.image_url ?? '',
       is_available: String(Boolean(item.is_available)),
+      is_sold_out: String(Boolean(item.is_sold_out)),
+      options: JSON.stringify(item.options ?? []),
       sort_order: String(item.sort_order ?? 0),
     } satisfies MenuCsvRow;
   });
@@ -1085,7 +1089,8 @@ function parseMenuCsv(csvText: string): MenuCsvRow[] {
   const rows = parseCsvRows(csvText.replace(/^\uFEFF/, ''));
   if (rows.length === 0) return [];
   const headers = rows[0].map((header) => header.trim());
-  const missing = menuCsvHeaders.filter((header) => !headers.includes(header));
+  const optionalHeaders: MenuCsvHeader[] = ['is_sold_out', 'options'];
+  const missing = menuCsvHeaders.filter((header) => !optionalHeaders.includes(header) && !headers.includes(header));
   if (missing.length > 0) throw new Error(`CSV 缺少字段：${missing.join(', ')}`);
   return rows
     .slice(1)
@@ -1139,6 +1144,27 @@ function escapeCsv(value: string) {
 function parseBoolean(value: string) {
   const normalized = value.trim().toLowerCase();
   return !['false', '0', 'no', 'n', '下架', '否'].includes(normalized);
+}
+
+function parseOptionalBoolean(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (['true', '1', 'yes', 'y', '是'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'n', '否'].includes(normalized)) return false;
+  throw new Error(`布尔值不正确：${value}`);
+}
+
+function parseOptionsJson(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error('options 不是有效的 JSON');
+  }
+  if (!Array.isArray(parsed)) throw new Error('options 必须是 JSON 数组');
+  return parsed as MenuItemOptionGroup[];
 }
 
 function normalized(value?: string | null) {
@@ -1452,6 +1478,8 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
         }
 
         const existing = findMatchingItem(itemRows, row, category.id);
+        const nextSoldOut = parseOptionalBoolean(row.is_sold_out);
+        const nextOptions = parseOptionsJson(row.options);
         const payload = {
           category_id: category.id,
           name_zh: row.name_zh || existing?.name_zh || '',
@@ -1463,6 +1491,8 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           price,
           image_url: row.image_url || existing?.image_url || null,
           is_available: parseBoolean(row.is_available),
+          is_sold_out: nextSoldOut ?? existing?.is_sold_out ?? false,
+          options: nextOptions ?? existing?.options ?? [],
           sort_order: Number(row.sort_order || 0),
         };
         const { data, error } = existing
@@ -1573,7 +1603,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           className="secondary-button"
           type="button"
           onClick={() => {
-            const header = '\uFEFFcategory_zh,category_en,category_el,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,sort_order';
+            const header = `\uFEFF${menuCsvHeaders.join(',')}`;
             downloadFile(header, 'menu-import-template.csv', 'text/csv;charset=utf-8');
           }}
         >
@@ -3590,13 +3620,16 @@ type POSLastOrder = {
   orderNumber: number;
   tableLabel: string;
   paymentMethod: 'cash' | 'pos' | null;
+  createdAt: string;
+  total: number;
+  lines: POSCartEntry[];
 };
 
 function posEntryKey(menuItemId: string, options: SelectedOption[]) {
   return `${menuItemId}::${JSON.stringify(options)}`;
 }
 
-function POSTab({ toast, requestSync, soundEnabled, onOpenOrders }: { toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; soundEnabled: boolean; onOpenOrders: () => void; }) {
+function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName }: { toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; soundEnabled: boolean; onOpenOrders: () => void; restaurantName: string; }) {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   const [groups, setGroups] = useState<MenuGroup[]>([]);
@@ -3605,6 +3638,7 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders }: { toast: (ms
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pos' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder, setLastOrder] = useState<POSLastOrder | null>(null);
+  const [printQueued, setPrintQueued] = useState(false);
   const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
   const [optionsPicked, setOptionsPicked] = useState<Record<string, string | string[]>>({});
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -3614,6 +3648,12 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders }: { toast: (ms
     fetchRestaurantTables().then(setTables).catch(() => {});
     getPublicMenu().then(setGroups).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!lastOrder || !printQueued) return;
+    setPrintQueued(false);
+    window.setTimeout(() => window.print(), 80);
+  }, [lastOrder, printQueued]);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -3644,6 +3684,11 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders }: { toast: (ms
   function getCurrentOrderLabel(type: 'dine_in' | 'takeaway', table?: RestaurantTable) {
     if (type === 'takeaway') return '外带';
     return table ? `${table.table_number} 号桌` : '堂食 · 未指定桌号';
+  }
+
+  function printPOSReceipt() {
+    if (!lastOrder) return;
+    window.setTimeout(() => window.print(), 80);
   }
 
   function addToCart(item: MenuItem, selectedOptions: SelectedOption[] = []) {
@@ -3708,13 +3753,20 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders }: { toast: (ms
       setSubmitting(true);
       const submittedPaymentMethod = paymentMethod;
       const submittedTableLabel = getCurrentOrderLabel(orderType, selectedTable);
+      const submittedCart = cart.map((entry) => ({ ...entry, selectedOptions: [...entry.selectedOptions] }));
+      const submittedTotal = submittedCart.reduce((sum, entry) => sum + entry.price * entry.quantity, 0);
       const items = cart.map((e) => ({ menu_item_id: e.menuItemId, quantity: e.quantity, selected_options: e.selectedOptions, note: '' }));
       const result = await posSubmitOrder(selectedTableId || null, items, undefined, paymentMethod, orderType);
-      setLastOrder({
+      const receipt = {
         orderNumber: result.order_number,
         tableLabel: submittedTableLabel,
         paymentMethod: submittedPaymentMethod,
-      });
+        createdAt: new Date().toISOString(),
+        total: submittedTotal,
+        lines: submittedCart,
+      };
+      setLastOrder(receipt);
+      setPrintQueued(true);
       toast(`POS 订单 #${result.order_number} 已提交（${getPaymentLabel(submittedPaymentMethod)}）`);
       setCart([]);
       setPaymentMethod(null);
@@ -3777,7 +3829,7 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders }: { toast: (ms
             <div className="pos-success-actions">
               <button className="secondary-button" type="button" onClick={() => { requestSync(); onOpenOrders(); }}>查看订单</button>
               <button className="secondary-button" type="button" onClick={() => { setCart([]); setLastOrder(null); }}>继续点单</button>
-              <button className="secondary-button" type="button" onClick={() => toast('请在订单详情中打印小票，或后续接入热敏打印机。', 'warning')}><Printer size={14} />打印小票</button>
+              <button className="secondary-button" type="button" onClick={printPOSReceipt}><Printer size={14} />重新打印小票</button>
             </div>
           </section>
         ) : null}
@@ -3857,6 +3909,32 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders }: { toast: (ms
             <div className="cart-note-actions"><button className="secondary-button" onClick={() => { setOptionsItem(null); setOptionsError(null); }}>取消</button><button className="primary-button" onClick={confirmOptions}>确定</button></div>
           </div>
         </div>
+      ) : null}
+
+      {lastOrder ? (
+        <section className="pos-print-receipt" aria-hidden="true">
+          <h1>{restaurantName || '餐馆'}</h1>
+          <div className="receipt-meta">
+            <span>订单号</span><strong>#{lastOrder.orderNumber}</strong>
+            <span>类型</span><strong>{lastOrder.tableLabel}</strong>
+            <span>时间</span><strong>{new Date(lastOrder.createdAt).toLocaleString('zh-CN')}</strong>
+            <span>付款</span><strong>{getPaymentLabel(lastOrder.paymentMethod)}</strong>
+          </div>
+          <div className="receipt-lines">
+            {lastOrder.lines.map((line) => (
+              <div className="receipt-line" key={posEntryKey(line.menuItemId, line.selectedOptions)}>
+                <strong>{line.nameZh || line.nameEn || line.nameEl || line.menuItemId}</strong>
+                {line.selectedOptions.length > 0 ? (
+                  <small>{line.selectedOptions.map((option) => option.choice_name_zh || option.choice_name_en || option.choice_name_el).join('、')}</small>
+                ) : null}
+                <span>{line.quantity} x {formatPrice(line.price)}</span>
+                <b>{formatPrice(line.price * line.quantity)}</b>
+              </div>
+            ))}
+          </div>
+          <div className="receipt-total"><span>总价</span><strong>{formatPrice(lastOrder.total)}</strong></div>
+          <p className="receipt-thanks">谢谢惠顾</p>
+        </section>
       ) : null}
     </main>
   );
