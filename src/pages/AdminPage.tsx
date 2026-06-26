@@ -408,7 +408,7 @@ export function AdminPage() {
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
-          {tab === 'pos' ? <POSTab toast={showAdminToast} requestSync={requestSync} soundEnabled={soundEnabled} /> : null}
+          {tab === 'pos' ? <POSTab toast={showAdminToast} requestSync={requestSync} soundEnabled={soundEnabled} onOpenOrders={() => setTab('orders')} /> : null}
         </section>
       </div>
     </main>
@@ -3586,11 +3586,17 @@ type POSCartEntry = {
   selectedOptions: SelectedOption[];
 };
 
+type POSLastOrder = {
+  orderNumber: number;
+  tableLabel: string;
+  paymentMethod: 'cash' | 'pos' | null;
+};
+
 function posEntryKey(menuItemId: string, options: SelectedOption[]) {
   return `${menuItemId}::${JSON.stringify(options)}`;
 }
 
-function POSTab({ toast, requestSync, soundEnabled }: { toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; soundEnabled: boolean; }) {
+function POSTab({ toast, requestSync, soundEnabled, onOpenOrders }: { toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; soundEnabled: boolean; onOpenOrders: () => void; }) {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   const [groups, setGroups] = useState<MenuGroup[]>([]);
@@ -3598,6 +3604,7 @@ function POSTab({ toast, requestSync, soundEnabled }: { toast: (msg: string, typ
   const [orderType, setOrderType] = useState<'dine_in' | 'takeaway'>('dine_in');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pos' | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [lastOrder, setLastOrder] = useState<POSLastOrder | null>(null);
   const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
   const [optionsPicked, setOptionsPicked] = useState<Record<string, string | string[]>>({});
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -3626,7 +3633,21 @@ function POSTab({ toast, requestSync, soundEnabled }: { toast: (msg: string, typ
   const cartTotal = cart.reduce((s, e) => s + e.quantity * e.price, 0);
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
 
+  const selectedTable = tables.find((table) => table.id === selectedTableId);
+
+  function getPaymentLabel(method: 'cash' | 'pos' | null) {
+    if (method === 'cash') return '现金';
+    if (method === 'pos') return 'POS / 刷卡';
+    return '未付款';
+  }
+
+  function getCurrentOrderLabel(type: 'dine_in' | 'takeaway', table?: RestaurantTable) {
+    if (type === 'takeaway') return '外带';
+    return table ? `${table.table_number} 号桌` : '堂食 · 未指定桌号';
+  }
+
   function addToCart(item: MenuItem, selectedOptions: SelectedOption[] = []) {
+    setLastOrder(null);
     setCart((prev) => {
       const key = posEntryKey(item.id, selectedOptions);
       const idx = prev.findIndex((e) => posEntryKey(e.menuItemId, e.selectedOptions) === key);
@@ -3685,9 +3706,16 @@ function POSTab({ toast, requestSync, soundEnabled }: { toast: (msg: string, typ
     if (cart.length === 0) return;
     try {
       setSubmitting(true);
+      const submittedPaymentMethod = paymentMethod;
+      const submittedTableLabel = getCurrentOrderLabel(orderType, selectedTable);
       const items = cart.map((e) => ({ menu_item_id: e.menuItemId, quantity: e.quantity, selected_options: e.selectedOptions, note: '' }));
       const result = await posSubmitOrder(selectedTableId || null, items, undefined, paymentMethod, orderType);
-      toast(`POS 订单 #${result.order_number} 已提交${paymentMethod === 'cash' ? '（现金）' : paymentMethod === 'pos' ? '（刷卡）' : ''}`);
+      setLastOrder({
+        orderNumber: result.order_number,
+        tableLabel: submittedTableLabel,
+        paymentMethod: submittedPaymentMethod,
+      });
+      toast(`POS 订单 #${result.order_number} 已提交（${getPaymentLabel(submittedPaymentMethod)}）`);
       setCart([]);
       setPaymentMethod(null);
       requestSync();
@@ -3736,7 +3764,23 @@ function POSTab({ toast, requestSync, soundEnabled }: { toast: (msg: string, typ
       </div>
 
       <aside className="pos-cart">
-        <h2>当前点单{orderType === 'takeaway' ? ' · 外带' : selectedTableId ? ` · ${tables.find((t) => t.id === selectedTableId)?.table_number ?? '?'} 号桌` : ' · 堂食'}</h2>
+        <h2>当前点单{orderType === 'takeaway' ? ' · 外带' : selectedTableId ? ` · ${selectedTable?.table_number ?? '?'} 号桌` : ' · 堂食'}</h2>
+        {lastOrder ? (
+          <section className="pos-success-card" role="status">
+            <div>
+              <CheckCircle2 size={22} />
+              <span>
+                <strong>订单创建成功</strong>
+                <small>#{lastOrder.orderNumber} · {lastOrder.tableLabel} · {getPaymentLabel(lastOrder.paymentMethod)}</small>
+              </span>
+            </div>
+            <div className="pos-success-actions">
+              <button className="secondary-button" type="button" onClick={() => { requestSync(); onOpenOrders(); }}>查看订单</button>
+              <button className="secondary-button" type="button" onClick={() => { setCart([]); setLastOrder(null); }}>继续点单</button>
+              <button className="secondary-button" type="button" onClick={() => toast('请在订单详情中打印小票，或后续接入热敏打印机。', 'warning')}><Printer size={14} />打印小票</button>
+            </div>
+          </section>
+        ) : null}
         <div className="pos-meta">
           <div className="pos-type-row">
             <button className={`pos-type-btn${orderType === 'dine_in' ? ' active' : ''}`} onClick={() => setOrderType('dine_in')}>堂食</button>
