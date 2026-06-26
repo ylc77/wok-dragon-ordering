@@ -3406,12 +3406,17 @@ function ItemRow({
       </div>
       {editing ? (
         <div className="item-row-editor">
-          <ItemForm value={value} categories={categories} onChange={setValue} onToast={toast} />
-          <div className="admin-row-actions">
-            <button className="secondary-button" type="button" disabled={translating} onClick={autoTranslate}>
-              {translating ? '正在翻译...' : '自动翻译'}
-            </button>
-            <button className="small-primary" type="button" onClick={() => onSave(value)}>保存修改</button>
+          <ItemForm
+            value={value}
+            categories={categories}
+            onChange={setValue}
+            onToast={toast}
+            translating={translating}
+            onAutoTranslate={autoTranslate}
+          />
+          <div className="item-editor-actions">
+            <button className="primary-button" type="button" onClick={() => onSave(value)}>保存修改</button>
+            <button className="secondary-button" type="button" onClick={() => { setValue(item); setEditing(false); }}>取消编辑</button>
           </div>
         </div>
       ) : null}
@@ -3462,81 +3467,106 @@ function removeOptionGroup(current: MenuItemOptionGroup[], groupId: string): Men
 }
 
 function ItemForm({
-  value, categories, onChange, onToast,
+  value, categories, onChange, onToast, translating, onAutoTranslate,
 }: {
   value: Partial<MenuItem>; categories: MenuCategory[];
   onChange: (value: Partial<MenuItem>) => void;
   onToast?: (msg: string, type?: 'success' | 'error' | 'warning') => void;
+  translating?: boolean;
+  onAutoTranslate?: () => void;
 }) {
   const [uploading, setUploading] = useState(false);
   return (
     <div className="item-editor-grid">
-      <div className="item-editor-core">
-      <label>
-        分类
-        <select value={value.category_id ?? ''} onChange={(event) => onChange({ ...value, category_id: event.target.value })}>
-          <option value="">未分类</option>
-          {categories.map((category) => (
-            <option value={category.id} key={category.id}>
-              {category.name_zh || category.name_en || category.name_el}
-            </option>
-          ))}
-        </select>
-      </label>
-      <TextField label="价格" value={value.price} type="number" onChange={(v) => onChange({ ...value, price: Number(v) })} />
-      <div className="item-image-field">
-        <TextField label="图片 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
-        {value.image_url ? <img src={value.image_url} alt="" className="item-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
-        <label className="item-upload-btn">
-          <Upload size={14} />{uploading ? '上传中…' : '上传图片'}
-          <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => {
-            const file = e.target.files?.[0]; if (!file) return;
-            const err = validateImageFile(file);
-            if (err) { onToast?.(err, 'warning'); return; }
-            setUploading(true);
-            try {
-              const url = await uploadMenuItemImage(file, value.id);
-              onChange({ ...value, image_url: url });
-              onToast?.('图片上传成功');
-            } catch { onToast?.('图片上传失败，请重试', 'error'); }
-            finally { setUploading(false); }
-          }} />
-        </label>
-      </div>
-      <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
-      <div className="item-status-select">
-        <span className="field-label">状态</span>
-        <div className="status-options">
-          {(['available', 'delisted', 'sold_out'] as const).map((opt) => {
-            const key = opt === 'available' ? (value.is_available !== false && !value.is_sold_out) : opt === 'sold_out' ? Boolean(value.is_sold_out) : (value.is_available === false);
-            return (
-              <button key={opt} type="button" className={`status-opt${key ? ' selected' : ''}`}
-                onClick={() => {
-                  if (opt === 'available') onChange({ ...value, is_available: true, is_sold_out: false });
-                  else if (opt === 'delisted') onChange({ ...value, is_available: false, is_sold_out: false });
-                  else onChange({ ...value, is_available: true, is_sold_out: true });
-                }}>
-                {{ available: '上架', delisted: '下架', sold_out: '售罄' }[opt]}
-              </button>
-            );
-          })}
+      <section className="item-editor-card item-editor-core">
+        <div className="item-editor-card-head">
+          <strong>基础信息</strong>
         </div>
-      </div>
-      </div>
-      <div className="item-language-field"><strong>简体中文</strong>
-        <TextField label="菜品名称" value={value.name_zh} onChange={(v) => onChange({ ...value, name_zh: v })} />
-        <TextField label="菜品描述" value={value.description_zh} onChange={(v) => onChange({ ...value, description_zh: v })} />
-      </div>
-      <div className="item-language-field"><strong>English</strong>
-        <TextField label="Name" value={value.name_en} onChange={(v) => onChange({ ...value, name_en: v })} />
-        <TextField label="Description" value={value.description_en} onChange={(v) => onChange({ ...value, description_en: v })} />
-      </div>
-      <div className="item-language-field"><strong>Ελληνικά</strong>
-        <TextField label="Όνομα" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
-        <TextField label="Περιγραφή" value={value.description_el} onChange={(v) => onChange({ ...value, description_el: v })} />
-      </div>
-      <div className="item-options-section">
-        <strong style={{ fontSize: 14 }}>口味选项</strong>
+        <div className="item-basic-grid">
+          <label>
+            分类
+            <select value={value.category_id ?? ''} onChange={(event) => onChange({ ...value, category_id: event.target.value })}>
+              <option value="">未分类</option>
+              {categories.map((category) => (
+                <option value={category.id} key={category.id}>
+                  {category.name_zh || category.name_en || category.name_el}
+                </option>
+              ))}
+            </select>
+          </label>
+          <TextField label="价格" value={value.price} type="number" onChange={(v) => onChange({ ...value, price: Number(v) })} />
+          <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
+          <div className="item-status-select">
+            <span className="field-label">状态</span>
+            <div className="status-options">
+              {(['available', 'delisted', 'sold_out'] as const).map((opt) => {
+                const key = opt === 'available' ? (value.is_available !== false && !value.is_sold_out) : opt === 'sold_out' ? Boolean(value.is_sold_out) : (value.is_available === false);
+                return (
+                  <button key={opt} type="button" className={`status-opt${key ? ' selected' : ''}`}
+                    onClick={() => {
+                      if (opt === 'available') onChange({ ...value, is_available: true, is_sold_out: false });
+                      else if (opt === 'delisted') onChange({ ...value, is_available: false, is_sold_out: false });
+                      else onChange({ ...value, is_available: true, is_sold_out: true });
+                    }}>
+                    {{ available: '上架', delisted: '下架', sold_out: '售罄' }[opt]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="item-image-field item-basic-image">
+            <TextField label="图片 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
+            <div className="item-image-tools">
+              {value.image_url ? <img src={value.image_url} alt="" className="item-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
+              <label className="item-upload-btn">
+                <Upload size={14} />{uploading ? '上传中…' : '上传图片'}
+                <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => {
+                  const file = e.target.files?.[0]; if (!file) return;
+                  const err = validateImageFile(file);
+                  if (err) { onToast?.(err, 'warning'); return; }
+                  setUploading(true);
+                  try {
+                    const url = await uploadMenuItemImage(file, value.id);
+                    onChange({ ...value, image_url: url });
+                    onToast?.('图片上传成功');
+                  } catch { onToast?.('图片上传失败，请重试', 'error'); }
+                  finally { setUploading(false); }
+                }} />
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="item-editor-card item-language-section">
+        <div className="item-editor-card-head">
+          <strong>多语言内容</strong>
+          {onAutoTranslate ? (
+            <button className="secondary-button item-translate-button" type="button" disabled={translating} onClick={onAutoTranslate}>
+              {translating ? '翻译中…' : '自动翻译'}
+            </button>
+          ) : null}
+        </div>
+        <div className="item-language-grid">
+          <div className="item-language-field"><strong>简体中文</strong>
+            <TextField label="菜品名称" value={value.name_zh} onChange={(v) => onChange({ ...value, name_zh: v })} />
+            <TextField label="菜品描述" value={value.description_zh} onChange={(v) => onChange({ ...value, description_zh: v })} />
+          </div>
+          <div className="item-language-field"><strong>English</strong>
+            <TextField label="Name" value={value.name_en} onChange={(v) => onChange({ ...value, name_en: v })} />
+            <TextField label="Description" value={value.description_en} onChange={(v) => onChange({ ...value, description_en: v })} />
+          </div>
+          <div className="item-language-field"><strong>Ελληνικά</strong>
+            <TextField label="Όνομα" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
+            <TextField label="Περιγραφή" value={value.description_el} onChange={(v) => onChange({ ...value, description_el: v })} />
+          </div>
+        </div>
+      </section>
+
+      <section className="item-editor-card item-options-section">
+        <div className="item-editor-card-head">
+          <strong>口味选项</strong>
+        </div>
 
         {/* 模板按钮 */}
         <div className="options-template-row">
@@ -3599,7 +3629,7 @@ function ItemForm({
           />
           <p className="options-json-hint">格式错误时不会保存，非数组会被忽略。</p>
         </details>
-      </div>
+      </section>
     </div>
   );
 }
