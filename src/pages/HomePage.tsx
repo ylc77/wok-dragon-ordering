@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock3, ExternalLink, Instagram, MapPin, MessageCircle, Phone, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { LanguageSwitch } from '../components/LanguageSwitch';
 import { SafeImage } from '../components/SafeImage';
 import { MenuCard } from './MenuPage';
 import { getPublicMenu, getRestaurantSettings, subscribeToRestaurantSettings } from '../lib/menuApi';
@@ -111,7 +110,7 @@ export function HomePage() {
   }
 
   return (
-    <main>
+    <main className="home-page">
       <section className="hero-section">
         <div className="hero-copy">
           <div className="hero-brand-lockup" aria-hidden="true">
