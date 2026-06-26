@@ -3639,6 +3639,7 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder, setLastOrder] = useState<POSLastOrder | null>(null);
   const [printQueued, setPrintQueued] = useState(false);
+  const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
   const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
   const [optionsPicked, setOptionsPicked] = useState<Record<string, string | string[]>>({});
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -3647,6 +3648,7 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
   useEffect(() => {
     fetchRestaurantTables().then(setTables).catch(() => {});
     getPublicMenu().then(setGroups).catch(() => {});
+    try { setAutoPrintReceipt(localStorage.getItem('restaurant_pos_auto_print_receipt') === '1'); } catch { /* noop */ }
   }, []);
 
   useEffect(() => {
@@ -3689,6 +3691,11 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
   function printPOSReceipt() {
     if (!lastOrder) return;
     window.setTimeout(() => window.print(), 80);
+  }
+
+  function togglePOSAutoPrint(next: boolean) {
+    setAutoPrintReceipt(next);
+    try { localStorage.setItem('restaurant_pos_auto_print_receipt', next ? '1' : '0'); } catch { /* noop */ }
   }
 
   function addToCart(item: MenuItem, selectedOptions: SelectedOption[] = []) {
@@ -3766,7 +3773,7 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
         lines: submittedCart,
       };
       setLastOrder(receipt);
-      setPrintQueued(true);
+      setPrintQueued(autoPrintReceipt);
       toast(`POS 订单 #${result.order_number} 已提交（${getPaymentLabel(submittedPaymentMethod)}）`);
       setCart([]);
       setPaymentMethod(null);
@@ -3878,6 +3885,9 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
               </label>
               <label className={`pos-pay-opt${paymentMethod === 'pos' ? ' selected' : ''}`}>
                 <input type="radio" name="pos-payment" checked={paymentMethod === 'pos'} onChange={() => setPaymentMethod('pos')} />刷卡
+              </label>
+              <label className={`pos-pay-opt${autoPrintReceipt ? ' selected' : ''}`}>
+                <input type="checkbox" checked={autoPrintReceipt} onChange={(e) => togglePOSAutoPrint(e.target.checked)} />自动打印
               </label>
             </div>
             <div className="pos-cart-actions">
