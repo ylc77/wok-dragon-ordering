@@ -135,6 +135,7 @@ DEEPSEEK_API_KEY=sk-xxx（可选，用于菜单自动翻译）
 - 设置上架状态
 
 > 也可使用 CSV 批量导入：点击「模板」下载 CSV 模板，填好后「导入」。
+> 普通菜单 CSV 支持 `is_sold_out` 和 `options` 字段；空字段不会覆盖已有售罄状态或口味选项。普通菜单 CSV 适合菜单维护，不是完整备份。完整备份 CSV 请在后台「系统设置」导出，包含更多系统数据和关系字段。
 
 ## 十、测试
 
@@ -150,6 +151,9 @@ DEEPSEEK_API_KEY=sk-xxx（可选，用于菜单自动翻译）
 1. 订单页面确认收款 → 点击确认收款并清桌
 2. 检查订单状态变为已付款
 3. 检查桌台状态变为空闲
+4. POS 提交订单后检查浏览器小票打印预览、重新打印按钮和下一步提示
+
+> 当前 POS 支持浏览器小票打印/打印提示，不做静默打印。真实热敏打印机自动打印属于后续增强，需要本地 print-agent 或类似本地打印服务。
 
 ### 多设备
 
@@ -203,6 +207,8 @@ DEEPSEEK_API_KEY=sk-xxx（可选，用于菜单自动翻译）
 
 如果 Supabase 项目是旧版，需要在 SQL Editor 依次执行以下补丁：
 
+升级前必须先备份数据库。老客户不要重新执行 `supabase/client-init.sql`，应按 `supabase/patches/README.md` 的顺序选择并执行缺失补丁。
+
 ```sql
 -- 品牌外观自定义
 supabase/patches/2026-06-25-brand-customization.sql
@@ -226,7 +232,7 @@ supabase/patches/2026-06-25-brand-customization.sql
 ## 重要提示
 
 - **新客户部署：** 只执行 `supabase/client-init.sql`（不要执行 `schema.sql`，无需执行 patches 目录旧文件）
-- **老客户升级：** 不要执行 client-init.sql（会覆盖数据），参考 `supabase/patches-archive/` 按日期补丁升级
+- **老客户升级：** 先备份数据库，不要执行 client-init.sql（会覆盖数据），参考 `supabase/patches/README.md` 和 `supabase/patches-archive/` 按顺序补丁升级
 - **演示数据：** `supabase/demo-menu.sql` 可选执行
 - **SQL Editor 操作：** 复制 SQL 文件内容粘贴执行，不是输入文件路径
 - **不要** 只在 Supabase SQL Editor 手动改表结构而不提交 SQL 文件

@@ -48,6 +48,11 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 
 `supabase/client-init.sql` 是新客户初始化的唯一权威文件，已包含表结构、RLS、RPC、Storage bucket/policy 和默认数据。`supabase/schema.sql` 仅为 legacy 快照，不要用于新客户部署。
 
+补充说明：
+- 普通菜单 CSV 支持 `is_sold_out` 和 `options` 字段，适合批量更新菜品基础信息；完整备份 CSV 用于迁移/恢复，包含更完整的数据关系和系统字段。
+- POS 当前支持浏览器小票打印/打印提示；真实热敏打印机静默自动打印属于后续增强，需要本地 print-agent 配合。
+- 老客户升级前必须先备份数据库，并按 `supabase/patches/README.md` 顺序执行补丁，不要重新执行 `client-init.sql`。
+
 ## 项目结构
 
 ```
