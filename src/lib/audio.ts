@@ -1,9 +1,22 @@
-const AudioContextClass =
-  window.AudioContext ||
-  (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+function getAudioContextClass() {
+  if (typeof window === 'undefined') return undefined;
+  return (
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  );
+}
+
+function closeLater(audioContext: AudioContext, delay: number) {
+  if (typeof window === 'undefined') {
+    try { audioContext.close(); } catch { /* noop */ }
+    return;
+  }
+  window.setTimeout(() => { try { audioContext.close(); } catch { /* noop */ } }, delay);
+}
 
 /** 解锁浏览器音频限制（需在用户点击事件中调用） */
 export function unlockAudio() {
+  const AudioContextClass = getAudioContextClass();
   if (!AudioContextClass) return;
   try {
     const ctx = new AudioContextClass();
@@ -45,6 +58,7 @@ function playTone(
 
 /** 后台新订单提醒：叮咚双音 */
 export function playOrderNotification() {
+  const AudioContextClass = getAudioContextClass();
   if (!AudioContextClass) return;
   try {
     const audioContext = new AudioContextClass();
@@ -54,12 +68,13 @@ export function playOrderNotification() {
     const gain = createGain(audioContext, 0.32);
     playTone(audioContext, gain, 880, 0, 0.12);
     playTone(audioContext, gain, 1175, 0.16, 0.16);
-    window.setTimeout(() => { try { audioContext.close(); } catch { /* noop */ } }, 650);
+    closeLater(audioContext, 650);
   } catch { /* 浏览器不支持音频 */ }
 }
 
 /** 顾客操作反馈：短促单音 */
 export function playSuccessSound() {
+  const AudioContextClass = getAudioContextClass();
   if (!AudioContextClass) return;
   try {
     const audioContext = new AudioContextClass();
@@ -68,6 +83,6 @@ export function playSuccessSound() {
     }
     const gain = createGain(audioContext, 0.08);
     playTone(audioContext, gain, 1200, 0, 0.07);
-    window.setTimeout(() => { try { audioContext.close(); } catch { /* noop */ } }, 200);
+    closeLater(audioContext, 200);
   } catch { /* 浏览器不支持音频 */ }
 }
