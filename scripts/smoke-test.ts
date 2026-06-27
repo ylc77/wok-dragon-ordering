@@ -100,21 +100,37 @@ async function checkAdminLoginAndTabs(page: Page) {
   try {
     await page.goto(`${baseUrl}/admin`, { waitUntil: 'domcontentloaded', timeout: 12_000 });
     await page.waitForTimeout(700);
-    const loginVisible = await page.getByText(/后台登录|邮箱|密码|登录/i).first().isVisible().catch(() => false);
-    record('/admin login page', loginVisible, loginVisible ? 'login form visible' : 'login form not found');
+
+    const emailInput = page.locator('input[type="email"], input[name="email"]').first();
+    const passwordInput = page.locator('input[type="password"], input[name="password"]').first();
+    const loginVisible = await emailInput.isVisible().catch(() => false)
+      && await passwordInput.isVisible().catch(() => false);
+    const configNoticeVisible = await page.locator('.admin-empty').first().isVisible().catch(() => false);
+
+    record(
+      '/admin login/config page',
+      loginVisible || configNoticeVisible,
+      loginVisible ? 'login form visible' : configNoticeVisible ? 'Supabase config notice visible' : 'login form or config notice not found',
+    );
 
     if (!adminEmail || !adminPassword) {
       record('/admin tabs', true, 'skipped: ADMIN_EMAIL / ADMIN_PASSWORD not configured');
       return;
     }
 
-    await page.locator('input[type="email"], input[name="email"]').first().fill(adminEmail);
-    await page.locator('input[type="password"], input[name="password"]').first().fill(adminPassword);
-    await page.getByRole('button', { name: /登录|Sign in|Login/i }).first().click();
+    if (!loginVisible) {
+      record('/admin authenticated shell', false, configNoticeVisible ? 'Supabase env not configured' : 'login form not visible');
+      await screenshot(page, 'admin-login-unavailable');
+      return;
+    }
+
+    await emailInput.fill(adminEmail);
+    await passwordInput.fill(adminPassword);
+    await page.locator('button[type="submit"], .admin-login button').first().click();
     await page.waitForLoadState('domcontentloaded').catch(() => undefined);
     await page.waitForTimeout(1500);
 
-    const loggedIn = await page.getByText(/后台管理|前台点单|订单管理|菜品管理|POS/i).first().isVisible().catch(() => false);
+    const loggedIn = await page.locator('.admin-sidebar, .admin-mobile-topbar').first().isVisible().catch(() => false);
     const authDetails = loggedIn ? 'admin shell visible' : await getAdminAuthFailureDetails(page);
     record('/admin authenticated shell', loggedIn, authDetails);
     if (!loggedIn) {
@@ -123,14 +139,13 @@ async function checkAdminLoginAndTabs(page: Page) {
     }
 
     const tabChecks = [
-      { name: 'POS 入口', re: /前台点单|POS/i, expect: /当前点单|购物车为空|堂食|外带/i },
-      { name: '订单管理', re: /订单管理|订单/i, expect: /订单|收款|状态|刷新/i },
-      { name: '桌台二维码', re: /桌台|二维码/i, expect: /桌台|二维码|新增桌台|清桌/i },
-      { name: '菜品管理', re: /菜品管理|菜品/i, expect: /菜品|新增|导入|分类/i },
-      { name: '菜单分类', re: /菜单分类|分类/i, expect: /菜单分类|新增分类|分类总数/i },
-      { name: '系统设置', re: /系统设置|系统/i, expect: /系统|导出|备份|实时/i },
+      { name: 'POS entry', re: /\u524d\u53f0\u70b9\u5355|POS/i, expect: /\u5f53\u524d\u70b9\u5355|\u8d2d\u7269\u8f66\u4e3a\u7a7a|\u5802\u98df|\u5916\u5e26/i },
+      { name: 'orders', re: /\u8ba2\u5355\u7ba1\u7406|\u8ba2\u5355/i, expect: /\u8ba2\u5355|\u6536\u6b3e|\u72b6\u6001|\u5237\u65b0/i },
+      { name: 'tables', re: /\u684c\u53f0|\u4e8c\u7ef4\u7801/i, expect: /\u684c\u53f0|\u4e8c\u7ef4\u7801|\u65b0\u589e\u684c\u53f0|\u6e05\u684c/i },
+      { name: 'items', re: /\u83dc\u54c1\u7ba1\u7406|\u83dc\u54c1/i, expect: /\u83dc\u54c1|\u65b0\u589e|\u5bfc\u5165|\u5206\u7c7b/i },
+      { name: 'categories', re: /\u83dc\u5355\u5206\u7c7b|\u5206\u7c7b/i, expect: /\u83dc\u5355\u5206\u7c7b|\u65b0\u589e\u5206\u7c7b|\u5206\u7c7b\u603b\u6570/i },
+      { name: 'system', re: /\u7cfb\u7edf\u8bbe\u7f6e|\u7cfb\u7edf/i, expect: /\u7cfb\u7edf|\u5bfc\u51fa|\u5907\u4efd|\u5b9e\u65f6/i },
     ];
-
     for (const tab of tabChecks) {
       await clickTab(page, tab.re);
       await page.waitForTimeout(600);
@@ -145,7 +160,6 @@ async function checkAdminLoginAndTabs(page: Page) {
     await screenshot(page, 'admin-tabs-error');
   }
 }
-
 async function checkAdminMobileDrawer(page: Page) {
   await page.setViewportSize({ width: 375, height: 760 });
   await page.goto(`${baseUrl}/admin`, { waitUntil: 'domcontentloaded', timeout: 12_000 });
@@ -171,12 +185,14 @@ async function getAdminAuthFailureDetails(page: Page) {
     return `login failed: ${visibleMessages.join(' | ')}`;
   }
 
-  const bodyText = await page.locator('body').innerText().catch(() => '');
-  const compact = bodyText.replace(/\s+/g, ' ').trim();
-  if (compact.includes('后台登录')) return 'login failed: still on login page, no error message shown';
+  const stillOnLogin = await page.locator('.admin-login input[type="email"], .admin-login input[type="password"]').first().isVisible().catch(() => false);
+  if (stillOnLogin) return 'login failed: still on login page, no error message shown';
+
+  const configNoticeVisible = await page.locator('.admin-empty').first().isVisible().catch(() => false);
+  if (configNoticeVisible) return 'admin unavailable: Supabase env not configured';
+
   return 'login failed: admin shell not visible';
 }
-
 async function runSourceTextCheck() {
   const files = [
     'src/pages/AdminPage.tsx',
