@@ -5450,6 +5450,14 @@ textarea.text-field:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(18
 .settings-grid-2 .field-label, .settings-grid-3 .field-label { width: 100%; }
 /* 移动端菜单页 — 仅手机（<768px） */
 @media (max-width: 767px) {
+  input:not([type=checkbox]):not([type=radio]):not([type=file]),
+  textarea,
+  select,
+  .field-input,
+  textarea.text-field {
+    font-size: 16px;
+  }
+
   /* header */
   .site-header { padding: 6px 12px; min-height: 52px; }
   .site-header .brand-logo { height: 36px; max-width: 100px; min-width: 32px; }

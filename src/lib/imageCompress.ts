@@ -6,7 +6,6 @@ export interface CompressOptions {
 
 const DEFAULTS: Record<string, CompressOptions> = {
   menuItem: { maxWidth: 1200, maxHeight: 1200, quality: 0.8 },
-  category: { maxWidth: 1600, maxHeight: 1000, quality: 0.8 },
   logo: { maxWidth: 800, maxHeight: 800, quality: 0.9 },
   hero: { maxWidth: 1920, maxHeight: 1200, quality: 0.8 },
 };

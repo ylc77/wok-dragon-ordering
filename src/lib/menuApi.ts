@@ -107,7 +107,7 @@ export function validateImageFile(file: File): string | null {
 
 async function uploadCompressed(
   file: File, bucket: string, path: string,
-  compressType: 'menuItem' | 'category' | 'logo' | 'hero',
+  compressType: 'menuItem' | 'logo' | 'hero',
 ): Promise<string> {
   if (!supabase) throw new Error('Supabase 客户端未初始化');
   let blob: Blob = file;
@@ -126,12 +126,6 @@ export async function uploadMenuItemImage(file: File, itemId?: string): Promise<
   const prefix = itemId || 'temp';
   const path = `menu-items/${prefix}-${Date.now()}.webp`;
   return uploadCompressed(file, 'menu-images', path, 'menuItem');
-}
-
-export async function uploadCategoryImage(file: File, categoryId?: string): Promise<string> {
-  const prefix = categoryId || 'temp';
-  const path = `menu-categories/${prefix}-${Date.now()}.webp`;
-  return uploadCompressed(file, 'menu-images', path, 'category');
 }
 
 export async function uploadRestaurantImage(file: File, type: 'logo' | 'hero'): Promise<string> {

@@ -909,7 +909,7 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
   async function saveCategory(category: Partial<MenuCategory>) {
     if (!supabase) return;
     const isNew = !category.id;
-    const payload = { name_zh: category.name_zh ?? '', name_en: category.name_en ?? '', name_el: category.name_el ?? '', image_url: category.image_url || null, sort_order: Number(category.sort_order ?? 0), is_active: Boolean(category.is_active) };
+    const payload = { name_zh: category.name_zh ?? '', name_en: category.name_en ?? '', name_el: category.name_el ?? '', sort_order: Number(category.sort_order ?? 0), is_active: Boolean(category.is_active) };
     const { error } = category.id ? await supabase.from('menu_categories').update(payload).eq('id', category.id) : await supabase.from('menu_categories').insert(payload);
     if (error) onMessage(error.message); else toast(isNew ? '分类已创建' : '分类已保存');
     if (!error) { setDraft(emptyCategory); setShowNewForm(false); setEditingId(null); load(); }
@@ -2603,8 +2603,8 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
   }
 
   async function deleteTable(table: RestaurantTable, session: TableSession | null) {
-    if (session) {
-      onMessage('该桌台当前有进行中的会话，请先清桌或结账后再删除。');
+    if ((session?.participant_count ?? 0) > 0) {
+      onMessage('该桌台当前有顾客设备加入，请先清桌或结账后再删除。');
       return;
     }
 
@@ -2879,9 +2879,9 @@ function TableCard({
           <button
             className="maintenance-button maintenance-button-danger"
             type="button"
-            disabled={Boolean(session)}
+            disabled={occupied || openOrderCount > 0 || paymentRequested}
             onClick={() => onDelete(table, session)}
-            title={session ? '当前桌台有进行中的会话，不能删除' : '删除未使用过的空桌台'}
+            title={(occupied || openOrderCount > 0 || paymentRequested) ? '当前桌台正在使用，不能删除' : '删除未使用过的空桌台'}
           >
             <Trash2 size={13} />
             删除桌台
@@ -3804,6 +3804,12 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
 
   async function submitPOS() {
     if (cart.length === 0) return;
+    if (paymentMethod) {
+      const confirmed = window.confirm(
+        `当前选择了“${getPaymentLabel(paymentMethod)}”。提交后订单会按已付款统计，确认已经收款了吗？`,
+      );
+      if (!confirmed) return;
+    }
     try {
       setSubmitting(true);
       const submittedPaymentMethod = paymentMethod;

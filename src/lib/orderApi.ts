@@ -459,21 +459,7 @@ export async function saveRestaurantTable(table: RestaurantTable) {
 
 export async function deleteRestaurantTable(tableId: string) {
   const client = requireClient();
-  const [sessionCount, orderCount] = await Promise.all([
-    client.from('table_sessions').select('id', { count: 'exact', head: true }).eq('table_id', tableId),
-    client.from('orders').select('id', { count: 'exact', head: true }).eq('table_id', tableId),
-  ]);
-  if (sessionCount.error) throw sessionCount.error;
-  if (orderCount.error) throw orderCount.error;
-
-  if ((sessionCount.count ?? 0) > 0 || (orderCount.count ?? 0) > 0) {
-    throw new Error('该桌台已有历史会话或订单，不能直接删除。请取消启用来停用该桌台。');
-  }
-
-  const { error } = await client
-    .from('restaurant_tables')
-    .delete()
-    .eq('id', tableId);
+  const { error } = await client.rpc('admin_delete_restaurant_table', { p_table_id: tableId });
   if (error) throw error;
 }
 

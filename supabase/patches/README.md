@@ -1,5 +1,16 @@
 # Supabase Patches
 
+## 2026-06-27 table management patch
+
+For existing customer databases that need the admin "delete table" button, run:
+
+1. `2026-06-27-safe-table-delete.sql`
+   - Purpose: creates `public.admin_delete_restaurant_table(uuid)`.
+   - Behavior: staff/admin can delete only empty tables. The RPC may remove an automatically pre-created empty active session.
+   - It never deletes sessions with guests, carts, bill requests, orders, or historical closed sessions.
+   - If the table has history, disable the table instead of deleting it.
+   - Idempotency: safe to run again because it uses `create or replace function` and explicit revoke/grant.
+
 ## 新客户部署
 
 新客户只执行 `supabase/client-init.sql`。它已经包含当前完整数据库结构、RLS、RPC、Storage bucket/policy 和默认数据。
