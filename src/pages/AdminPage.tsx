@@ -1210,6 +1210,14 @@ function parseOptionalBoolean(value: string) {
   throw new Error(`布尔值不正确：${value}`);
 }
 
+function parseOptionalNumber(value: string) {
+  const normalized = value.trim();
+  if (!normalized) return undefined;
+  const next = Number(normalized);
+  if (!Number.isFinite(next)) throw new Error(`数字不正确：${value}`);
+  return next;
+}
+
 function parseOptionsJson(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
@@ -1534,8 +1542,10 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
         }
 
         const existing = findMatchingItem(itemRows, row, category.id);
+        const nextAvailable = parseOptionalBoolean(row.is_available);
         const nextSoldOut = parseOptionalBoolean(row.is_sold_out);
         const nextOptions = parseOptionsJson(row.options);
+        const nextSortOrder = parseOptionalNumber(row.sort_order);
         const payload = {
           category_id: category.id,
           name_zh: row.name_zh || existing?.name_zh || '',
@@ -1546,10 +1556,10 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           description_el: row.description_el || existing?.description_el || null,
           price,
           image_url: row.image_url || existing?.image_url || null,
-          is_available: parseBoolean(row.is_available),
+          is_available: nextAvailable ?? existing?.is_available ?? true,
           is_sold_out: nextSoldOut ?? existing?.is_sold_out ?? false,
           options: nextOptions ?? existing?.options ?? [],
-          sort_order: Number(row.sort_order || 0),
+          sort_order: nextSortOrder ?? existing?.sort_order ?? 0,
         };
         const { data, error } = existing
           ? await supabase.from('menu_items').update(payload).eq('id', existing.id).select('*').single()
