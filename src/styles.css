@@ -5520,7 +5520,7 @@ textarea.text-field:focus { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(18
 .admin-mobile-drawer.open { transform: translateX(0); }
 .admin-mobile-drawer .admin-brand { margin-bottom: 4px; }
 .admin-mobile-drawer .admin-nav-list { gap: 4px; }
-.admin-mobile-drawer .admin-nav-list button { font-size: 15px; padding: 11px 14px; }
+.admin-mobile-drawer .admin-nav-list button { font-size: 15px; line-height: 1.25; min-height: 46px; padding: 11px 14px; white-space: normal; }
 .admin-mobile-drawer .admin-logout { font-size: 14px !important; margin-top: auto; padding: 10px 14px !important; }
 .admin-mobile-drawer-close { align-self: flex-end; background: none; border: 0; color: rgba(255,255,255,.5); cursor: pointer; padding: 4px; margin-bottom: 8px; }
 .admin-mobile-drawer-close:hover { color: #fff; }

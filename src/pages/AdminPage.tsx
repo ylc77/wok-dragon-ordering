@@ -345,14 +345,14 @@ export function AdminPage() {
           <span>后台管理</span>
         </Link>
         <nav className="admin-nav-list">
-          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton> : null}
-          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton> : null}
-          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品</AdminNavButton>
-          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>分类</AdminNavButton>
-          {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton> : null}
-          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
-          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
           {enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
+          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>经营概览</AdminNavButton> : null}
+          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单管理</AdminNavButton> : null}
+          {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台 / 二维码</AdminNavButton> : null}
+          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton>
+          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton>
+          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton>
+          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton>
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>
           <LogOut size={15} />
@@ -366,14 +366,14 @@ export function AdminPage() {
         <button className="admin-mobile-drawer-close" onClick={closeDrawer} aria-label="关闭"><X size={22} /></button>
         <Link className="admin-brand" to="/" onClick={closeDrawer}><span className="admin-brand-mark">餐</span><span>后台管理</span></Link>
         <nav className="admin-nav-list">
-          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>仪表盘</AdminNavButton> : null}
-          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单</AdminNavButton> : null}
-          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品</AdminNavButton>
-          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>分类</AdminNavButton>
-          {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台</AdminNavButton> : null}
-          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆</AdminNavButton>
-          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统</AdminNavButton>
           {enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
+          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>经营概览</AdminNavButton> : null}
+          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单管理</AdminNavButton> : null}
+          {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台 / 二维码</AdminNavButton> : null}
+          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton>
+          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton>
+          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton>
+          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton>
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>退出登录</button>
       </aside>
