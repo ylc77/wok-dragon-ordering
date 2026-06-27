@@ -955,14 +955,21 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
   }
 
   async function saveCategory(category: Partial<MenuCategory>) {
-    if (!supabase) return;
+    if (!supabase) return false;
     const isNew = !category.id;
     const payload = { name_zh: category.name_zh ?? '', name_en: category.name_en ?? '', name_el: category.name_el ?? '', sort_order: Number(category.sort_order ?? 0), is_active: Boolean(category.is_active) };
     const { error } = category.id ? await supabase.from('menu_categories').update(payload).eq('id', category.id) : await supabase.from('menu_categories').insert(payload);
-    if (error) onMessage(error.message); else toast(isNew ? '分类已创建' : '分类已保存');
-    if (!error) { setDraft(emptyCategory); setShowNewForm(false); setEditingId(null); load(); }
+    if (error) {
+      onMessage(error.message);
+      return false;
+    }
+    toast(isNew ? '\u5206\u7c7b\u5df2\u521b\u5efa' : '\u5206\u7c7b\u5df2\u4fdd\u5b58');
+    setDraft(emptyCategory);
+    setShowNewForm(false);
+    setEditingId(null);
+    await load();
+    return true;
   }
-
   function promptDeleteCategory(category: MenuCategory) {
     if (!supabase) return;
     setDeleteTarget(category); setDeletePassword(''); setDeleteError(null); setDeleteDialogOpen(true);
@@ -1567,7 +1574,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
   }
 
   async function saveItem(item: Partial<MenuItem>) {
-    if (!supabase) return;
+    if (!supabase) return false;
     const payload = {
       category_id: item.category_id || null,
       name_zh: item.name_zh ?? '',
@@ -1586,11 +1593,14 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
     const { error } = item.id
       ? await supabase.from('menu_items').update(payload).eq('id', item.id)
       : await supabase.from('menu_items').insert(payload);
-    if (error) onMessage(error.message); else toast('菜品已保存');
-    if (!error) {
-      setDraft(emptyItem);
-      load();
+    if (error) {
+      onMessage(error.message);
+      return false;
     }
+    toast('菜品已保存');
+    setDraft(emptyItem);
+    await load();
+    return true;
   }
 
   async function duplicateItem(item: MenuItem) {
@@ -1673,7 +1683,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
             <button className="secondary-button" type="button" disabled={translatingDraft} onClick={autoTranslateDraft}>
               {translatingDraft ? '翻译中…' : '自动翻译'}
             </button>
-            <button className="primary-button" type="button" onClick={() => { void saveItem(draft).then(() => setShowNewForm(false)); }}>
+            <button className="primary-button" type="button" onClick={() => { void saveItem(draft).then((saved) => { if (saved) setShowNewForm(false); }); }}>
               <Plus size={15} />
               保存
             </button>
@@ -3437,7 +3447,7 @@ function ItemRow({
 }: {
   item: MenuItem; categories: MenuCategory[]; selected: boolean;
   onSelect: (checked: boolean) => void; onMessage: (value: string | null) => void;
-  onSave: (item: Partial<MenuItem>) => void; onDuplicate: (item: MenuItem) => void; onDelete: (item: MenuItem) => void;
+  onSave: (item: Partial<MenuItem>) => Promise<boolean>; onDuplicate: (item: MenuItem) => void; onDelete: (item: MenuItem) => void;
   toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
 }) {
   const [value, setValue] = useState<Partial<MenuItem>>(item);
@@ -3455,6 +3465,11 @@ function ItemRow({
     } finally {
       setTranslating(false);
     }
+  }
+
+  async function saveAndClose() {
+    const saved = await onSave(value);
+    if (saved) setEditing(false);
   }
 
   return (
@@ -3491,7 +3506,7 @@ function ItemRow({
             onAutoTranslate={autoTranslate}
           />
           <div className="item-editor-actions">
-            <button className="primary-button" type="button" onClick={() => onSave(value)}>保存修改</button>
+            <button className="primary-button" type="button" onClick={() => { void saveAndClose(); }}>保存修改</button>
             <button className="secondary-button" type="button" onClick={() => { setValue(item); setEditing(false); }}>取消编辑</button>
           </div>
         </div>
