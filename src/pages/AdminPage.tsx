@@ -141,6 +141,51 @@ type OrderSessionGroup = {
   isClosed: boolean;
 };
 
+type AdminConfirmOptions = {
+  title: string;
+  message: ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  danger?: boolean;
+};
+
+function useAdminConfirm() {
+  const [options, setOptions] = useState<AdminConfirmOptions | null>(null);
+  const resolverRef = useRef<((confirmed: boolean) => void) | null>(null);
+
+  const close = useCallback((confirmed: boolean) => {
+    resolverRef.current?.(confirmed);
+    resolverRef.current = null;
+    setOptions(null);
+  }, []);
+
+  const confirm = useCallback((nextOptions: AdminConfirmOptions) => {
+    setOptions(nextOptions);
+    return new Promise<boolean>((resolve) => {
+      resolverRef.current = resolve;
+    });
+  }, []);
+
+  const dialog = options ? (
+    <div className="print-confirm-overlay" onClick={() => close(false)}>
+      <div className="print-confirm-dialog" onClick={(event) => event.stopPropagation()}>
+        <h3>{options.title}</h3>
+        <p>{options.message}</p>
+        <div className="print-confirm-actions">
+          <button className="secondary-button" type="button" onClick={() => close(false)}>
+            {options.cancelLabel ?? '取消'}
+          </button>
+          <button className={options.danger ? 'settings-danger-btn' : 'primary-button'} type="button" onClick={() => close(true)}>
+            {options.confirmLabel ?? '确认'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  return { confirm, dialog };
+}
+
 const orderStatusPriority: OrderStatus[] = ['pending', 'preparing', 'served', 'paid', 'cancelled'];
 
 function groupOrdersBySession(orders: Order[]): OrderSessionGroup[] {
@@ -206,7 +251,6 @@ function groupOrdersBySession(orders: Order[]): OrderSessionGroup[] {
     (a, b) => new Date(b.newestAt).getTime() - new Date(a.newestAt).getTime(),
   );
 }
-
 export function AdminPage() {
   const [sessionReady, setSessionReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
@@ -719,6 +763,7 @@ function DailyStats({
 
 function SettingsEditor({ onMessage, toast, requestSync }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; requestSync: () => void; }) {
   const [settings, setSettings] = useState<Partial<RestaurantSettings>>(emptySettings);
+  const { confirm, dialog } = useAdminConfirm();
 
   useEffect(() => {
     load();
@@ -747,9 +792,11 @@ function SettingsEditor({ onMessage, toast, requestSync }: { onMessage: (value: 
 
   async function toggleOrdering() {
     const nextEnabled = settings.ordering_enabled === false;
-    const action = nextEnabled ? '恢复接单' : '暂停接单';
-    const msg = nextEnabled ? '确定要恢复接单吗？顾客将可以继续加菜和提交订单。' : '确定要暂停接单吗？暂停后顾客将无法提交新订单，但可以请求结账。';
-    if (!window.confirm(msg)) return;
+    const action = nextEnabled ? '\u6062\u590d\u63a5\u5355' : '\u6682\u505c\u63a5\u5355';
+    const msg = nextEnabled
+      ? '\u6062\u590d\u540e\uff0c\u987e\u5ba2\u53ef\u4ee5\u7ee7\u7eed\u52a0\u83dc\u5e76\u63d0\u4ea4\u8ba2\u5355\u3002'
+      : '\u6682\u505c\u540e\uff0c\u987e\u5ba2\u65e0\u6cd5\u63d0\u4ea4\u65b0\u8ba2\u5355\uff0c\u4f46\u4ecd\u53ef\u4ee5\u8bf7\u6c42\u7ed3\u8d26\u3002';
+    if (!(await confirm({ title: action, message: msg, confirmLabel: action, danger: !nextEnabled }))) return;
     try {
       const next = await setRestaurantOrdering(nextEnabled);
       setSettings((current) => ({ ...current, ...next }));
@@ -880,6 +927,7 @@ function SettingsEditor({ onMessage, toast, requestSync }: { onMessage: (value: 
         <span className="settings-save-hint">修改后请点击保存</span>
         <button className="primary-button" type="button" onClick={save} style={{ minWidth: '160px', minHeight: '44px', fontSize: '15px' }}><Save size={16} />保存</button>
       </div>
+      {dialog}
     </AdminSection>
   );
 }
@@ -2555,6 +2603,7 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
   const [reentryRequests, setReentryRequests] = useState<TableReentryRequest[]>([]);
   const [newNumber, setNewNumber] = useState(1);
   const [newLabel, setNewLabel] = useState('');
+  const { confirm, dialog } = useAdminConfirm();
   const [restaurantName, setRestaurantName] = useState('餐馆');
 
   useEffect(() => {
@@ -2608,11 +2657,13 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
       return;
     }
 
-    const confirmed = window.confirm(
-      `确认删除桌台 ${table.table_number} 吗？\n\n仅未产生历史订单或会话的空桌台可以删除；已有历史记录的桌台请取消“启用”来停用。`,
-    );
+    const confirmed = await confirm({
+      title: '\u5220\u9664\u684c\u53f0',
+      message: `\u786e\u8ba4\u5220\u9664\u684c\u53f0 ${table.table_number} \u5417\uff1f\u4ec5\u672a\u4ea7\u751f\u5386\u53f2\u8ba2\u5355\u6216\u4f1a\u8bdd\u7684\u7a7a\u684c\u53f0\u53ef\u4ee5\u5220\u9664\uff1b\u5df2\u6709\u5386\u53f2\u8bb0\u5f55\u7684\u684c\u53f0\u8bf7\u53d6\u6d88\u201c\u542f\u7528\u201d\u6765\u505c\u7528\u3002`,
+      confirmLabel: '\u786e\u8ba4\u5220\u9664',
+      danger: true,
+    });
     if (!confirmed) return;
-
     try {
       await deleteRestaurantTable(table.id);
       toast('桌台已删除');
@@ -2623,11 +2674,13 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
   }
 
   async function regenerate(tableId: string) {
-    const confirmed = window.confirm(
-      '重生成后，旧二维码将立即作废，已打印贴在桌上的二维码需要重新打印和更换。确定继续吗？',
-    );
+    const confirmed = await confirm({
+      title: '\u91cd\u751f\u6210\u4e8c\u7ef4\u7801',
+      message: '\u91cd\u751f\u6210\u540e\uff0c\u65e7\u4e8c\u7ef4\u7801\u4f1a\u7acb\u5373\u5931\u6548\uff0c\u5df2\u6253\u5370\u8d34\u5728\u684c\u4e0a\u7684\u4e8c\u7ef4\u7801\u9700\u8981\u91cd\u65b0\u6253\u5370\u548c\u66f4\u6362\u3002',
+      confirmLabel: '\u786e\u8ba4\u91cd\u751f\u6210',
+      danger: true,
+    });
     if (!confirmed) return;
-
     try {
       await regenerateTableQrToken(tableId);
       toast('二维码 token 已重新生成');
@@ -2651,10 +2704,14 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
       onMessage('该桌正在等待付款，请先确认收款。');
       return;
     }
-    if (!window.confirm('确认清空该桌未提交购物车并结束本次用餐吗？')) {
+    if (!(await confirm({
+      title: '\u6e05\u684c',
+      message: '\u786e\u8ba4\u6e05\u7a7a\u8be5\u684c\u672a\u63d0\u4ea4\u8d2d\u7269\u8f66\u5e76\u7ed3\u675f\u672c\u6b21\u7528\u9910\u5417\uff1f',
+      confirmLabel: '\u786e\u8ba4\u6e05\u684c',
+      danger: true,
+    }))) {
       return;
     }
-
     try {
       const result = await closeTableSession(session.id);
       toast(`已清桌，删除未提交购物车 ${result.deleted_cart_count} 条。`);
@@ -2729,6 +2786,7 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
           />
         ))}
       </div>
+      {dialog}
     </AdminSection>
   );
 }
@@ -3691,6 +3749,8 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
   const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
   const [optionsPicked, setOptionsPicked] = useState<Record<string, string | string[]>>({});
   const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [clearCartConfirmOpen, setClearCartConfirmOpen] = useState(false);
+  const { confirm, dialog } = useAdminConfirm();
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -3805,9 +3865,11 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
   async function submitPOS() {
     if (cart.length === 0) return;
     if (paymentMethod) {
-      const confirmed = window.confirm(
-        `当前选择了“${getPaymentLabel(paymentMethod)}”。提交后订单会按已付款统计，确认已经收款了吗？`,
-      );
+      const confirmed = await confirm({
+        title: '\u786e\u8ba4\u5df2\u6536\u6b3e',
+        message: `\u5f53\u524d\u9009\u62e9\u4e86\u201c${getPaymentLabel(paymentMethod)}\u201d\u3002\u63d0\u4ea4\u540e\u8ba2\u5355\u4f1a\u6309\u5df2\u4ed8\u6b3e\u7edf\u8ba1\uff0c\u786e\u8ba4\u5df2\u7ecf\u6536\u6b3e\u4e86\u5417\uff1f`,
+        confirmLabel: '\u786e\u8ba4\u63d0\u4ea4',
+      });
       if (!confirmed) return;
     }
     try {
@@ -3945,7 +4007,7 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
               </label>
             </div>
             <div className="pos-cart-actions">
-              <button className="secondary-button" onClick={() => { if (window.confirm('确定清空购物车？')) setCart([]); }} disabled={submitting || cart.length === 0}>清空</button>
+              <button className="secondary-button" onClick={() => setClearCartConfirmOpen(true)} disabled={submitting || cart.length === 0}>清空</button>
               <button className="primary-button" disabled={cart.length === 0 || submitting} onClick={submitPOS}>{submitting ? '提交中...' : '提交订单'}</button>
             </div>
           </>
@@ -3975,6 +4037,30 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
         </div>
       ) : null}
 
+      {clearCartConfirmOpen ? (
+        <div className="print-confirm-overlay" onClick={() => setClearCartConfirmOpen(false)}>
+          <div className="print-confirm-dialog" onClick={(event) => event.stopPropagation()}>
+            <h3>清空购物车</h3>
+            <p>确定要清空当前 POS 购物车吗？已选择的菜品和口味选项会被移除。</p>
+            <div className="print-confirm-actions">
+              <button className="secondary-button" type="button" onClick={() => setClearCartConfirmOpen(false)}>取消</button>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => {
+                  setCart([]);
+                  setClearCartConfirmOpen(false);
+                }}
+              >
+                确认清空
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {dialog}
+
       {lastOrder ? (
         <section className="pos-print-receipt" aria-hidden="true">
           <h1>{restaurantName || '餐馆'}</h1>
@@ -4003,3 +4089,4 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
     </main>
   );
 }
+
