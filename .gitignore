@@ -12,6 +12,7 @@ build/
 
 # Local caches and generated verification artifacts
 artifacts/
+demo-videos/
 *.tsbuildinfo
 
 # Logs
