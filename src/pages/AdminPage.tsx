@@ -1109,6 +1109,16 @@ const menuCsvHeaders = [
 ] as const;
 
 type MenuCsvHeader = (typeof menuCsvHeaders)[number];
+const quickMenuCsvHeaders: MenuCsvHeader[] = [
+  'category_zh',
+  'name_zh',
+  'price',
+  'description_zh',
+  'image_url',
+  'is_available',
+  'is_sold_out',
+  'sort_order',
+];
 type MenuCsvRow = Record<MenuCsvHeader, string>;
 type CsvImportResult = { success: number; failed: number; translationFailed: number; errors: string[] };
 type MenuTranslationFields = Pick<
@@ -1145,8 +1155,14 @@ function parseMenuCsv(csvText: string): MenuCsvRow[] {
   const rows = parseCsvRows(csvText.replace(/^\uFEFF/, ''));
   if (rows.length === 0) return [];
   const headers = rows[0].map((header) => header.trim());
-  const optionalHeaders: MenuCsvHeader[] = ['is_sold_out', 'options'];
-  const missing = menuCsvHeaders.filter((header) => !optionalHeaders.includes(header) && !headers.includes(header));
+  const knownHeaders = headers.filter((header): header is MenuCsvHeader => menuCsvHeaders.includes(header as MenuCsvHeader));
+  if (knownHeaders.length === 0) throw new Error('CSV 缺少可识别的菜单字段');
+  const hasCategoryHeader = ['category_zh', 'category_en', 'category_el'].some((header) => headers.includes(header));
+  const hasNameHeader = ['name_zh', 'name_en', 'name_el'].some((header) => headers.includes(header));
+  const missing: string[] = [];
+  if (!hasCategoryHeader) missing.push('category_zh/category_en/category_el');
+  if (!hasNameHeader) missing.push('name_zh/name_en/name_el');
+  if (!headers.includes('price')) missing.push('price');
   if (missing.length > 0) throw new Error(`CSV 缺少字段：${missing.join(', ')}`);
   return rows
     .slice(1)
@@ -1698,12 +1714,23 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           className="secondary-button"
           type="button"
           onClick={() => {
-            const header = `\uFEFF${menuCsvHeaders.join(',')}`;
-            downloadFile(header, 'menu-import-template.csv', 'text/csv;charset=utf-8');
+            const header = `\uFEFF${quickMenuCsvHeaders.join(',')}`;
+            downloadFile(header, 'menu-import-quick-template.csv', 'text/csv;charset=utf-8');
           }}
         >
           <Download size={15} />
-          模板
+          快速模板
+        </button>
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => {
+            const header = `\uFEFF${menuCsvHeaders.join(',')}`;
+            downloadFile(header, 'menu-import-full-template.csv', 'text/csv;charset=utf-8');
+          }}
+        >
+          <Download size={15} />
+          完整模板
         </button>
         <button className="secondary-button" type="button" onClick={exportCsv}>
           <Download size={15} />
@@ -1730,6 +1757,9 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
       {/* - CSV 导入面板（可折叠） - */}
       {showCsvImport ? (
         <div className="csv-import-panel">
+          <p className="muted" style={{ margin: 0 }}>
+            快速模板适合首次录入；完整模板适合批量维护翻译、售罄、排序和口味选项。空白可选字段不会覆盖已有数据。
+          </p>
           <label>
             选择 CSV 文件
             <input accept=".csv,text/csv" type="file" onChange={(event) => previewCsv(event.target.files?.[0] ?? null)} />
