@@ -1228,7 +1228,33 @@ function parseOptionsJson(value: string) {
     throw new Error('options 不是有效的 JSON');
   }
   if (!Array.isArray(parsed)) throw new Error('options 必须是 JSON 数组');
+  validateOptionGroups(parsed);
   return parsed as MenuItemOptionGroup[];
+}
+
+function validateOptionGroups(value: unknown[]) {
+  value.forEach((group, groupIndex) => {
+    if (!isPlainObject(group)) throw new Error(`options 第 ${groupIndex + 1} 组必须是对象`);
+    if (typeof group.id !== 'string' || !group.id.trim()) throw new Error(`options 第 ${groupIndex + 1} 组缺少 id`);
+    if (typeof group.name_zh !== 'string' || !group.name_zh.trim()) throw new Error(`options 第 ${groupIndex + 1} 组缺少 name_zh`);
+    if (typeof group.name_en !== 'string') throw new Error(`options 第 ${groupIndex + 1} 组缺少 name_en`);
+    if (typeof group.name_el !== 'string') throw new Error(`options 第 ${groupIndex + 1} 组缺少 name_el`);
+    if (group.type !== 'single' && group.type !== 'multiple') throw new Error(`options 第 ${groupIndex + 1} 组 type 必须是 single 或 multiple`);
+    if (typeof group.required !== 'boolean') throw new Error(`options 第 ${groupIndex + 1} 组 required 必须是 true/false`);
+    if (!Array.isArray(group.choices) || group.choices.length === 0) throw new Error(`options 第 ${groupIndex + 1} 组 choices 必须是非空数组`);
+
+    group.choices.forEach((choice, choiceIndex) => {
+      if (!isPlainObject(choice)) throw new Error(`options 第 ${groupIndex + 1} 组第 ${choiceIndex + 1} 个选项必须是对象`);
+      if (typeof choice.id !== 'string' || !choice.id.trim()) throw new Error(`options 第 ${groupIndex + 1} 组第 ${choiceIndex + 1} 个选项缺少 id`);
+      if (typeof choice.name_zh !== 'string' || !choice.name_zh.trim()) throw new Error(`options 第 ${groupIndex + 1} 组第 ${choiceIndex + 1} 个选项缺少 name_zh`);
+      if (typeof choice.name_en !== 'string') throw new Error(`options 第 ${groupIndex + 1} 组第 ${choiceIndex + 1} 个选项缺少 name_en`);
+      if (typeof choice.name_el !== 'string') throw new Error(`options 第 ${groupIndex + 1} 组第 ${choiceIndex + 1} 个选项缺少 name_el`);
+    });
+  });
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
 function normalized(value?: string | null) {
