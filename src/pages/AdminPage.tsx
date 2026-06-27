@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, Minus, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, ShoppingBag, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
 import { formatPrice, getLocalizedField } from '../lib/localized';
-import { getPublicMenu, getRestaurantSettings, adminHardDeleteMenuCategory, adminHardDeleteMenuItem, uploadCategoryImage, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
+import { getPublicMenu, getRestaurantSettings, adminHardDeleteMenuCategory, adminHardDeleteMenuItem, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { downloadFile, exportRowsToCSV, exportRowsToJSON, fetchAllTableData, generateBackupFilename } from '../lib/dataExport';
 import {
@@ -972,7 +972,7 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
       {/* ─ 新增表单 ─ */}
       {showNewForm ? (
         <div className="item-new-form">
-          <CategoryForm value={draft} onChange={setDraft} onToast={toast} />
+          <CategoryForm value={draft} onChange={setDraft} />
           <div className="item-new-form-actions">
             <button className="secondary-button" type="button" onClick={() => { setShowNewForm(false); setDraft(emptyCategory); }}>取消</button>
             <button className="primary-button" type="button" onClick={() => saveCategory(draft)}><Plus size={15} />创建分类</button>
@@ -987,7 +987,7 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
           <div className={`admin-row${editingId === c.id ? ' category-edit-row' : ''}`} key={c.id}>
             {editingId === c.id ? (
               <>
-                <CategoryForm value={{ ...c }} onChange={(v) => setCategories((prev) => prev.map((x) => x.id === c.id ? { ...x, ...v } : x))} onToast={toast} />
+                <CategoryForm value={{ ...c }} onChange={(v) => setCategories((prev) => prev.map((x) => x.id === c.id ? { ...x, ...v } : x))} />
                 <div className="admin-row-actions category-edit-actions">
                   <button className="primary-button" type="button" onClick={() => saveCategory(categories.find((x) => x.id === c.id) ?? c)}>保存修改</button>
                   <button className="secondary-button" type="button" onClick={() => setEditingId(null)}>取消</button>
@@ -3324,13 +3324,11 @@ function CategoryRow({
 }
 
 function CategoryForm({
-  value, onChange, onToast,
+  value, onChange,
 }: {
   value: Partial<MenuCategory>;
   onChange: (value: Partial<MenuCategory>) => void;
-  onToast?: (msg: string, type?: 'success' | 'error' | 'warning') => void;
 }) {
-  const [uploading, setUploading] = useState(false);
   return (
     <div className="category-form-panel">
       <div className="category-form-main">
@@ -3339,22 +3337,6 @@ function CategoryForm({
         <TextField label="希腊语" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
         <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
         <label className="checkbox-label category-active-toggle"><input checked={Boolean(value.is_active)} type="checkbox" onChange={(event) => onChange({ ...value, is_active: event.target.checked })} />启用</label>
-      </div>
-      <div className="category-media-row">
-        <div className="category-url-field">
-          <TextField label="封面图 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
-        </div>
-        {value.image_url ? <img src={value.image_url} alt="" className="item-image-preview category-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
-        <label className="item-upload-btn category-upload-btn"><Upload size={14} />{uploading ? '上传中…' : '上传图片'}
-          <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => {
-            const file = e.target.files?.[0]; if (!file) return;
-            const err = validateImageFile(file); if (err) { onToast?.(err, 'warning'); return; }
-            setUploading(true);
-            try { const url = await uploadCategoryImage(file, value.id); onChange({ ...value, image_url: url }); onToast?.('图片上传成功'); }
-            catch { onToast?.('图片上传失败', 'error'); }
-            finally { setUploading(false); }
-          }} />
-        </label>
       </div>
     </div>
   );
@@ -3933,8 +3915,8 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
       </aside>
 
       {optionsItem ? (
-        <div className="cart-note-backdrop" onClick={() => { setOptionsItem(null); setOptionsError(null); }}>
-          <div className="cart-note-panel options-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="cart-note-backdrop pos-options-backdrop" onClick={() => { setOptionsItem(null); setOptionsError(null); }}>
+          <div className="cart-note-panel options-panel pos-options-panel" onClick={(e) => e.stopPropagation()}>
             <div className="cart-note-head"><h3>{optionsItem.name_zh || optionsItem.name_en}</h3><button onClick={() => { setOptionsItem(null); setOptionsError(null); }}><X size={18} /></button></div>
             <div className="options-groups">
               {(optionsItem.options ?? []).map((group) => (
