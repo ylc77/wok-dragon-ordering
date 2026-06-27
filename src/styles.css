@@ -1340,6 +1340,23 @@ button:disabled {
   color: #242420;
 }
 
+.maintenance-button-danger {
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.maintenance-button-danger:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.maintenance-button-danger:disabled {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
 .admin-content {
   max-width: 1400px;
   min-width: 0;

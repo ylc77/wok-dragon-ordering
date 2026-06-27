@@ -15,6 +15,7 @@ import {
   closeTableSession,
   confirmBillAndCloseSession,
   createRestaurantTable,
+  deleteRestaurantTable,
   fetchActiveSessions,
   fetchAdminDashboardSummary,
   fetchAdminOrderPage,
@@ -2601,6 +2602,26 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
     }
   }
 
+  async function deleteTable(table: RestaurantTable, session: TableSession | null) {
+    if (session) {
+      onMessage('该桌台当前有进行中的会话，请先清桌或结账后再删除。');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `确认删除桌台 ${table.table_number} 吗？\n\n仅未产生历史订单或会话的空桌台可以删除；已有历史记录的桌台请取消“启用”来停用。`,
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteRestaurantTable(table.id);
+      toast('桌台已删除');
+      load();
+    } catch (err) {
+      onMessage(formatUnknownError(err));
+    }
+  }
+
   async function regenerate(tableId: string) {
     const confirmed = window.confirm(
       '重生成后，旧二维码将立即作废，已打印贴在桌上的二维码需要重新打印和更换。确定继续吗？',
@@ -2699,6 +2720,7 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
             reentryRequests={reentryRequests.filter((request) => request.table_id === table.id)}
             restaurantName={restaurantName}
             onSave={saveTable}
+            onDelete={deleteTable}
             onRegenerate={regenerate}
             onClose={closeSession}
             onApproveReentry={approveReentry}
@@ -2713,10 +2735,10 @@ function TableManager({ onMessage, toast, syncVersion }: { onMessage: (value: st
 
 function TableCard({
   table, session, sessionOrders, reentryRequests, restaurantName,
-  onSave, onRegenerate, onClose, onApproveReentry, onRejectReentry, toast,
+  onSave, onDelete, onRegenerate, onClose, onApproveReentry, onRejectReentry, toast,
 }: {
   table: RestaurantTable; session: TableSession | null; sessionOrders: Order[]; reentryRequests: TableReentryRequest[]; restaurantName: string;
-  onSave: (table: RestaurantTable) => void; onRegenerate: (tableId: string) => void; onClose: (session: TableSession) => void;
+  onSave: (table: RestaurantTable) => void; onDelete: (table: RestaurantTable, session: TableSession | null) => void; onRegenerate: (tableId: string) => void; onClose: (session: TableSession) => void;
   onApproveReentry: (request: TableReentryRequest) => void; onRejectReentry: (request: TableReentryRequest) => void;
   toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
 }) {
@@ -2853,6 +2875,16 @@ function TableCard({
           <button className="maintenance-button" type="button" onClick={() => onRegenerate(table.id)}>
             <RotateCcw size={13} />
             重生成二维码
+          </button>
+          <button
+            className="maintenance-button maintenance-button-danger"
+            type="button"
+            disabled={Boolean(session)}
+            onClick={() => onDelete(table, session)}
+            title={session ? '当前桌台有进行中的会话，不能删除' : '删除未使用过的空桌台'}
+          >
+            <Trash2 size={13} />
+            删除桌台
           </button>
         </div>
         <small>
