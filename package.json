@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
+    "smoke": "tsx scripts/smoke-test.ts",
     "preview": "vite preview",
     "extract:wolt": "node scripts/extract-wolt-menu.mjs"
   },
