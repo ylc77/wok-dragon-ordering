@@ -115,7 +115,8 @@ async function checkAdminLoginAndTabs(page: Page) {
     await page.waitForTimeout(1500);
 
     const loggedIn = await page.getByText(/后台管理|前台点单|订单管理|菜品管理|POS/i).first().isVisible().catch(() => false);
-    record('/admin authenticated shell', loggedIn, loggedIn ? 'admin shell visible' : 'admin shell not visible');
+    const authDetails = loggedIn ? 'admin shell visible' : await getAdminAuthFailureDetails(page);
+    record('/admin authenticated shell', loggedIn, authDetails);
     if (!loggedIn) {
       await screenshot(page, 'admin-login-failed');
       return;
@@ -159,6 +160,21 @@ async function checkAdminMobileDrawer(page: Page) {
       record('/admin mobile drawer opens', drawerVisible, drawerVisible ? 'opened' : 'not opened');
     }
   }
+}
+
+async function getAdminAuthFailureDetails(page: Page) {
+  const visibleMessages = await page
+    .locator('.error-text, .admin-message, [role="alert"]')
+    .evaluateAll((nodes) => nodes.map((node) => node.textContent?.trim()).filter(Boolean))
+    .catch(() => []);
+  if (visibleMessages.length > 0) {
+    return `login failed: ${visibleMessages.join(' | ')}`;
+  }
+
+  const bodyText = await page.locator('body').innerText().catch(() => '');
+  const compact = bodyText.replace(/\s+/g, ' ').trim();
+  if (compact.includes('后台登录')) return 'login failed: still on login page, no error message shown';
+  return 'login failed: admin shell not visible';
 }
 
 async function runSourceTextCheck() {
