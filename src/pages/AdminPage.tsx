@@ -1126,6 +1126,55 @@ type MenuTranslationFields = Pick<
   'name_zh' | 'description_zh' | 'name_en' | 'description_en' | 'name_el' | 'description_el'
 >;
 
+const menuCsvHeaderDescriptions: Record<MenuCsvHeader, string> = {
+  category_zh: '中文分类（必填，三选一）',
+  category_en: '英文分类',
+  category_el: '希腊语分类',
+  name_zh: '中文名称（必填，三选一）',
+  name_en: '英文名称',
+  name_el: '希腊语名称',
+  description_zh: '中文描述',
+  description_en: '英文描述',
+  description_el: '希腊语描述',
+  price: '价格（必填）',
+  image_url: '图片URL（可后补）',
+  is_available: '是否上架（true/false，可空）',
+  is_sold_out: '是否售罄（true/false，可空）',
+  options: '口味选项JSON（高级，可空）',
+  sort_order: '排序（数字，可空）',
+};
+
+const menuCsvExampleRow: MenuCsvRow = {
+  category_zh: '精选套餐',
+  category_en: 'Special Menu',
+  category_el: 'Ειδικό Μενού',
+  name_zh: '套餐 A',
+  name_en: 'Set A',
+  name_el: 'Σετ A',
+  description_zh: '鸡肉玉米汤、蔬菜春卷、鸡蛋炒饭',
+  description_en: 'Chicken corn soup, vegetable spring rolls, egg fried rice',
+  description_el: 'Σούπα κοτόπουλου με καλαμπόκι, λαχανικά spring rolls, τηγανητό ρύζι με αυγό',
+  price: '18.90',
+  image_url: 'https://example.com/menu/set-a.jpg',
+  is_available: 'true',
+  is_sold_out: 'false',
+  options: JSON.stringify([
+    {
+      id: 'spicy',
+      name_zh: '辣度',
+      name_en: 'Spicy level',
+      name_el: 'Επίπεδο καυτερού',
+      type: 'single',
+      required: true,
+      choices: [
+        { id: 'no', name_zh: '不辣', name_en: 'No spicy', name_el: 'Χωρίς καυτερό' },
+        { id: 'mild', name_zh: '微辣', name_en: 'Mild spicy', name_el: 'Λίγο καυτερό' },
+      ],
+    },
+  ]),
+  sort_order: '1',
+};
+
 function buildMenuCsv(items: MenuItem[], categories: MenuCategory[]) {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
   const rows = items.map((item) => {
@@ -1151,6 +1200,15 @@ function buildMenuCsv(items: MenuItem[], categories: MenuCategory[]) {
   return `\uFEFF${[menuCsvHeaders.join(','), ...rows.map((row) => menuCsvHeaders.map((header) => escapeCsv(row[header])).join(','))].join('\n')}`;
 }
 
+function buildMenuCsvTemplate(headers: MenuCsvHeader[]) {
+  const rows = [
+    headers,
+    headers.map((header) => menuCsvHeaderDescriptions[header]),
+    headers.map((header) => menuCsvExampleRow[header]),
+  ];
+  return `\uFEFF${rows.map((row) => row.map(escapeCsv).join(',')).join('\n')}`;
+}
+
 function parseMenuCsv(csvText: string): MenuCsvRow[] {
   const rows = parseCsvRows(csvText.replace(/^\uFEFF/, ''));
   if (rows.length === 0) return [];
@@ -1173,7 +1231,8 @@ function parseMenuCsv(csvText: string): MenuCsvRow[] {
         if (menuCsvHeaders.includes(header as MenuCsvHeader)) next[header as MenuCsvHeader] = row[index]?.trim() ?? '';
       });
       return next;
-    });
+    })
+    .filter((row) => !isMenuCsvDescriptionRow(row));
 }
 
 function parseCsvRows(input: string) {
@@ -1211,6 +1270,10 @@ function parseCsvRows(input: string) {
 
 function escapeCsv(value: string) {
   return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function isMenuCsvDescriptionRow(row: MenuCsvRow) {
+  return menuCsvHeaders.some((header) => row[header] === menuCsvHeaderDescriptions[header]);
 }
 
 function parseBoolean(value: string) {
@@ -1714,23 +1777,21 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           className="secondary-button"
           type="button"
           onClick={() => {
-            const header = `\uFEFF${quickMenuCsvHeaders.join(',')}`;
-            downloadFile(header, 'menu-import-quick-template.csv', 'text/csv;charset=utf-8');
+            downloadFile(buildMenuCsvTemplate(quickMenuCsvHeaders), 'menu-import-quick-template.csv', 'text/csv;charset=utf-8');
           }}
         >
           <Download size={15} />
-          快速模板
+          快速CSV
         </button>
         <button
           className="secondary-button"
           type="button"
           onClick={() => {
-            const header = `\uFEFF${menuCsvHeaders.join(',')}`;
-            downloadFile(header, 'menu-import-full-template.csv', 'text/csv;charset=utf-8');
+            downloadFile(buildMenuCsvTemplate([...menuCsvHeaders]), 'menu-import-full-template.csv', 'text/csv;charset=utf-8');
           }}
         >
           <Download size={15} />
-          完整模板
+          完整CSV
         </button>
         <button className="secondary-button" type="button" onClick={exportCsv}>
           <Download size={15} />
