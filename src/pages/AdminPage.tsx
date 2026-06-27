@@ -984,11 +984,11 @@ function CategoryEditor({ onMessage, toast }: { onMessage: (value: string | null
       <div className="admin-table">
         <div className="cat-table-head" aria-hidden="true"><span>中文名</span><span>英文名</span><span>希腊语</span><span>排序</span><span>状态</span><span>操作</span></div>
         {filteredCategories.map((c) => (
-          <div className="admin-row" key={c.id}>
+          <div className={`admin-row${editingId === c.id ? ' category-edit-row' : ''}`} key={c.id}>
             {editingId === c.id ? (
               <>
                 <CategoryForm value={{ ...c }} onChange={(v) => setCategories((prev) => prev.map((x) => x.id === c.id ? { ...x, ...v } : x))} onToast={toast} />
-                <div className="admin-row-actions">
+                <div className="admin-row-actions category-edit-actions">
                   <button className="primary-button" type="button" onClick={() => saveCategory(categories.find((x) => x.id === c.id) ?? c)}>保存修改</button>
                   <button className="secondary-button" type="button" onClick={() => setEditingId(null)}>取消</button>
                 </div>
@@ -3332,14 +3332,20 @@ function CategoryForm({
 }) {
   const [uploading, setUploading] = useState(false);
   return (
-    <div className="admin-form-grid compact-grid">
-      <TextField label="中文" value={value.name_zh} onChange={(v) => onChange({ ...value, name_zh: v })} />
-      <TextField label="英文" value={value.name_en} onChange={(v) => onChange({ ...value, name_en: v })} />
-      <TextField label="希腊语" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
-      <div className="item-image-field">
-        <TextField label="封面图 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
-        {value.image_url ? <img src={value.image_url} alt="" className="item-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
-        <label className="item-upload-btn"><Upload size={14} />{uploading ? '上传中…' : '上传图片'}
+    <div className="category-form-panel">
+      <div className="category-form-main">
+        <TextField label="中文" value={value.name_zh} onChange={(v) => onChange({ ...value, name_zh: v })} />
+        <TextField label="英文" value={value.name_en} onChange={(v) => onChange({ ...value, name_en: v })} />
+        <TextField label="希腊语" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
+        <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
+        <label className="checkbox-label category-active-toggle"><input checked={Boolean(value.is_active)} type="checkbox" onChange={(event) => onChange({ ...value, is_active: event.target.checked })} />启用</label>
+      </div>
+      <div className="category-media-row">
+        <div className="category-url-field">
+          <TextField label="封面图 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
+        </div>
+        {value.image_url ? <img src={value.image_url} alt="" className="item-image-preview category-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
+        <label className="item-upload-btn category-upload-btn"><Upload size={14} />{uploading ? '上传中…' : '上传图片'}
           <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => {
             const file = e.target.files?.[0]; if (!file) return;
             const err = validateImageFile(file); if (err) { onToast?.(err, 'warning'); return; }
@@ -3350,8 +3356,6 @@ function CategoryForm({
           }} />
         </label>
       </div>
-      <TextField label="排序" value={value.sort_order} type="number" onChange={(v) => onChange({ ...value, sort_order: Number(v) })} />
-      <label className="checkbox-label"><input checked={Boolean(value.is_active)} type="checkbox" onChange={(event) => onChange({ ...value, is_active: event.target.checked })} />启用</label>
     </div>
   );
 }
