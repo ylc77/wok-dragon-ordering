@@ -109,6 +109,20 @@ pnpm print-agent -- --install-startup
 
 - [print-agent/README.md](print-agent/README.md)
 - [docs/print-agent-client-guide-zh.md](docs/print-agent-client-guide-zh.md)
+- [docs/print-agent-portable-package-zh.md](docs/print-agent-portable-package-zh.md)
+
+构建客户便携版：
+
+```bash
+npm run build:print-agent-package
+```
+
+生成目录：
+
+```text
+dist-print-agent/YANLCPrintAgent/
+dist-print-agent/YANLCPrintAgent.zip
+```
 
 ## 六、商业交付文档
 
@@ -120,6 +134,7 @@ pnpm print-agent -- --install-startup
 | [docs/client-acceptance-form-zh.md](docs/client-acceptance-form-zh.md) | 客户验收确认单 |
 | [docs/pre-launch-checklist-zh.md](docs/pre-launch-checklist-zh.md) | 上线前检查清单 |
 | [docs/print-agent-client-guide-zh.md](docs/print-agent-client-guide-zh.md) | 打印助手客户使用指南 |
+| [docs/print-agent-portable-package-zh.md](docs/print-agent-portable-package-zh.md) | 打印助手 Windows 便携版交付说明 |
 | [docs/client-guide-zh.md](docs/client-guide-zh.md) | 老板 / 员工后台操作指南 |
 | [docs/maintenance-zh.md](docs/maintenance-zh.md) | 开发维护说明 |
 | [docs/client-pricing-zh.md](docs/client-pricing-zh.md) | 报价和套餐参考 |

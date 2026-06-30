@@ -9,6 +9,7 @@ node_modules/
 # Build output
 dist/
 build/
+dist-print-agent/
 
 # Local caches and generated verification artifacts
 artifacts/

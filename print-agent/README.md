@@ -4,6 +4,24 @@
 
 ## 一、客户推荐安装流程
 
+如果是正式交付客户，推荐先在开发电脑构建便携版：
+
+```powershell
+npm run build:print-agent-package
+```
+
+然后把生成的文件夹复制到客户电脑：
+
+```text
+dist-print-agent\YANLCPrintAgent\
+```
+
+便携版说明见：
+
+```text
+docs\print-agent-portable-package-zh.md
+```
+
 1. 在 Windows 中安装好打印机驱动。
 2. 确认打印机可以打印 Windows 测试页。
 3. 双击运行客户安装向导：

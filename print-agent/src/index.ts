@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createInterface, type Interface } from 'node:readline/promises';
@@ -9,7 +9,12 @@ import { stdin as input, stdout as output } from 'node:process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const execFileAsync = promisify(execFile);
-const rootDir = resolve(import.meta.dirname, '..');
+const processWithPkg = process as NodeJS.Process & { pkg?: unknown };
+const rootDir = processWithPkg.pkg
+  ? dirname(process.execPath)
+  : basename(import.meta.dirname) === 'src'
+  ? resolve(import.meta.dirname, '..')
+  : import.meta.dirname;
 const configPath = resolve(rootDir, 'config.json');
 const envPath = resolve(rootDir, '.env');
 const logPath = resolve(rootDir, 'logs', 'print-agent.log');
@@ -125,7 +130,7 @@ async function loadConfig(): Promise<Config> {
   const missing = required.filter((key) => !String(env[key] ?? '').trim());
   if (missing.length > 0) {
     throw new Error(
-      `Missing config: ${missing.join(', ')}. Run "pnpm print-agent -- --setup", or copy print-agent/.env.example to print-agent/.env and fill it in.`,
+      `Missing config: ${missing.join(', ')}. ${getSetupHint()}`,
     );
   }
 
@@ -196,7 +201,7 @@ async function runSetup() {
     await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
     console.log('');
     console.log(`Config saved: ${configPath}`);
-    console.log('Next time, double-click print-agent/start-print-agent.cmd or run "pnpm print-agent".');
+    console.log(`Next time, ${isPortablePackage() ? 'double-click start.cmd' : 'double-click print-agent/start-print-agent.cmd or run "pnpm print-agent"'}.`);
   } finally {
     rl.close();
   }
@@ -400,16 +405,16 @@ async function listPrinters() {
 }
 
 async function installStartup() {
-  const shortcutName = 'Wok Dragon Print Agent.lnk';
+  const shortcutName = 'YANLC Print Agent.lnk';
   const startupCommand = [
     "$startup=[Environment]::GetFolderPath('Startup')",
     `$shortcut=Join-Path $startup '${escapePowerShellSingleQuoted(shortcutName)}'`,
     '$shell=New-Object -ComObject WScript.Shell',
     '$s=$shell.CreateShortcut($shortcut)',
-    `$s.TargetPath='${escapePowerShellSingleQuoted(resolve(rootDir, 'start-print-agent.cmd'))}'`,
-    `$s.WorkingDirectory='${escapePowerShellSingleQuoted(resolve(rootDir, '..'))}'`,
+    `$s.TargetPath='${escapePowerShellSingleQuoted(getStartupTargetPath())}'`,
+    `$s.WorkingDirectory='${escapePowerShellSingleQuoted(dirname(getStartupTargetPath()))}'`,
     '$s.WindowStyle=7',
-    "$s.Description='Wok Dragon Print Agent'",
+    "$s.Description='YANLC Print Agent'",
     '$s.Save()',
     'Write-Output $shortcut',
   ].join('; ');
@@ -469,6 +474,23 @@ function escapePowerShellSingleQuoted(value: string) {
   return value.replace(/'/g, "''");
 }
 
+function getStartupTargetPath() {
+  const portableStart = resolve(rootDir, 'start.cmd');
+  if (existsSync(portableStart)) return portableStart;
+  return resolve(rootDir, 'start-print-agent.cmd');
+}
+
+function isPortablePackage() {
+  return existsSync(resolve(rootDir, 'YANLCPrintAgent.exe')) || existsSync(resolve(rootDir, 'start.cmd'));
+}
+
+function getSetupHint() {
+  if (isPortablePackage()) {
+    return 'Double-click setup.cmd to create config.json.';
+  }
+  return 'Run "pnpm print-agent -- --setup", or copy print-agent/.env.example to print-agent/.env and fill it in.';
+}
+
 async function log(message: string) {
   const line = `[${new Date().toISOString()}] ${message}`;
   console.log(line);
@@ -482,6 +504,24 @@ async function logError(message: string, error: unknown) {
 }
 
 function printHelp() {
+  if (isPortablePackage()) {
+    console.log(`YANLC Print Agent portable package
+
+Usage:
+  start.cmd                       Start automatic printing
+  setup.cmd                       Create config.json interactively
+  test-print.cmd                  Print one sample ticket
+  list-printers.cmd               Show Windows printers
+  install-startup.cmd             Install Windows startup shortcut
+  uninstall-startup.cmd           Remove Windows startup shortcut
+  YANLCPrintAgent.exe --once       Poll once and exit
+
+Configuration:
+  Double-click setup.cmd to create config.json in this folder.
+  config.json has priority over .env when both files exist.`);
+    return;
+  }
+
   console.log(`Wok Dragon local print agent
 
 Usage:

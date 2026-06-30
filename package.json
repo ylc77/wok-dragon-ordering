@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "smoke": "tsx scripts/smoke-test.ts",
+    "build:print-agent-package": "tsx scripts/build-print-agent-package.ts",
+    "verify:print-agent-package": "tsx scripts/verify-print-agent-package.ts",
     "preview": "vite preview",
     "extract:wolt": "node scripts/extract-wolt-menu.mjs",
     "print-agent": "tsx print-agent/src/index.ts"
@@ -29,6 +31,8 @@
     "@types/node": "^25.9.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@yao-pkg/pkg": "^6.20.0",
+    "esbuild": "^0.28.1",
     "playwright": "^1.61.1",
     "tsx": "^4.22.4",
     "typescript": "^5.9.3",
