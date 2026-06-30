@@ -1,12 +1,12 @@
 @echo off
 setlocal
 cd /d "%~dp0\.."
-title Wok Dragon 测试打印
+title Wok Dragon Test Print
 echo.
-echo 将发送一张测试厨房小票到配置的打印机。
-echo 如果 PRINTER_NAME 为空，将使用 Windows 默认打印机。
+echo This will send one sample kitchen ticket to the configured printer.
+echo If no printer name is configured, Windows default printer will be used.
 echo.
-choice /C YN /M "确认测试打印吗"
+choice /C YN /M "Run test print"
 if errorlevel 2 goto end
 pnpm print-agent -- --test-print
 :end

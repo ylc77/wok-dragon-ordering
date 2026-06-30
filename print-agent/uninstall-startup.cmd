@@ -1,14 +1,15 @@
 @echo off
 setlocal
-set "SHORTCUT=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Wok Dragon 自动打印助手.lnk"
+set "SHORTCUT=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Wok Dragon Print Agent.lnk"
 
 echo.
-echo 正在取消开机自启...
+echo Removing Windows startup shortcut...
 if exist "%SHORTCUT%" (
   del "%SHORTCUT%"
-  echo 已取消开机自启。
+  echo Startup shortcut removed:
+  echo %SHORTCUT%
 ) else (
-  echo 未找到开机自启快捷方式。
+  echo Startup shortcut was not found.
 )
 echo.
 pause

@@ -1,13 +1,13 @@
 @echo off
 setlocal
 cd /d "%~dp0\.."
-title Wok Dragon 自动打印助手
+title Wok Dragon Print Agent
 echo.
-echo Wok Dragon 自动打印助手
-echo ======================================
-echo 请保持此窗口打开。关闭窗口后将停止自动打印。
+echo Wok Dragon Print Agent
+echo =======================
+echo Keep this window open. Closing it will stop automatic printing.
 echo.
 pnpm print-agent
 echo.
-echo 打印助手已退出。按任意键关闭窗口。
+echo Print agent exited. Press any key to close this window.
 pause >nul

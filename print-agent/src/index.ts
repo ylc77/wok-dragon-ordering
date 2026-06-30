@@ -1,13 +1,16 @@
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createInterface, type Interface } from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const execFileAsync = promisify(execFile);
 const rootDir = resolve(import.meta.dirname, '..');
+const configPath = resolve(rootDir, 'config.json');
 const envPath = resolve(rootDir, '.env');
 const logPath = resolve(rootDir, 'logs', 'print-agent.log');
 
@@ -73,12 +76,22 @@ async function main() {
     return;
   }
 
+  if (args.has('--setup')) {
+    await runSetup();
+    return;
+  }
+
+  if (args.has('--install-startup')) {
+    await installStartup();
+    return;
+  }
+
   const config = await loadConfig();
 
   if (args.has('--test-print')) {
     const sample = buildSampleTicket(config.paperWidth);
     await printText(sample, config.printerName);
-    await log('测试小票已发送到打印机。');
+    await log('Test ticket has been sent to the printer.');
     return;
   }
 
@@ -88,7 +101,9 @@ async function main() {
 
   await signIn(client, config);
   const settings = await fetchRestaurantSettings(client);
-  await log(`打印助手已启动。自动打印=${config.autoPrint ? '开启' : '关闭'}，打印机=${config.printerName || 'Windows默认打印机'}，纸宽=${config.paperWidth}mm`);
+  await log(
+    `Print agent started. autoPrint=${config.autoPrint}, printer=${config.printerName || 'Windows default printer'}, paperWidth=${config.paperWidth}mm`,
+  );
 
   if (args.has('--once')) {
     await pollOnce(client, config, settings);
@@ -96,19 +111,22 @@ async function main() {
   }
 
   while (true) {
-    await pollOnce(client, config, settings).catch((error) => logError('轮询失败', error));
+    await pollOnce(client, config, settings).catch((error) => logError('Polling failed', error));
     await sleep(config.pollIntervalMs);
   }
 }
 
 async function loadConfig(): Promise<Config> {
-  const fileEnv = existsSync(envPath) ? parseEnv(await readFile(envPath, 'utf8')) : {};
-  const env = { ...fileEnv, ...process.env };
+  const env = existsSync(configPath)
+    ? normalizeJsonConfig(JSON.parse(await readFile(configPath, 'utf8')) as Record<string, unknown>)
+    : { ...(existsSync(envPath) ? parseEnv(await readFile(envPath, 'utf8')) : {}), ...process.env };
 
   const required = ['SUPABASE_URL', 'SUPABASE_KEY', 'ADMIN_EMAIL', 'ADMIN_PASSWORD'] as const;
   const missing = required.filter((key) => !String(env[key] ?? '').trim());
   if (missing.length > 0) {
-    throw new Error(`缺少配置：${missing.join(', ')}。请复制 print-agent/.env.example 为 print-agent/.env 并填写。`);
+    throw new Error(
+      `Missing config: ${missing.join(', ')}. Run "pnpm print-agent -- --setup", or copy print-agent/.env.example to print-agent/.env and fill it in.`,
+    );
   }
 
   const paperWidth = String(env.PAPER_WIDTH || '80') === '58' ? '58' : '80';
@@ -126,6 +144,85 @@ async function loadConfig(): Promise<Config> {
     autoPrint: String(env.AUTO_PRINT ?? 'true').toLowerCase() !== 'false',
     maxOrdersPerPoll: Number.isFinite(maxOrdersPerPoll) && maxOrdersPerPoll > 0 ? maxOrdersPerPoll : 10,
   };
+}
+
+function normalizeJsonConfig(inputConfig: Record<string, unknown>) {
+  return {
+    SUPABASE_URL: inputConfig.supabaseUrl ?? inputConfig.SUPABASE_URL,
+    SUPABASE_KEY: inputConfig.supabaseKey ?? inputConfig.SUPABASE_KEY,
+    ADMIN_EMAIL: inputConfig.adminEmail ?? inputConfig.ADMIN_EMAIL,
+    ADMIN_PASSWORD: inputConfig.adminPassword ?? inputConfig.ADMIN_PASSWORD,
+    PRINTER_NAME: inputConfig.printerName ?? inputConfig.PRINTER_NAME,
+    PAPER_WIDTH: inputConfig.paperWidth ?? inputConfig.PAPER_WIDTH,
+    POLL_INTERVAL_MS: inputConfig.pollIntervalMs ?? inputConfig.POLL_INTERVAL_MS,
+    AUTO_PRINT: inputConfig.autoPrint ?? inputConfig.AUTO_PRINT,
+    MAX_ORDERS_PER_POLL: inputConfig.maxOrdersPerPoll ?? inputConfig.MAX_ORDERS_PER_POLL,
+  };
+}
+
+async function runSetup() {
+  console.log('Wok Dragon local print agent setup');
+  console.log('----------------------------------');
+  console.log('Windows printers:');
+  await listPrinters();
+  console.log('');
+
+  const existing = existsSync(configPath)
+    ? (JSON.parse(await readFile(configPath, 'utf8')) as Record<string, unknown>)
+    : {};
+  const rl = createInterface({ input, output });
+
+  try {
+    const supabaseUrl = await askRequired(rl, 'Supabase URL', stringValue(existing.supabaseUrl));
+    const supabaseKey = await askRequired(rl, 'Supabase publishable key', stringValue(existing.supabaseKey));
+    const adminEmail = await askRequired(rl, 'Admin email', stringValue(existing.adminEmail));
+    const adminPassword = await askRequired(rl, 'Admin password', stringValue(existing.adminPassword));
+    const printerName = await askOptional(rl, 'Printer name (leave empty for Windows default printer)', stringValue(existing.printerName));
+    const paperWidthInput = await askOptional(rl, 'Paper width, 58 or 80', stringValue(existing.paperWidth) || '80');
+    const autoPrintInput = await askOptional(rl, 'Auto print, true or false', existing.autoPrint === false ? 'false' : 'true');
+
+    const config = {
+      supabaseUrl,
+      supabaseKey,
+      adminEmail,
+      adminPassword,
+      printerName: printerName || '',
+      paperWidth: paperWidthInput === '58' ? '58' : '80',
+      pollIntervalMs: numberValue(existing.pollIntervalMs, 3000),
+      autoPrint: autoPrintInput.trim().toLowerCase() !== 'false',
+      maxOrdersPerPoll: numberValue(existing.maxOrdersPerPoll, 10),
+    };
+
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+    console.log('');
+    console.log(`Config saved: ${configPath}`);
+    console.log('Next time, double-click print-agent/start-print-agent.cmd or run "pnpm print-agent".');
+  } finally {
+    rl.close();
+  }
+}
+
+async function askRequired(rl: Interface, label: string, defaultValue = '') {
+  while (true) {
+    const answer = await askOptional(rl, label, defaultValue);
+    if (answer.trim()) return answer.trim();
+    console.log(`${label} cannot be empty.`);
+  }
+}
+
+async function askOptional(rl: Interface, label: string, defaultValue = '') {
+  const prompt = defaultValue ? `${label} [${defaultValue}]: ` : `${label}: `;
+  const answer = await rl.question(prompt);
+  return answer.trim() || defaultValue;
+}
+
+function stringValue(value: unknown) {
+  return typeof value === 'string' ? value : '';
+}
+
+function numberValue(value: unknown, fallback: number) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
 }
 
 function parseEnv(input: string) {
@@ -150,8 +247,8 @@ async function signIn(client: SupabaseClient, config: Config) {
     email: config.adminEmail,
     password: config.adminPassword,
   });
-  if (error) throw new Error(`后台账号登录失败：${error.message}`);
-  await log(`已登录后台账号：${config.adminEmail}`);
+  if (error) throw new Error(`Admin sign-in failed: ${error.message}`);
+  await log(`Signed in as ${config.adminEmail}`);
 }
 
 async function fetchRestaurantSettings(client: SupabaseClient): Promise<RestaurantSettings> {
@@ -161,7 +258,7 @@ async function fetchRestaurantSettings(client: SupabaseClient): Promise<Restaura
     .limit(1)
     .maybeSingle();
   if (error) {
-    await logError('读取餐馆名称失败，将使用默认名称', error);
+    await logError('Could not read restaurant settings. Default name will be used', error);
     return {};
   }
   return data ?? {};
@@ -170,14 +267,14 @@ async function fetchRestaurantSettings(client: SupabaseClient): Promise<Restaura
 async function pollOnce(client: SupabaseClient, config: Config, settings: RestaurantSettings) {
   const orders = await fetchPendingUnprintedOrders(client, config.maxOrdersPerPoll);
   if (orders.length === 0) {
-    await log('暂无待打印订单。');
+    await log('No pending unprinted orders.');
     return;
   }
 
   for (const order of orders) {
     const label = `#${order.order_number}`;
     if (!config.autoPrint) {
-      await log(`AUTO_PRINT=false，发现待打印订单 ${label}，但未自动打印。`);
+      await log(`AUTO_PRINT=false. Found pending order ${label}, but automatic printing is disabled.`);
       continue;
     }
 
@@ -185,9 +282,9 @@ async function pollOnce(client: SupabaseClient, config: Config, settings: Restau
       const ticket = buildKitchenTicket(order, settings, config.paperWidth);
       await printText(ticket, config.printerName);
       await markPrinted(client, order.id);
-      await log(`订单 ${label} 已打印。`);
+      await log(`Order ${label} printed.`);
     } catch (error) {
-      await logError(`订单 ${label} 打印失败，下一轮会重试`, error);
+      await logError(`Order ${label} print failed. It will be retried next poll`, error);
     }
   }
 }
@@ -201,13 +298,13 @@ async function fetchPendingUnprintedOrders(client: SupabaseClient, limit: number
     .is('deleted_at', null)
     .order('created_at', { ascending: true })
     .limit(limit);
-  if (error) throw new Error(`读取待打印订单失败：${error.message}`);
+  if (error) throw new Error(`Could not read pending orders: ${error.message}`);
   return (data ?? []) as Order[];
 }
 
 async function markPrinted(client: SupabaseClient, orderId: string) {
   const { error } = await client.rpc('mark_order_kitchen_printed', { p_order_id: orderId });
-  if (error) throw new Error(`小票已发送，但标记已打印失败：${error.message}`);
+  if (error) throw new Error(`Ticket was sent, but marking it as printed failed: ${error.message}`);
 }
 
 function buildKitchenTicket(order: Order, settings: RestaurantSettings, paperWidth: PaperWidth) {
@@ -219,25 +316,25 @@ function buildKitchenTicket(order: Order, settings: RestaurantSettings, paperWid
 
   lines.push(center(restaurantName, width));
   lines.push(repeat('=', width));
-  lines.push(center(`厨房小票 #${order.order_number}`, width));
+  lines.push(center(`Kitchen ticket #${order.order_number}`, width));
   lines.push(repeat('-', width));
-  lines.push(`桌台: ${tableLabel}`);
-  lines.push(`下单: ${createdAt}`);
+  lines.push(`Table: ${tableLabel}`);
+  lines.push(`Time: ${createdAt}`);
   lines.push(repeat('-', width));
 
   for (const item of order.order_items ?? []) {
-    const name = item.item_name_zh || item.item_name_en || item.item_name_el || '未命名菜品';
+    const name = item.item_name_zh || item.item_name_en || item.item_name_el || 'Unnamed item';
     lines.push(`${item.quantity} x ${name}`);
     const options = formatOptions(item.selected_options);
-    if (options) lines.push(indent(`选项: ${options}`, 2));
-    if (item.note) lines.push(indent(`备注: ${item.note}`, 2));
+    if (options) lines.push(indent(`Options: ${options}`, 2));
+    if (item.note) lines.push(indent(`Note: ${item.note}`, 2));
     lines.push('');
   }
 
   lines.push(repeat('-', width));
-  lines.push(right(`合计 ${formatPrice(Number(order.total_price))}`, width));
+  lines.push(right(`Total ${formatPrice(Number(order.total_price))}`, width));
   lines.push(repeat('=', width));
-  lines.push(center('厨房点菜单 非正式税务收据', width));
+  lines.push(center('Kitchen order - not fiscal receipt', width));
   lines.push('');
   lines.push('');
   return lines.join('\r\n');
@@ -255,18 +352,18 @@ function buildSampleTicket(paperWidth: PaperWidth) {
     order_items: [
       {
         id: 'sample-1',
-        item_name_zh: '套餐 A',
+        item_name_zh: 'Set A',
         item_name_en: 'Set A',
         item_name_el: null,
         quantity: 1,
-        note: '不要葱',
-        selected_options: [{ choice_name_zh: '微辣' }],
+        note: 'No onion',
+        selected_options: [{ choice_name_en: 'Mild' }],
         unit_price: 18.9,
         line_total: 18.9,
       },
       {
         id: 'sample-2',
-        item_name_zh: '酸辣汤',
+        item_name_zh: 'Hot and sour soup',
         item_name_en: 'Hot and sour soup',
         item_name_el: null,
         quantity: 1,
@@ -276,7 +373,7 @@ function buildSampleTicket(paperWidth: PaperWidth) {
         line_total: 4.9,
       },
     ],
-  }, { name_zh: 'Wok Dragon Express' }, paperWidth);
+  }, { name_en: 'Wok Dragon Express' }, paperWidth);
 }
 
 async function printText(content: string, printerName: string | null) {
@@ -294,26 +391,48 @@ async function printText(content: string, printerName: string | null) {
 }
 
 async function listPrinters() {
-  const command = "Get-Printer | Select-Object Name,Default,PrinterStatus | Format-Table -AutoSize";
+  const command = 'Get-Printer | Select-Object Name,Default,PrinterStatus | Format-Table -AutoSize';
   const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command', command], {
     windowsHide: true,
     timeout: 15000,
   });
-  console.log(stdout.trim() || '没有找到打印机。');
+  console.log(stdout.trim() || 'No printers found.');
+}
+
+async function installStartup() {
+  const shortcutName = 'Wok Dragon Print Agent.lnk';
+  const startupCommand = [
+    "$startup=[Environment]::GetFolderPath('Startup')",
+    `$shortcut=Join-Path $startup '${escapePowerShellSingleQuoted(shortcutName)}'`,
+    '$shell=New-Object -ComObject WScript.Shell',
+    '$s=$shell.CreateShortcut($shortcut)',
+    `$s.TargetPath='${escapePowerShellSingleQuoted(resolve(rootDir, 'start-print-agent.cmd'))}'`,
+    `$s.WorkingDirectory='${escapePowerShellSingleQuoted(resolve(rootDir, '..'))}'`,
+    '$s.WindowStyle=7',
+    "$s.Description='Wok Dragon Print Agent'",
+    '$s.Save()',
+    'Write-Output $shortcut',
+  ].join('; ');
+
+  const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', startupCommand], {
+    windowsHide: true,
+    timeout: 15000,
+  });
+  console.log(`Startup shortcut installed: ${stdout.trim()}`);
 }
 
 function getTableLabel(order: Order) {
-  if (order.order_type === 'takeaway') return '外带';
+  if (order.order_type === 'takeaway') return 'Takeaway';
   const tableNumber = order.restaurant_tables?.table_number;
-  if (tableNumber) return `${tableNumber}号桌`;
-  return '堂食';
+  if (tableNumber) return `Table ${tableNumber}`;
+  return 'Dine-in';
 }
 
 function formatOptions(options?: SelectedOption[] | null) {
   return (options ?? [])
     .map((option) => option.choice_name_zh || option.choice_name_en || option.choice_name_el)
     .filter(Boolean)
-    .join('、');
+    .join(', ');
 }
 
 function formatPrice(value: number) {
@@ -363,20 +482,23 @@ async function logError(message: string, error: unknown) {
 }
 
 function printHelp() {
-  console.log(`Wok Dragon 本地打印助手
+  console.log(`Wok Dragon local print agent
 
-用法：
+Usage:
   pnpm print-agent
   pnpm print-agent -- --once
   pnpm print-agent -- --test-print
   pnpm print-agent -- --list-printers
+  pnpm print-agent -- --setup
+  pnpm print-agent -- --install-startup
 
-配置：
-  复制 print-agent/.env.example 为 print-agent/.env 并填写。
-`);
+Configuration:
+  Recommended: run "pnpm print-agent -- --setup" to create print-agent/config.json.
+  Advanced: copy print-agent/.env.example to print-agent/.env and fill it in.
+  config.json has priority over .env when both files exist.`);
 }
 
 main().catch(async (error) => {
-  await logError('严重错误', error);
+  await logError('Fatal error', error);
   process.exitCode = 1;
 });

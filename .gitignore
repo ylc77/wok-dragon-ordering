@@ -22,6 +22,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 print-agent/logs/
+print-agent/config.json
 print-agent/config.local.json
 
 # Editor and OS files
