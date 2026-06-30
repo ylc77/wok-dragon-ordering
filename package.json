@@ -10,7 +10,8 @@
     "test": "vitest run",
     "smoke": "tsx scripts/smoke-test.ts",
     "preview": "vite preview",
-    "extract:wolt": "node scripts/extract-wolt-menu.mjs"
+    "extract:wolt": "node scripts/extract-wolt-menu.mjs",
+    "print-agent": "tsx print-agent/src/index.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",

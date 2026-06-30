@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>雅典本地商家线上化广告海报</title>
+    <style>
+      :root {
+        --bg: #f7f1e8;
+        --paper: #fffaf2;
+        --ink: #171312;
+        --muted: #6f625b;
+        --red: #b91c1c;
+        --deep-red: #7f1515;
+        --line: #eadccc;
+        --green: #107c4e;
+        --gold: #d69f37;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #e8e0d5;
+        color: var(--ink);
+        font-family:
+          "Microsoft YaHei",
+          "PingFang SC",
+          "Noto Sans SC",
+          Arial,
+          sans-serif;
+      }
+
+      .poster {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        margin: 0 auto;
+        padding: 52px 72px 44px;
+        background:
+          radial-gradient(circle at 88% 7%, rgba(185, 28, 28, 0.16), transparent 260px),
+          radial-gradient(circle at 10% 88%, rgba(214, 159, 55, 0.18), transparent 300px),
+          linear-gradient(180deg, #fffaf4 0%, var(--bg) 100%);
+      }
+
+      .poster::before {
+        content: "";
+        position: absolute;
+        inset: 28px;
+        border: 2px solid rgba(127, 21, 21, 0.12);
+        border-radius: 44px;
+        pointer-events: none;
+      }
+
+      h1 {
+        margin: 62px 0 0;
+        font-size: 70px;
+        line-height: 1.08;
+        letter-spacing: -1.6px;
+      }
+
+      .headline-sub {
+        margin-top: 12px;
+        color: var(--deep-red);
+        font-size: 34px;
+        font-weight: 900;
+      }
+
+      .promise {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-top: 22px;
+      }
+
+      .promise span {
+        min-height: 68px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        border: 1px solid rgba(185, 28, 28, 0.18);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 16px 40px rgba(76, 49, 30, 0.08);
+        color: #3e332d;
+        font-size: 24px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .section {
+        margin-top: 30px;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 16px;
+        font-size: 31px;
+        font-weight: 900;
+      }
+
+      .section-title::before {
+        content: "";
+        width: 12px;
+        height: 36px;
+        border-radius: 99px;
+        background: var(--red);
+      }
+
+      .service-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 13px;
+      }
+
+      .service-card,
+      .project-card,
+      .benefit-box,
+      .contact-box {
+        border: 1px solid var(--line);
+        border-radius: 30px;
+        background: rgba(255, 250, 242, 0.84);
+        box-shadow: 0 18px 44px rgba(76, 49, 30, 0.09);
+      }
+
+      .service-card {
+        display: grid;
+        grid-template-columns: 78px 1fr;
+        gap: 18px;
+        padding: 18px 22px;
+      }
+
+      .icon {
+        width: 78px;
+        height: 78px;
+        display: grid;
+        place-items: center;
+        border-radius: 25px;
+        background: linear-gradient(135deg, var(--red), var(--deep-red));
+        color: #fff;
+        font-size: 36px;
+        font-weight: 900;
+      }
+
+      .service-card h2,
+      .project-card h2 {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.2;
+      }
+
+      .service-card p,
+      .project-card p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 22px;
+        line-height: 1.42;
+        font-weight: 700;
+      }
+
+      .project-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+
+      .project-card {
+        padding: 20px;
+      }
+
+      .project-card .label {
+        display: inline-flex;
+        margin-bottom: 12px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(16, 124, 78, 0.11);
+        color: var(--green);
+        font-size: 20px;
+        font-weight: 900;
+      }
+
+      .benefit-box {
+        padding: 18px 22px;
+      }
+
+      .benefits {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px 14px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .benefits li {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-height: 42px;
+        color: #3d312b;
+        font-size: 20px;
+        line-height: 1.3;
+        font-weight: 800;
+      }
+
+      .benefits li::before {
+        content: "✓";
+        flex: 0 0 auto;
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: rgba(16, 124, 78, 0.12);
+        color: var(--green);
+        font-size: 20px;
+        font-weight: 900;
+      }
+
+      .contact-box {
+        margin-top: 22px;
+        padding: 20px 28px;
+        background: linear-gradient(135deg, #8f1717, #bd2020);
+        color: #fff;
+        border: 0;
+      }
+
+      .contact-box h2 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.2;
+      }
+
+      .contact-box p {
+        margin: 5px 0 0;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .qr-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-top: 14px;
+      }
+
+      .qr-card {
+        min-height: 158px;
+        display: grid;
+        grid-template-columns: 118px 1fr;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .qr-card img {
+        width: 118px;
+        height: 118px;
+        display: block;
+        border-radius: 14px;
+        background: #fff;
+        object-fit: cover;
+        padding: 6px;
+      }
+
+      .qr-title {
+        font-size: 21px;
+        line-height: 1.18;
+        font-weight: 900;
+      }
+
+      .qr-desc {
+        margin-top: 5px;
+        color: rgba(255, 255, 255, 0.76);
+        font-size: 15px;
+        line-height: 1.25;
+        font-weight: 700;
+      }
+
+      .small-note {
+        position: absolute;
+        right: 84px;
+        top: 78px;
+        color: rgba(127, 21, 21, 0.72);
+        font-size: 22px;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="poster">
+      <div class="small-note">Athens · Local Business Online</div>
+      <h1>雅典本地商家<br />线上化服务</h1>
+      <div class="headline-sub">网站 / 菜单 / 商品展示 / 扫码点餐</div>
+
+      <div class="promise">
+        <span>价格友好</span>
+        <span>中文沟通</span>
+        <span>前 3 位送 1 年维护</span>
+      </div>
+
+      <section class="section">
+        <div class="section-title">我可以帮你做</div>
+        <div class="service-grid">
+          <article class="service-card">
+            <div class="icon">餐</div>
+            <div>
+              <h2>餐馆 / 奶茶店 / 咖啡店</h2>
+              <p>扫码点餐 · 菜单网站 · 前台 POS 点单</p>
+            </div>
+          </article>
+          <article class="service-card">
+            <div class="icon">店</div>
+            <div>
+              <h2>服装 / 鞋包 / 饰品店</h2>
+              <p>商品展示 / 线上网购 · 库存管理 · AI 客服导购</p>
+            </div>
+          </article>
+          <article class="service-card">
+            <div class="icon">服</div>
+            <div>
+              <h2>本地服务商家</h2>
+              <p>预约页面 · 公司介绍 · WhatsApp / Instagram / 地图入口</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">已完成可演示项目</div>
+        <div class="project-grid">
+          <article class="project-card">
+            <span class="label">商品展示网站</span>
+            <h2>服装店线上展示</h2>
+            <p>商品图片、价格、尺码、分类和库存管理。支持线上网购、英文 / 希腊语前台、中文后台、CSV 导入、网店入驻 Skroutz、AI 客服和智能导购推荐。</p>
+          </article>
+          <article class="project-card">
+            <span class="label">扫码点餐系统</span>
+            <h2>餐馆点餐 + POS</h2>
+            <p>顾客扫码点餐，后台实时看订单。支持口味选择、收款、清桌、小票打印，适合餐馆、奶茶店、小吃店和咖啡店。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">为什么适合小商家</div>
+        <div class="benefit-box">
+          <ul class="benefits">
+            <li>手机端适配，客人打开就能看</li>
+            <li>老板可自己管理内容和价格</li>
+            <li>英文 / 希腊语前台，中文后台</li>
+            <li>可按真实业务继续定制</li>
+            <li>AI Agent 辅助开发，降低成本</li>
+            <li>先看演示，不合适也没关系</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="contact-box">
+        <div>
+          <h2>有网站、菜单、扫码点餐需求，可以聊聊</h2>
+          <p>扫码看效果预览，完整功能演示视频可加微信了解。</p>
+        </div>
+        <div class="qr-grid">
+          <div class="qr-card">
+            <img src="./assets/qr-clothing-demo.svg" alt="服装店演示二维码" />
+            <div>
+              <div class="qr-title">服装店预览</div>
+              <div class="qr-desc">线上网购 · AI 客服导购</div>
+            </div>
+          </div>
+          <div class="qr-card">
+            <img src="./assets/qr-restaurant-demo.svg" alt="餐馆系统演示二维码" />
+            <div>
+              <div class="qr-title">餐馆系统预览</div>
+              <div class="qr-desc">扫码点餐 · POS 点单</div>
+            </div>
+          </div>
+          <div class="qr-card">
+            <img src="./assets/wechat-qr-cropped.png" alt="微信联系二维码" />
+            <div>
+              <div class="qr-title">微信联系</div>
+              <div class="qr-desc">a5619071</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
