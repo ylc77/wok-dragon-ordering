@@ -1,118 +1,87 @@
 # Wok Dragon 本地自动打印助手
 
-这是餐馆系统的 Windows 本地打印助手。它适合安装在前台电脑、Windows 平板或 Windows 小主机上，用来监听新订单并自动打印厨房小票。
+这是 Wok Dragon 餐馆系统的 Windows 本地打印助手。它安装在前台电脑或 Windows 平板上，用来监听新订单并自动打印厨房小票。
 
-## 一、客户部署简化流程
+## 一、客户推荐安装流程
 
-给客户安装时，推荐按这个流程走：
-
-1. 先在 Windows 里安装好打印机驱动，并确认能打印 Windows 测试页。
-2. 在项目目录打开终端。
-3. 运行初始化配置：
+1. 在 Windows 中安装好打印机驱动。
+2. 确认打印机可以打印 Windows 测试页。
+3. 在项目目录打开终端。
+4. 运行交互式配置：
 
 ```powershell
 pnpm print-agent -- --setup
 ```
 
-4. 按提示填写：
-   - Supabase URL
-   - Supabase publishable key
-   - 后台管理员邮箱
-   - 后台管理员密码
-   - 打印机名称，可留空使用 Windows 默认打印机
-   - 小票纸宽，默认 80
-   - 是否自动打印，默认 true
-
-5. 测试打印：
+5. 按提示填写 Supabase、后台账号、打印机名称、纸宽和是否自动打印。
+6. 测试打印：
 
 ```powershell
 pnpm print-agent -- --test-print
 ```
 
-6. 启动自动打印：
+7. 启动自动打印：
 
 ```powershell
 pnpm print-agent
 ```
 
-7. 如果需要电脑开机后自动运行：
+8. 如果需要开机自动启动：
 
 ```powershell
 pnpm print-agent -- --install-startup
 ```
 
-配置会保存到 `print-agent/config.json`。这个文件只放在客户本地电脑，不要提交到 Git。
+## 二、配置文件
 
-## 二、它能做什么
-
-- 监听扫码点餐和 POS 前台点单产生的新订单
-- 自动打印厨房小票
-- 支持 Windows 默认打印机或指定打印机
-- 支持 58mm / 80mm 小票纸
-- 打印成功后标记订单已打印，避免重复出纸
-- 打印失败不会标记订单，下一轮会继续重试
-- 可设置 Windows 开机自动启动
-
-## 三、适用设备
-
-推荐：
-
-- Windows 电脑
-- Windows 平板
-- Windows 小主机
-- 已在 Windows 中安装好驱动，并且能打印测试页的 USB / 网口 / 系统打印机
-
-暂不承诺：
-
-- iPad 全自动打印
-- 安卓收银机自动打印
-- 蓝牙打印机深度兼容
-- ESC/POS 原生直连所有型号
-- 希腊税务正式发票 / AADE fiscal receipt
-
-## 四、配置优先级
-
-打印助手会优先读取：
+打印助手优先读取：
 
 ```text
 print-agent/config.json
 ```
 
-如果没有 `config.json`，再读取：
+如果没有 `config.json`，才会读取：
 
 ```text
 print-agent/.env
 ```
 
-因此客户部署建议使用 `--setup` 生成 `config.json`。开发或维护时仍然可以使用 `.env`。
+客户部署建议使用 `--setup` 生成 `config.json`。
 
-`.env` 示例：
+`.env` 只是开发、维护或临时排查时的备用方式。
+
+不要提交这些本地文件：
 
 ```text
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-supabase-publishable-key
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=change-me
-PRINTER_NAME=
-PAPER_WIDTH=80
-POLL_INTERVAL_MS=3000
-AUTO_PRINT=true
+print-agent/config.json
+print-agent/logs/
 ```
 
-说明：
+## 三、setup 会询问什么
 
-- `SUPABASE_KEY` 使用前端 publishable key，不要使用 service role key。
-- `ADMIN_EMAIL` / `ADMIN_PASSWORD` 使用后台 staff/admin 账号。
-- `PRINTER_NAME` 为空时使用 Windows 默认打印机。
-- 如果指定打印机名称，需要和 Windows 打印机列表里的名称一致。
-
-## 五、常用操作
-
-交互式初始化：
+运行：
 
 ```powershell
 pnpm print-agent -- --setup
 ```
+
+会逐项询问：
+
+- Supabase URL
+- Supabase publishable key
+- Admin email
+- Admin password
+- Printer name，留空使用 Windows 默认打印机
+- Paper width，默认 80
+- Auto print，默认 true
+
+保存后会生成：
+
+```text
+print-agent/config.json
+```
+
+## 四、常用命令
 
 启动自动打印：
 
@@ -120,10 +89,10 @@ pnpm print-agent -- --setup
 pnpm print-agent
 ```
 
-列出打印机：
+只检查一次订单：
 
 ```powershell
-pnpm print-agent -- --list-printers
+pnpm print-agent -- --once
 ```
 
 测试打印：
@@ -132,13 +101,33 @@ pnpm print-agent -- --list-printers
 pnpm print-agent -- --test-print
 ```
 
-安装开机自启：
+列出 Windows 打印机：
+
+```powershell
+pnpm print-agent -- --list-printers
+```
+
+交互式初始化：
+
+```powershell
+pnpm print-agent -- --setup
+```
+
+安装 Windows 开机自启：
 
 ```powershell
 pnpm print-agent -- --install-startup
 ```
 
-也可以继续使用这些双击脚本：
+查看帮助：
+
+```powershell
+pnpm print-agent -- --help
+```
+
+## 五、双击脚本
+
+也可以使用这些脚本：
 
 ```text
 print-agent\start-print-agent.cmd
@@ -148,16 +137,64 @@ print-agent\install-startup.cmd
 print-agent\uninstall-startup.cmd
 ```
 
-## 六、运行说明
+说明：
 
-启动后请保持窗口打开。窗口关闭、电脑关机或程序退出后，就不会继续自动打印。
+- `start-print-agent.cmd`：启动自动打印
+- `list-printers.cmd`：查看打印机列表
+- `test-print.cmd`：打印测试小票
+- `install-startup.cmd`：安装开机自启
+- `uninstall-startup.cmd`：取消开机自启
 
-正式交付给客户时，推荐安装开机自启。这样前台电脑开机后，打印助手会自动运行。
+## 六、适用打印机
 
-日志文件：
+第一版使用 Windows 系统打印机模式。
+
+只要打印机已经在 Windows 里安装好驱动，并且可以打印 Windows 测试页，就可以尝试使用。
+
+适合：
+
+- Windows USB 热敏打印机
+- Windows 网口打印机
+- 58mm / 80mm 小票打印机
+- 普通打印机测试
+
+第一版不承诺：
+
+- iPad 全自动打印
+- 安卓收银机自动打印
+- 蓝牙打印机深度兼容
+- 所有 ESC/POS 型号直连
+- 希腊税务正式发票
+
+## 七、运行注意事项
+
+- 自动打印窗口需要保持打开。
+- 关闭窗口后不会继续自动打印。
+- 电脑关机后不会继续自动打印。
+- 电脑睡眠可能影响自动打印。
+- 打印失败时不会标记订单为已打印，下一轮会继续重试。
+- 打印成功后会调用 `mark_order_kitchen_printed` 标记已打印，避免重复出纸。
+
+## 八、日志
+
+日志文件位置：
 
 ```text
-print-agent\logs\print-agent.log
+print-agent/logs/print-agent.log
 ```
 
-本地配置和日志不会提交到 Git。
+排查问题时可以查看：
+
+- 是否成功启动
+- 是否登录后台账号成功
+- 是否发现待打印订单
+- 是否打印成功
+- 是否标记订单已打印
+- 打印失败的错误原因
+
+## 九、安全说明
+
+- 打印助手使用 Supabase publishable key。
+- 打印助手使用 staff/admin 后台账号登录读取订单。
+- 不要在客户电脑放 `SUPABASE_SERVICE_ROLE_KEY`。
+- 不要把 `config.json`、`.env`、日志或真实账号密码提交到 Git。

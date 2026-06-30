@@ -1,125 +1,216 @@
 # 新客户数据库部署指南
 
-## 1. 创建 Supabase 项目
+本文档用于给新餐馆客户部署独立 Supabase 数据库。新客户只执行 `supabase/client-init.sql`，不要执行旧的 `supabase/schema.sql`。
 
-1. 打开 https://supabase.com，登录你的账号
-2. 点击 **New project**
-3. 填写项目名称（例如 `wok-dragon-client2`）
-4. 设置数据库密码（记下来，后续可能需要）
-5. 选择区域（建议 `Frankfurt` 或 `London`，离希腊近）
-6. 等待项目创建完成（约 2 分钟）
+## 一、创建 Supabase 项目
 
-## 2. 初始化数据库
+1. 打开 [Supabase](https://supabase.com)，登录账号。
+2. 点击 **New project**。
+3. 填写项目名称，例如 `wok-dragon-client-xxx`。
+4. 设置数据库密码，并妥善保存。
+5. 选择离希腊较近的区域，例如 Frankfurt 或 London。
+6. 等待项目创建完成。
 
-1. 进入 Supabase Dashboard → **SQL Editor**
-2. 点击 **New query**
-3. 打开本仓库的 `supabase/client-init.sql`，全选复制
-4. 粘贴到 SQL Editor，点击 **Run**
-5. 等待执行完成，确认没有报错
+建议每个客户使用独立 Supabase 项目，避免不同客户的数据混在一起。
 
-> `supabase/client-init.sql` 是新客户初始化的唯一权威文件，已经包含完整表结构、RLS、RPC、Storage bucket/policy 和默认数据。不要执行 `supabase/schema.sql`，它只是 legacy 快照。
+## 二、初始化数据库
 
-> 如果报错，检查是否有 `alter publication supabase_realtime drop table public.restaurant_settings` 报错，这是正常的（新项目还没有这个表在 Realtime 中），忽略即可。
+1. 进入 Supabase Dashboard。
+2. 打开 **SQL Editor**。
+3. 新建 query。
+4. 打开本仓库的 `supabase/client-init.sql`。
+5. 全选复制到 Supabase SQL Editor。
+6. 点击 **Run**。
+7. 等待执行完成，并确认没有关键错误。
 
-## 3. 创建管理员账号
+重要说明：
 
-### 3.1 通过 Supabase Dashboard 创建
+- `supabase/client-init.sql` 是新客户初始化的唯一权威 SQL 文件。
+- 它包含表结构、RLS、RPC、Storage bucket / policy、默认数据和必要索引。
+- `supabase/schema.sql` 是 legacy 快照，不用于新客户部署。
+- 新客户不需要逐个执行 `supabase/patches-archive/` 里的历史补丁。
+- 老客户升级不要重新执行 `client-init.sql`，应先备份数据库，再按 `supabase/patches/README.md` 执行缺失补丁。
 
-1. 进入 **Authentication** → **Users** → **Add user**
-2. 输入邮箱和密码
-3. 勾选 **Auto Confirm User**（不需要邮件验证）
-4. 点击 **Create user**
+## 三、确认 Storage
 
-### 3.2 设置管理员角色
+初始化 SQL 会创建项目需要的 Storage bucket 和 policy。
 
-在 SQL Editor 执行（替换 `USER_UUID` 为上面创建的用户 ID）：
+上线前确认：
+
+- `menu-images` 可公开读取，前台能显示菜品图片。
+- 图片上传、修改、删除只允许后台 staff/admin 或服务端受控路径。
+- 普通顾客不能上传、修改或删除菜单图片。
+- 如果使用店铺 Logo、Hero 图等资源，确认对应 bucket 或 URL 能正常访问。
+
+## 四、创建后台管理员账号
+
+### 1. 创建 Auth 用户
+
+在 Supabase Dashboard 中：
+
+1. 打开 **Authentication**。
+2. 进入 **Users**。
+3. 点击 **Add user**。
+4. 输入后台邮箱和密码。
+5. 勾选 **Auto Confirm User**。
+6. 创建用户。
+
+### 2. 设置管理员角色
+
+复制新用户的 UUID，在 SQL Editor 中执行：
 
 ```sql
 insert into public.profiles (id, role, display_name)
-values ('USER_UUID', 'admin', '管理员');
+values ('USER_UUID', 'admin', '管理员')
+on conflict (id) do update
+set role = excluded.role,
+    display_name = excluded.display_name;
 ```
 
-### 3.3 设置删除密码
+如果是普通员工，可以把 `role` 改成 `staff`。
+
+### 3. 设置私有删除确认密码
+
+如果客户需要后台归档 / 隐藏操作的二次确认密码，在 SQL Editor 中执行：
 
 ```sql
 insert into private.admin_settings (key, value)
-values ('delete_password', extensions.crypt('你的密码', extensions.gen_salt('bf')))
+values ('delete_password', extensions.crypt('你的删除确认密码', extensions.gen_salt('bf')))
 on conflict (key) do update set value = excluded.value;
 ```
 
-## 4. 部署前端到 Vercel
+## 五、部署到 Vercel
 
-### 4.1 新建 Vercel 项目
+1. 打开 [Vercel](https://vercel.com)。
+2. 导入 GitHub 仓库 `ylc77/wok-dragon-ordering`。
+3. 配置环境变量。
 
-1. 打开 https://vercel.com
-2. 点击 **Add New** → **Project**
-3. 导入 GitHub 仓库 `ylc77/wok-dragon-ordering`
-4. 在 **Environment Variables** 中设置：
+必填：
 
-```
+```text
 VITE_SUPABASE_URL=https://你的项目ID.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=你的 anon key（在 Supabase → Settings → API 中找到）
-DEEPSEEK_API_KEY=sk-xxx（可选，用于菜单自动翻译）
+VITE_SUPABASE_PUBLISHABLE_KEY=你的 Supabase publishable key
 ```
 
-5. 点击 **Deploy**
+可选：
 
-## 5. 客户上线前需要手动配置
+```text
+DEEPSEEK_API_KEY=sk-xxx
+```
 
-以下数据需要在后台管理页面逐项录入：
+说明：
 
-### 餐馆信息（/admin → 餐馆）
-- 三语言餐馆名称
-- 地址（中文/英文/希腊文）
-- 营业时间
-- Logo 图片链接
-- 首页主图链接
+- `DEEPSEEK_API_KEY` 只用于后台菜单自动翻译。
+- 不要在 Vercel 配置 `SUPABASE_SERVICE_ROLE_KEY`。
+- 不要把 service role key 放到前端或客户电脑。
+
+## 六、后台基础配置
+
+登录 `/admin` 后，按顺序配置：
+
+### 1. 餐馆设置
+
+- 餐馆名称：中文 / 英文 / 希腊语
+- 地址：中文 / 英文 / 希腊语
 - 电话
+- 营业时间
+- Logo
+- 首页图片
 - WhatsApp / Instagram / Google Maps 链接
-- Wolt / efood / Box 外卖链接
-- 付款方式（刷卡 / 现金）
+- Wolt / efood / Box 等外卖链接
 
-### 菜单（/admin → 菜品 + 分类）
-- 创建菜单分类（热菜、冷菜、饮品等）
-- 添加菜品（名称、价格、描述）— 三语言
-- 上传菜品图片
-- 设置菜品状态（上架/下架/售罄）
+### 2. 菜单分类
 
-> 可选：使用 CSV 批量导入。在菜品管理页点击「模板」下载模板，填好后「导入」。
-> 普通菜单 CSV 支持 `is_sold_out` 和 `options` 字段；空字段不会覆盖已有售罄状态或口味选项。普通菜单 CSV 只用于菜单批量导入/导出，不等同于系统完整备份。完整备份 CSV 请在后台「系统设置」导出，适合迁移、审计或恢复。
+- 添加分类名称：中文 / 英文 / 希腊语
+- 设置排序
+- 启用或停用分类
 
-### 桌台（/admin → 桌台）
-- 确认桌台数量和桌号
-- 下载每个桌台的二维码，打印张贴到对应桌面
+### 3. 菜品
 
-## 6. 验证清单
+- 添加菜品名称、描述、价格、图片
+- 设置分类、排序
+- 设置上架 / 下架 / 售罄
+- 设置口味选项，例如辣度、加料、饮料温度
+- 可使用 CSV 批量导入
 
-客户正式使用前，逐项验证：
+普通菜单 CSV 支持：
 
-- [ ] 前台首页正常显示餐馆信息
-- [ ] /menu 页面显示菜品和分类
-- [ ] 扫码进入 /table/xxx 显示点餐界面
-- [ ] 加入桌台 → 加菜 → 提交订单
-- [ ] 多设备共享购物车（用两部手机测试同一桌）
-- [ ] 请求结账 → 后台确认收款
-- [ ] 厨房打印小票
-- [ ] POS 浏览器小票打印/重新打印提示正常；真实热敏打印机静默自动打印需要后续接入本地 print-agent
-- [ ] 清桌后新顾客可扫码进入新会话
-- [ ] 后台所有功能正常（菜品管理、订单管理、桌台管理、数据备份等）
+- 多语言名称和描述
+- 分类
+- 价格
+- 图片 URL
+- 上架状态
+- 售罄状态 `is_sold_out`
+- 口味选项 `options`
 
-## 7. 环境变量参考
+说明：
 
-| 变量 | 说明 |
-|------|------|
-| `VITE_SUPABASE_URL` | Supabase 项目 URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase 匿名公钥（不是 service_role key） |
-| `DEEPSEEK_API_KEY` | DeepSeek API 密钥（可选，用于后台自动翻译菜单） |
+- 普通菜单 CSV 用于菜单批量导入 / 更新，不等同于完整系统备份。
+- 完整备份应使用后台系统设置里的备份导出功能。
 
-## 8. 注意事项
+### 4. 桌台和二维码
 
-- **不要**在 Vercel 环境变量中设置 `SUPABASE_SERVICE_ROLE_KEY`，service_role key 永远不要出现在前端环境
-- `delete_password` 通过数据库直接设置，不在后台 UI 暴露
-- 每个客户的 Supabase 项目独立，数据不互通
-- 定期在后台系统设置页导出数据备份
-- 老客户升级前先备份数据库，并按 `supabase/patches/README.md` 顺序执行补丁；不要对已有客户重新执行 `supabase/client-init.sql`
-- Supabase 免费套餐有 500MB 数据库限制，如果数据量大需升级
+- 添加或确认桌台数量
+- 下载每个桌台二维码
+- 打印二维码并贴到对应桌面
+- 如果重生成二维码，旧二维码会失效
+
+## 七、本地打印助手
+
+如果客户需要厨房自动出单，安装 Windows 本地打印助手。
+
+简化流程：
+
+```powershell
+pnpm print-agent -- --setup
+pnpm print-agent -- --test-print
+pnpm print-agent
+```
+
+如需开机自启：
+
+```powershell
+pnpm print-agent -- --install-startup
+```
+
+详细说明见：
+
+- `docs/print-agent-client-guide-zh.md`
+- `print-agent/README.md`
+
+重要说明：
+
+- 厨房小票不是希腊税务正式发票。
+- 正式税务收据仍由餐馆原收银机、税控 POS 或合法税务系统开具。
+
+## 八、上线前检查清单
+
+部署完成后逐项检查：
+
+- [ ] `npm run typecheck` 通过
+- [ ] `npm run build` 通过
+- [ ] `npm test` 通过
+- [ ] `npm run smoke` 通过
+- [ ] Supabase `client-init.sql` 执行成功
+- [ ] Vercel 环境变量配置正确
+- [ ] 后台管理员可以登录
+- [ ] 首页显示餐馆信息
+- [ ] `/menu` 显示公开菜单
+- [ ] 手机扫码进入 `/table/:qrToken`
+- [ ] 顾客可以加菜、选择口味、提交订单
+- [ ] 后台可以看到新订单
+- [ ] POS 前台点单可以创建订单
+- [ ] 后台确认收款正常
+- [ ] 清桌后旧顾客不能继续向旧 session 下单
+- [ ] 本地打印助手可以测试打印
+- [ ] 英文 / 希腊语切换正常
+- [ ] 菜品图片 fallback 正常
+
+## 九、常见注意事项
+
+- 每个客户建议独立 Supabase 项目。
+- 定期导出数据备份。
+- 不要提交 `.env.local`、`print-agent/config.json`、`print-agent/logs/`。
+- 老客户升级前必须先备份数据库。
+- 老客户不要重新执行 `supabase/client-init.sql`。
+- 如果客户需要正式支付、税务发票或多打印机分流，应作为专业版定制评估。
