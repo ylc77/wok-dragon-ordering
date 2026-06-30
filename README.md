@@ -87,7 +87,7 @@ print-agent/
 客户部署推荐：
 
 ```powershell
-pnpm print-agent -- --setup
+pnpm print-agent -- --setup-ui
 pnpm print-agent -- --test-print
 pnpm print-agent
 ```
@@ -110,6 +110,7 @@ pnpm print-agent -- --install-startup
 - [print-agent/README.md](print-agent/README.md)
 - [docs/print-agent-client-guide-zh.md](docs/print-agent-client-guide-zh.md)
 - [docs/print-agent-portable-package-zh.md](docs/print-agent-portable-package-zh.md)
+- [docs/print-agent-windows-installer-zh.md](docs/print-agent-windows-installer-zh.md)
 
 构建客户便携版：
 
@@ -124,6 +125,19 @@ dist-print-agent/YANLCPrintAgent/
 dist-print-agent/YANLCPrintAgent.zip
 ```
 
+构建正式 Windows 安装包：
+
+```bash
+npm run build:print-agent-installer
+npm run verify:print-agent-installer
+```
+
+生成：
+
+```text
+dist-print-agent/YANLCPrintAgentSetup.exe
+```
+
 ## 六、商业交付文档
 
 | 文档 | 用途 |
@@ -135,6 +149,7 @@ dist-print-agent/YANLCPrintAgent.zip
 | [docs/pre-launch-checklist-zh.md](docs/pre-launch-checklist-zh.md) | 上线前检查清单 |
 | [docs/print-agent-client-guide-zh.md](docs/print-agent-client-guide-zh.md) | 打印助手客户使用指南 |
 | [docs/print-agent-portable-package-zh.md](docs/print-agent-portable-package-zh.md) | 打印助手 Windows 便携版交付说明 |
+| [docs/print-agent-windows-installer-zh.md](docs/print-agent-windows-installer-zh.md) | 打印助手 Windows 正式安装包说明 |
 | [docs/client-guide-zh.md](docs/client-guide-zh.md) | 老板 / 员工后台操作指南 |
 | [docs/maintenance-zh.md](docs/maintenance-zh.md) | 开发维护说明 |
 | [docs/client-pricing-zh.md](docs/client-pricing-zh.md) | 报价和套餐参考 |

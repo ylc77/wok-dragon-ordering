@@ -4,7 +4,25 @@
 
 ## 一、客户推荐安装流程
 
-如果是正式交付客户，推荐先在开发电脑构建便携版：
+打印助手现在支持三种运行方式：
+
+- 开发模式：`pnpm print-agent`
+- 便携版：`YANLCPrintAgent.zip`
+- 正式安装包版：`YANLCPrintAgentSetup.exe`
+
+如果是正式交付客户，推荐优先构建安装包：
+
+```powershell
+npm run build:print-agent-installer
+```
+
+生成：
+
+```text
+dist-print-agent\YANLCPrintAgentSetup.exe
+```
+
+如果只是现场快速测试，也可以构建便携版：
 
 ```powershell
 npm run build:print-agent-package
@@ -32,10 +50,10 @@ print-agent\client-setup.cmd
 
 安装向导会依次列出打印机、填写配置、测试打印、设置开机自启，并可选择立即启动打印助手。
 
-如果需要手动执行，也可以在项目目录打开终端，运行交互式配置：
+如果需要手动执行，也可以在项目目录打开终端，打开本地设置页面：
 
 ```powershell
-pnpm print-agent -- --setup
+pnpm print-agent -- --setup-ui
 ```
 
 4. 按提示填写 Supabase、后台账号、打印机名称、纸宽和是否自动打印。
@@ -71,7 +89,7 @@ print-agent/config.json
 print-agent/.env
 ```
 
-客户部署建议使用 `--setup` 生成 `config.json`。
+客户部署建议使用安装包或便携包里的设置入口生成 `config.json`。开发模式可使用 `--setup-ui` 打开本地设置页面，`--setup` 作为命令行备用方式。
 
 `.env` 只是开发、维护或临时排查时的备用方式。
 
@@ -132,7 +150,12 @@ pnpm print-agent -- --test-print
 pnpm print-agent -- --list-printers
 ```
 
-交互式初始化：
+打开本地设置页面：
+```powershell
+pnpm print-agent -- --setup-ui
+```
+
+命令行备用初始化：
 
 ```powershell
 pnpm print-agent -- --setup

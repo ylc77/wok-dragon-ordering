@@ -143,7 +143,7 @@ YANLCPrintAgent.zip.sha256.txt
 setup.cmd
 ```
 
-按提示填写：
+会打开本地浏览器设置页面，按页面填写：
 
 - Supabase URL
 - Supabase publishable key
@@ -244,20 +244,36 @@ logs/print-agent.log
 - 不要提交或公开日志中的敏感信息。
 - `config.example.json` 只能放示例值。
 
-## 十三、下一步升级成正式安装包
+## 十三、正式安装包版
 
-当前版本已经是 Windows exe 便携版。后续可以继续升级为正式安装包：
+当前项目也支持正式安装包版。构建命令：
 
-- 生成 `YANLCPrintAgentSetup.exe`
+```powershell
+npm run build:print-agent-installer
+```
+
+输出：
+
+```text
+dist-print-agent/YANLCPrintAgentSetup.exe
+```
+
+安装包版支持：
+
 - 安装到 `C:\Program Files\YANLCPrintAgent\`
 - 自动创建桌面快捷方式
 - 自动创建开机自启
 - 提供卸载入口
-- 增加图形化配置界面
-- 增加打印状态面板和手动重打功能
 
-建议路线：
+安装包详细说明见：
 
-1. 先使用当前 exe 便携版交付真实客户。
-2. 收集打印机兼容性和现场问题。
-3. 再做安装包 + 图形化配置界面。
+```text
+docs/print-agent-windows-installer-zh.md
+```
+
+后续仍可继续增强：
+
+- 图形化配置界面
+- 打印状态面板
+- 手动重打功能
+- 多打印机分流

@@ -53,7 +53,7 @@ async function main() {
     'echo YANLC Print Agent - Setup',
     'echo =========================',
     'echo.',
-    'YANLCPrintAgent.exe --setup',
+    'YANLCPrintAgent.exe --setup-ui',
     'echo.',
     'pause',
   ]));
@@ -109,13 +109,7 @@ async function main() {
     'set "SHORTCUT=%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\YANLC Print Agent.lnk"',
     'echo.',
     'echo Removing Windows startup shortcut...',
-    'if exist "%SHORTCUT%" (',
-    '  del "%SHORTCUT%"',
-    '  echo Startup shortcut removed:',
-    '  echo %SHORTCUT%',
-    ') else (',
-    '  echo Startup shortcut was not found.',
-    ')',
+    'YANLCPrintAgent.exe --uninstall-startup',
     'echo.',
     'pause',
   ]));
@@ -170,7 +164,8 @@ First-time setup:
 1. Copy the whole YANLCPrintAgent folder to the customer computer.
 2. Install the printer driver in Windows.
 3. Confirm the Windows test page prints correctly.
-4. Double-click setup.cmd and fill in:
+4. Double-click setup.cmd. It opens a local settings page in the browser.
+5. Fill in:
    - Supabase URL
    - Supabase publishable key
    - Admin email
@@ -178,20 +173,23 @@ First-time setup:
    - Printer name, or leave empty for Windows default printer
    - Paper width, 58 or 80
    - Auto print, true or false
-5. Double-click test-print.cmd to print a sample ticket.
-6. Double-click start.cmd to start automatic printing.
-7. Optional: double-click install-startup.cmd to start automatically when Windows starts.
+6. Save the settings.
+7. Double-click test-print.cmd to print a sample ticket.
+8. Double-click start.cmd to start automatic printing.
+9. Optional: double-click install-startup.cmd to start automatically when Windows starts.
 
 Important:
 - Keep the start.cmd window open. Closing it stops automatic printing.
-- config.json is created locally by setup.cmd. Do not share it publicly.
-- logs are saved in the logs folder.
+- Portable zip mode: config.json and logs are created in this folder.
+- Installer mode: config.json is saved to C:\\ProgramData\\YANLCPrintAgent\\config.json.
+- Installer mode: logs are saved to C:\\ProgramData\\YANLCPrintAgent\\logs\\print-agent.log.
+- Do not share config.json publicly.
 - Kitchen tickets are not Greek fiscal receipts.
 - Official tax receipts must still be issued by the restaurant's legal cash register or POS.
 
 Files:
 - YANLCPrintAgent.exe: application entry
-- setup.cmd: interactive setup
+- setup.cmd: open local settings page
 - start.cmd: start automatic printing
 - test-print.cmd: sample print
 - list-printers.cmd: show Windows printers

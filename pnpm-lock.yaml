@@ -54,6 +54,9 @@ importers:
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
+      innosetup-compiler:
+        specifier: ^6.3.1
+        version: 6.3.1
       playwright:
         specifier: ^1.61.1
         version: 1.61.1
@@ -1012,6 +1015,11 @@ packages:
 
   ini@1.3.8:
     resolution: {integrity: sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==}
+
+  innosetup-compiler@6.3.1:
+    resolution: {integrity: sha512-Qynw7Xjv7ZN/beBvS7Kt+QL50Q/Zbf7cJDHZmxmwNbxqgZEWCZ+5tggC6naF4ij/9PqRfpvDP1ecZLFwusu6Lw==}
+    engines: {node: '>= 0.8.0'}
+    hasBin: true
 
   into-stream@9.1.0:
     resolution: {integrity: sha512-DRsRnQrbzdFjaQ1oe4C6/EIUymIOEix1qROEJTF9dbMq+M4Zrm6VaLp6SD/B9IsiEjPZuBSnWWFN+udajugdWA==}
@@ -2324,6 +2332,8 @@ snapshots:
   inherits@2.0.4: {}
 
   ini@1.3.8: {}
+
+  innosetup-compiler@6.3.1: {}
 
   into-stream@9.1.0: {}
 
