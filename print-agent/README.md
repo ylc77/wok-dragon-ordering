@@ -6,15 +6,22 @@
 
 1. 在 Windows 中安装好打印机驱动。
 2. 确认打印机可以打印 Windows 测试页。
-3. 在项目目录打开终端。
-4. 运行交互式配置：
+3. 双击运行客户安装向导：
+
+```text
+print-agent\client-setup.cmd
+```
+
+安装向导会依次列出打印机、填写配置、测试打印、设置开机自启，并可选择立即启动打印助手。
+
+如果需要手动执行，也可以在项目目录打开终端，运行交互式配置：
 
 ```powershell
 pnpm print-agent -- --setup
 ```
 
-5. 按提示填写 Supabase、后台账号、打印机名称、纸宽和是否自动打印。
-6. 测试打印：
+4. 按提示填写 Supabase、后台账号、打印机名称、纸宽和是否自动打印。
+5. 测试打印：
 
 ```powershell
 pnpm print-agent -- --test-print
@@ -130,6 +137,7 @@ pnpm print-agent -- --help
 也可以使用这些脚本：
 
 ```text
+print-agent\client-setup.cmd
 print-agent\start-print-agent.cmd
 print-agent\list-printers.cmd
 print-agent\test-print.cmd
@@ -139,6 +147,7 @@ print-agent\uninstall-startup.cmd
 
 说明：
 
+- `client-setup.cmd`：客户安装向导，适合首次部署
 - `start-print-agent.cmd`：启动自动打印
 - `list-printers.cmd`：查看打印机列表
 - `test-print.cmd`：打印测试小票

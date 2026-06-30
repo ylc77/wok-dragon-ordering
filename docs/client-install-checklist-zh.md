@@ -81,7 +81,15 @@ SUPABASE_SERVICE_ROLE_KEY
 
 ## 五、打印助手 setup
 
-在项目目录打开终端，运行：
+推荐方式：双击客户安装向导：
+
+```text
+print-agent\client-setup.cmd
+```
+
+它会依次完成打印机列表、配置填写、测试打印、开机自启和启动确认。
+
+如果需要手动执行，也可以在项目目录打开终端，运行：
 
 ```powershell
 pnpm print-agent -- --setup
