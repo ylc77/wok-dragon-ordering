@@ -96,11 +96,13 @@ VITE_SUPABASE_PUBLISHABLE_KEY=你的 Supabase publishable key
 
 ```text
 DEEPSEEK_API_KEY=sk-xxx
+OPENAI_API_KEY=sk-xxx
 ```
 
 说明：
 
-- `DEEPSEEK_API_KEY` 只用于后台菜单自动翻译。
+- `DEEPSEEK_API_KEY` 只用于后台菜单自动翻译、AI 补全菜品描述和生成图片提示词。
+- `OPENAI_API_KEY` 只用于后台 AI 生成菜品图片，可后续再配置。
 - 不要在 Vercel 配置 `SUPABASE_SERVICE_ROLE_KEY`。
 - 不要把 service role key 放到前端或客户电脑。
 

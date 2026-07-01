@@ -1407,6 +1407,80 @@ async function translateSingleMenuValue<T extends MenuTranslationFields>(value: 
   return mergeMissingTranslations(value, translation ?? {});
 }
 
+type MenuAiCompletion = {
+  descriptions: Pick<MenuTranslationFields, 'description_zh' | 'description_en' | 'description_el'>;
+  image_prompt: string;
+};
+
+function getAuthTokenOrThrow(session: Session | null) {
+  const token = session?.access_token;
+  if (!token) throw new Error('请先登录后台');
+  return token;
+}
+
+async function requestMenuAiCompletion(item: Partial<MenuItem>, categoryName?: string): Promise<MenuAiCompletion> {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data } = await supabase.auth.getSession();
+  const token = getAuthTokenOrThrow(data.session);
+
+  const response = await fetch('/api/admin/generate-menu-ai', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      item: {
+        category_name: categoryName || '',
+        name_zh: item.name_zh || '',
+        name_en: item.name_en || '',
+        name_el: item.name_el || '',
+        description_zh: item.description_zh || '',
+        description_en: item.description_en || '',
+        description_el: item.description_el || '',
+        price: item.price ?? '',
+      },
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'AI 生成失败');
+  return payload as MenuAiCompletion;
+}
+
+async function requestMenuAiImage(prompt: string) {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data } = await supabase.auth.getSession();
+  const token = getAuthTokenOrThrow(data.session);
+
+  const response = await fetch('/api/admin/generate-menu-image', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ prompt }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'AI 图片生成失败');
+  return base64ToFile(payload.b64_json, payload.mime_type || 'image/png', 'ai-menu-image.png');
+}
+
+function base64ToFile(base64: string, mimeType: string, filename: string) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new File([bytes], filename, { type: mimeType });
+}
+
+function mergeMissingAiDescriptions(value: Partial<MenuItem>, completion: MenuAiCompletion): Partial<MenuItem> {
+  return {
+    ...value,
+    description_zh: value.description_zh || completion.descriptions?.description_zh || '',
+    description_en: value.description_en || completion.descriptions?.description_en || '',
+    description_el: value.description_el || completion.descriptions?.description_el || '',
+  };
+}
+
 function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; }) {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -3694,6 +3768,50 @@ function ItemForm({
   onAutoTranslate?: () => void;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiImagePrompt, setAiImagePrompt] = useState('');
+  const [aiImageLoading, setAiImageLoading] = useState(false);
+  const selectedCategory = categories.find((category) => category.id === value.category_id);
+  const selectedCategoryName = selectedCategory?.name_zh || selectedCategory?.name_en || selectedCategory?.name_el || '';
+
+  async function handleAiCompleteDescriptions() {
+    try {
+      setAiLoading(true);
+      const completion = await requestMenuAiCompletion(value, selectedCategoryName);
+      onChange(mergeMissingAiDescriptions(value, completion));
+      setAiImagePrompt(completion.image_prompt || '');
+      onToast?.('AI 已补全空白描述，并生成图片提示词');
+    } catch (error) {
+      onToast?.(formatUnknownError(error), 'error');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function handleAiGenerateImage() {
+    try {
+      setAiImageLoading(true);
+      let prompt = aiImagePrompt.trim();
+      let nextValue = value;
+      if (!prompt) {
+        const completion = await requestMenuAiCompletion(value, selectedCategoryName);
+        nextValue = mergeMissingAiDescriptions(value, completion);
+        onChange(nextValue);
+        prompt = completion.image_prompt || '';
+        setAiImagePrompt(prompt);
+      }
+      if (!prompt) throw new Error('请先生成或填写图片提示词');
+      const file = await requestMenuAiImage(prompt);
+      const url = await uploadMenuItemImage(file, value.id);
+      onChange({ ...nextValue, image_url: url });
+      onToast?.('AI 图片已生成并上传');
+    } catch (error) {
+      onToast?.(formatUnknownError(error), 'error');
+    } finally {
+      setAiImageLoading(false);
+    }
+  }
+
   return (
     <div className="item-editor-grid">
       <section className="item-editor-card item-editor-core">
@@ -3778,6 +3896,32 @@ function ItemForm({
             <TextField label="Όνομα" value={value.name_el} onChange={(v) => onChange({ ...value, name_el: v })} />
             <TextField label="Περιγραφή" value={value.description_el} onChange={(v) => onChange({ ...value, description_el: v })} />
           </div>
+        </div>
+        <div className="item-ai-panel">
+          <div className="item-ai-head">
+            <div>
+              <strong>AI 辅助</strong>
+              <small>先补全菜单描述，再生成菜品图片提示词。已有描述不会被自动覆盖。</small>
+            </div>
+            <div className="item-ai-actions">
+              <button className="secondary-button" type="button" disabled={aiLoading || aiImageLoading} onClick={() => { void handleAiCompleteDescriptions(); }}>
+                {aiLoading ? '生成中…' : 'AI 补全描述'}
+              </button>
+              <button className="secondary-button" type="button" disabled={aiLoading || aiImageLoading} onClick={() => { void handleAiGenerateImage(); }}>
+                {aiImageLoading ? '生成图片中…' : 'AI 生成图片'}
+              </button>
+            </div>
+          </div>
+          <label className="item-ai-prompt">
+            图片提示词
+            <textarea
+              className="text-field"
+              rows={3}
+              value={aiImagePrompt}
+              placeholder="点击 AI 补全描述后会生成图片提示词；后续配置 OPENAI_API_KEY 后可直接生成图片。"
+              onChange={(event) => setAiImagePrompt(event.target.value)}
+            />
+          </label>
         </div>
       </section>
 

@@ -4936,6 +4936,14 @@ body {
 .item-options-json { font-size: 13px; margin-top: 4px; }
 .item-options-json summary { color: #9ca3af; cursor: pointer; font-weight: 600; }
 .options-json-hint { color: #9ca3af; font-size: 11px; margin: 4px 0 0; }
+.item-ai-panel { background: #fff8f2; border: 1px solid #f3d6bf; border-radius: 8px; display: grid; gap: 12px; margin-top: 16px; padding: 14px; }
+.item-ai-head { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; }
+.item-ai-head strong { display: block; font-size: 14px; margin-bottom: 4px; }
+.item-ai-head small { color: #7c5f48; display: block; font-size: 12px; line-height: 1.5; }
+.item-ai-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.item-ai-actions .secondary-button { min-height: 36px; padding: 8px 12px; white-space: nowrap; }
+.item-ai-prompt { color: #4b3b30; display: grid; font-size: 13px; font-weight: 700; gap: 6px; }
+.item-ai-prompt textarea { min-height: 86px; resize: vertical; }
 
 @media (min-width: 1180px) {
   .item-options-section {
@@ -4971,6 +4979,7 @@ body {
   }
 
   .item-editor-card-head,
+  .item-ai-head,
   .item-editor-actions,
   .item-image-tools,
   .options-template-row {
@@ -4985,6 +4994,7 @@ body {
   .item-editor-actions .primary-button,
   .item-editor-actions .secondary-button,
   .item-translate-button,
+  .item-ai-actions .secondary-button,
   .options-template-row .secondary-button,
   .item-upload-btn {
     width: 100%;
