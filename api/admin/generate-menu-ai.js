@@ -132,8 +132,11 @@ export default async function handler(request, response) {
             role: 'user',
             content: JSON.stringify({
               instruction:
-                'Generate missing menu descriptions in Chinese, English, and Greek, and one English image-generation prompt. The image prompt must describe a realistic restaurant menu photo, clean background, natural light, no text, no watermark. If the item is vague like Set A, use existing descriptions/category but avoid claiming exact ingredients that were not provided.',
+                'Generate missing menu names and descriptions in Chinese, English, and Greek, and one English image-generation prompt. Preserve the meaning of existing names. The image prompt must describe a realistic restaurant menu photo, clean background, natural light, no text, no watermark. If the item is vague like Set A, use existing descriptions/category but avoid claiming exact ingredients that were not provided.',
               output_schema: {
+                name_zh: 'Chinese menu name',
+                name_en: 'English menu name',
+                name_el: 'Greek menu name',
                 description_zh: 'short Chinese description',
                 description_en: 'short English description',
                 description_el: 'short Greek description',
@@ -155,6 +158,11 @@ export default async function handler(request, response) {
     const parsed = safeJsonParse(completion.choices?.[0]?.message?.content);
 
     sendJson(response, 200, {
+      names: {
+        name_zh: cleanText(parsed.name_zh),
+        name_en: cleanText(parsed.name_en),
+        name_el: cleanText(parsed.name_el),
+      },
       descriptions: {
         description_zh: cleanText(parsed.description_zh),
         description_en: cleanText(parsed.description_en),

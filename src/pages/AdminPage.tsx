@@ -1401,13 +1401,8 @@ async function requestMenuTranslations(items: MenuTranslationFields[]) {
   return (payload.translations ?? []) as MenuTranslationFields[];
 }
 
-async function translateSingleMenuValue<T extends MenuTranslationFields>(value: T) {
-  if (!needsMenuTranslation(value)) return value;
-  const [translation] = await requestMenuTranslations([value]);
-  return mergeMissingTranslations(value, translation ?? {});
-}
-
 type MenuAiCompletion = {
+  names: Pick<MenuTranslationFields, 'name_zh' | 'name_en' | 'name_el'>;
   descriptions: Pick<MenuTranslationFields, 'description_zh' | 'description_en' | 'description_el'>;
   image_prompt: string;
 };
@@ -1472,9 +1467,12 @@ function base64ToFile(base64: string, mimeType: string, filename: string) {
   return new File([bytes], filename, { type: mimeType });
 }
 
-function mergeMissingAiDescriptions(value: Partial<MenuItem>, completion: MenuAiCompletion): Partial<MenuItem> {
+function mergeMissingAiMenuContent(value: Partial<MenuItem>, completion: MenuAiCompletion): Partial<MenuItem> {
   return {
     ...value,
+    name_zh: value.name_zh || completion.names?.name_zh || '',
+    name_en: value.name_en || completion.names?.name_en || '',
+    name_el: value.name_el || completion.names?.name_el || '',
     description_zh: value.description_zh || completion.descriptions?.description_zh || '',
     description_en: value.description_en || completion.descriptions?.description_en || '',
     description_el: value.description_el || completion.descriptions?.description_el || '',
@@ -1491,7 +1489,6 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
   const [bulkPrice, setBulkPrice] = useState('');
   const [csvPreview, setCsvPreview] = useState<MenuCsvRow[]>([]);
   const [csvResult, setCsvResult] = useState<CsvImportResult | null>(null);
-  const [translatingDraft, setTranslatingDraft] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
   const [deletePassword, setDeletePassword] = useState('');
@@ -1803,18 +1800,6 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
     });
   }
 
-  async function autoTranslateDraft() {
-    try {
-      setTranslatingDraft(true);
-      setDraft(await translateSingleMenuValue(draft));
-      toast('自动翻译完成');
-    } catch (err) {
-      onMessage(formatUnknownError(err));
-    } finally {
-      setTranslatingDraft(false);
-    }
-  }
-
   return (
     <AdminSection title="菜品管理" subtitle="管理菜单菜品、价格、分类、图片和上下架状态" onRefresh={load}>
       {/* ─ 统计卡片 ─ */}
@@ -1878,9 +1863,6 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
         <div className="item-new-form">
           <ItemForm value={draft} categories={categories} onChange={setDraft} onToast={toast} />
           <div className="item-new-form-actions">
-            <button className="secondary-button" type="button" disabled={translatingDraft} onClick={autoTranslateDraft}>
-              {translatingDraft ? '翻译中…' : '自动翻译'}
-            </button>
             <button className="primary-button" type="button" onClick={() => { void saveItem(draft).then((saved) => { if (saved) setShowNewForm(false); }); }}>
               <Plus size={15} />
               保存
@@ -3652,21 +3634,8 @@ function ItemRow({
   toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
 }) {
   const [value, setValue] = useState<Partial<MenuItem>>(item);
-  const [translating, setTranslating] = useState(false);
   const [editing, setEditing] = useState(false);
   const category = categories.find((entry) => entry.id === item.category_id);
-
-  async function autoTranslate() {
-    try {
-      setTranslating(true);
-      setValue(await translateSingleMenuValue(value));
-      onMessage('自动翻译完成');
-    } catch (err) {
-      onMessage(formatUnknownError(err));
-    } finally {
-      setTranslating(false);
-    }
-  }
 
   async function saveAndClose() {
     const saved = await onSave(value);
@@ -3703,8 +3672,6 @@ function ItemRow({
             categories={categories}
             onChange={setValue}
             onToast={toast}
-            translating={translating}
-            onAutoTranslate={autoTranslate}
           />
           <div className="item-editor-actions">
             <button className="primary-button" type="button" onClick={() => { void saveAndClose(); }}>保存修改</button>
@@ -3759,13 +3726,11 @@ function removeOptionGroup(current: MenuItemOptionGroup[], groupId: string): Men
 }
 
 function ItemForm({
-  value, categories, onChange, onToast, translating, onAutoTranslate,
+  value, categories, onChange, onToast,
 }: {
   value: Partial<MenuItem>; categories: MenuCategory[];
   onChange: (value: Partial<MenuItem>) => void;
   onToast?: (msg: string, type?: 'success' | 'error' | 'warning') => void;
-  translating?: boolean;
-  onAutoTranslate?: () => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -3778,9 +3743,9 @@ function ItemForm({
     try {
       setAiLoading(true);
       const completion = await requestMenuAiCompletion(value, selectedCategoryName);
-      onChange(mergeMissingAiDescriptions(value, completion));
+      onChange(mergeMissingAiMenuContent(value, completion));
       setAiImagePrompt(completion.image_prompt || '');
-      onToast?.('AI 已补全空白描述，并生成图片提示词');
+      onToast?.('AI 已补全空白菜单内容，并生成图片提示词');
     } catch (error) {
       onToast?.(formatUnknownError(error), 'error');
     } finally {
@@ -3795,7 +3760,7 @@ function ItemForm({
       let nextValue = value;
       if (!prompt) {
         const completion = await requestMenuAiCompletion(value, selectedCategoryName);
-        nextValue = mergeMissingAiDescriptions(value, completion);
+        nextValue = mergeMissingAiMenuContent(value, completion);
         onChange(nextValue);
         prompt = completion.image_prompt || '';
         setAiImagePrompt(prompt);
@@ -3877,11 +3842,6 @@ function ItemForm({
       <section className="item-editor-card item-language-section">
         <div className="item-editor-card-head">
           <strong>多语言内容</strong>
-          {onAutoTranslate ? (
-            <button className="secondary-button item-translate-button" type="button" disabled={translating} onClick={onAutoTranslate}>
-              {translating ? '翻译中…' : '自动翻译'}
-            </button>
-          ) : null}
         </div>
         <div className="item-language-grid">
           <div className="item-language-field"><strong>简体中文</strong>
@@ -3901,11 +3861,11 @@ function ItemForm({
           <div className="item-ai-head">
             <div>
               <strong>AI 辅助</strong>
-              <small>先补全菜单描述，再生成菜品图片提示词。已有描述不会被自动覆盖。</small>
+              <small>输入一个菜名后，可自动补英文/希腊语、三语描述和图片提示词。已有内容不会被自动覆盖。</small>
             </div>
             <div className="item-ai-actions">
               <button className="secondary-button" type="button" disabled={aiLoading || aiImageLoading} onClick={() => { void handleAiCompleteDescriptions(); }}>
-                {aiLoading ? '生成中…' : 'AI 补全描述'}
+                {aiLoading ? '生成中…' : 'AI 补全菜单内容'}
               </button>
               <button className="secondary-button" type="button" disabled={aiLoading || aiImageLoading} onClick={() => { void handleAiGenerateImage(); }}>
                 {aiImageLoading ? '生成图片中…' : 'AI 生成图片'}
@@ -3918,7 +3878,7 @@ function ItemForm({
               className="text-field"
               rows={3}
               value={aiImagePrompt}
-              placeholder="点击 AI 补全描述后会生成图片提示词；后续配置 OPENAI_API_KEY 后可直接生成图片。"
+              placeholder="点击 AI 补全菜单内容后会生成图片提示词；后续配置 OPENAI_API_KEY 后可直接生成图片。"
               onChange={(event) => setAiImagePrompt(event.target.value)}
             />
           </label>

@@ -49,7 +49,7 @@ DEEPSEEK_API_KEY=sk-xxx
 OPENAI_API_KEY=sk-xxx
 ```
 
-`DEEPSEEK_API_KEY` 是可选项，用于后台自动翻译、AI 补全菜品描述和生成图片提示词。
+`DEEPSEEK_API_KEY` 是可选项，用于后台自动翻译、AI 补全菜单内容和生成图片提示词。
 `OPENAI_API_KEY` 是可选项，只用于后台 AI 生成菜品图片；未配置时图片按钮会提示未启用，不影响普通菜单管理。
 
 不要把 `SUPABASE_SERVICE_ROLE_KEY` 放到前端或客户电脑。
