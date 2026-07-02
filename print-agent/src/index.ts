@@ -9,6 +9,7 @@ import { createInterface, type Interface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+const AGENT_VERSION = '1.0.0';
 const execFileAsync = promisify(execFile);
 const processWithPkg = process as NodeJS.Process & { pkg?: unknown };
 const rootDir = processWithPkg.pkg
@@ -119,6 +120,7 @@ async function main() {
 
   await signIn(client, config);
   const settings = await fetchRestaurantSettings(client);
+  await reportPrintAgentStatus(client, config, { status: 'online', lastError: null });
   await log(
     `Print agent started. autoPrint=${config.autoPrint}, printer=${config.printerName || 'Windows default printer'}, paperWidth=${config.paperWidth}mm`,
   );
@@ -692,6 +694,7 @@ async function fetchRestaurantSettings(client: SupabaseClient): Promise<Restaura
 }
 
 async function pollOnce(client: SupabaseClient, config: Config, settings: RestaurantSettings) {
+  await reportPrintAgentStatus(client, config, { status: 'online' });
   const orders = await fetchPendingUnprintedOrders(client, config.maxOrdersPerPoll);
   if (orders.length === 0) {
     await log('No pending unprinted orders.');
@@ -709,8 +712,10 @@ async function pollOnce(client: SupabaseClient, config: Config, settings: Restau
       const ticket = buildKitchenTicket(order, settings, config.paperWidth);
       await printText(ticket, config.printerName);
       await markPrinted(client, order.id);
+      await reportPrintAgentStatus(client, config, { status: 'online', lastPrintedAt: new Date().toISOString(), lastError: null });
       await log(`Order ${label} printed.`);
     } catch (error) {
+      await reportPrintAgentStatus(client, config, { status: 'error', lastError: error instanceof Error ? error.message : String(error) });
       await logError(`Order ${label} print failed. It will be retried next poll`, error);
     }
   }
@@ -732,6 +737,24 @@ async function fetchPendingUnprintedOrders(client: SupabaseClient, limit: number
 async function markPrinted(client: SupabaseClient, orderId: string) {
   const { error } = await client.rpc('mark_order_kitchen_printed', { p_order_id: orderId });
   if (error) throw new Error(`Ticket was sent, but marking it as printed failed: ${error.message}`);
+}
+
+async function reportPrintAgentStatus(
+  client: SupabaseClient,
+  config: Config,
+  patch: { status: 'online' | 'offline' | 'error'; lastPrintedAt?: string | null; lastError?: string | null },
+) {
+  const { error } = await client.rpc('report_print_agent_status', {
+    p_agent_name: 'YANLCPrintAgent',
+    p_status: patch.status,
+    p_printer_name: config.printerName || null,
+    p_version: AGENT_VERSION,
+    p_last_printed_at: patch.lastPrintedAt ?? null,
+    p_last_error: patch.lastError ?? null,
+  });
+  if (error) {
+    await log(`Print agent status report skipped: ${error.message}`);
+  }
 }
 
 function buildKitchenTicket(order: Order, settings: RestaurantSettings, paperWidth: PaperWidth) {

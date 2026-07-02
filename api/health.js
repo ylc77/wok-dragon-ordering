@@ -33,6 +33,8 @@ export default async function handler(request, response) {
       database: 'disconnected',
       config: 'unavailable',
       realtime: 'not checked (client-side)',
+      deepseek: process.env.DEEPSEEK_API_KEY ? 'configured' : 'missing',
+      openai_images: process.env.OPENAI_API_KEY ? 'configured' : 'missing',
     },
   };
 
@@ -64,6 +66,8 @@ export default async function handler(request, response) {
         database: 'connected',
         config: data && data.length > 0 ? 'readable' : 'empty',
         realtime: 'not checked (client-side)',
+        deepseek: process.env.DEEPSEEK_API_KEY ? 'configured' : 'missing',
+        openai_images: process.env.OPENAI_API_KEY ? 'configured' : 'missing',
       },
     });
   } catch (err) {
@@ -75,6 +79,8 @@ export default async function handler(request, response) {
         database: 'disconnected',
         config: 'unavailable',
         realtime: 'not checked (client-side)',
+        deepseek: process.env.DEEPSEEK_API_KEY ? 'configured' : 'missing',
+        openai_images: process.env.OPENAI_API_KEY ? 'configured' : 'missing',
       },
     });
   }

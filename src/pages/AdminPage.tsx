@@ -22,6 +22,7 @@ import {
   fetchAdminOrderStats,
   fetchAdminOrders,
   fetchAdminPendingOrders,
+  fetchPrintAgentStatus,
   fetchPendingBillRequests,
   fetchPendingTableReentryRequests,
   fetchRestaurantTables,
@@ -38,6 +39,7 @@ import type {
   BillRequest,
   AdminDashboardSummary,
   AdminOrderStats,
+  AdminRole,
   MenuCategory,
   MenuGroup,
   MenuItem,
@@ -45,6 +47,7 @@ import type {
   Order,
   OrderItem,
   OrderStatus,
+  PrintAgentStatus,
   RealtimeConnectionStatus,
   RestaurantSettings,
   RestaurantTable,
@@ -267,7 +270,7 @@ export function AdminPage() {
   }
 
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('connecting');
-  const [adminRole, setAdminRole] = useState<'admin' | 'staff' | null>(null);
+  const [adminRole, setAdminRole] = useState<AdminRole | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(() => {
     try { return localStorage.getItem('restaurant:order-sound-enabled') !== '0'; } catch { return true; }
   });
@@ -313,10 +316,10 @@ export function AdminPage() {
         .maybeSingle();
       if (!active) return;
 
-      const allowed = !error && (profile?.role === 'admin' || profile?.role === 'staff');
+      const allowed = !error && (profile?.role === 'admin' || profile?.role === 'staff' || profile?.role === 'kitchen');
       setLoggedIn(allowed);
       setAdminEmail(allowed ? (session.user.email ?? '管理员') : '管理员');
-      setAdminRole(allowed ? (profile?.role === 'admin' ? 'admin' : 'staff') : null);
+      setAdminRole(allowed ? (profile?.role as AdminRole) : null);
       if (allowed) setMessage(null);
       if (!allowed && !session.user.is_anonymous) setMessage('该账户没有后台管理权限');
       setSessionReady(true);
@@ -362,6 +365,12 @@ export function AdminPage() {
     };
   }, [loggedIn]);
 
+  useEffect(() => {
+    if (adminRole === 'kitchen' && tab !== 'orders') {
+      setTab('orders');
+    }
+  }, [adminRole, tab]);
+
   if (!hasSupabaseConfig || !supabase) {
     return (
       <main className="admin-login">
@@ -389,6 +398,7 @@ export function AdminPage() {
   if (!loggedIn) {
     return <AdminLogin onMessage={setMessage} message={message} />;
   }
+  const isKitchenRole = adminRole === 'kitchen';
 
   return (
     <main className="admin-shell">
@@ -399,14 +409,14 @@ export function AdminPage() {
           <span>后台管理</span>
         </Link>
         <nav className="admin-nav-list">
-          {enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
-          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>经营概览</AdminNavButton> : null}
+          {!isKitchenRole && enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
+          {!isKitchenRole && (enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>经营概览</AdminNavButton> : null}
           {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单管理</AdminNavButton> : null}
-          {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台 / 二维码</AdminNavButton> : null}
-          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton>
-          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton>
-          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton>
-          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton>
+          {!isKitchenRole && enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台 / 二维码</AdminNavButton> : null}
+          {!isKitchenRole ? <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton> : null}
+          {!isKitchenRole ? <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton> : null}
+          {!isKitchenRole ? <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton> : null}
+          {!isKitchenRole ? <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton> : null}
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>
           <LogOut size={15} />
@@ -420,14 +430,14 @@ export function AdminPage() {
         <button className="admin-mobile-drawer-close" onClick={closeDrawer} aria-label="关闭"><X size={22} /></button>
         <Link className="admin-brand" to="/" onClick={closeDrawer}><span className="admin-brand-mark">餐</span><span>后台管理</span></Link>
         <nav className="admin-nav-list">
-          {enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
-          {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>经营概览</AdminNavButton> : null}
+          {!isKitchenRole && enablePos ? <AdminNavButton icon={<ShoppingBag size={16} />} active={tab === 'pos'} onClick={() => onTabChange('pos')}>前台点单</AdminNavButton> : null}
+          {!isKitchenRole && (enablePos || enableQrOrdering) ? <AdminNavButton icon={<LayoutDashboard size={16} />} active={tab === 'dashboard'} onClick={() => onTabChange('dashboard')}>经营概览</AdminNavButton> : null}
           {(enablePos || enableQrOrdering) ? <AdminNavButton icon={<ClipboardList size={16} />} active={tab === 'orders'} onClick={() => onTabChange('orders')}>订单管理</AdminNavButton> : null}
-          {enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台 / 二维码</AdminNavButton> : null}
-          <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton>
-          <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton>
-          <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton>
-          <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton>
+          {!isKitchenRole && enableQrOrdering ? <AdminNavButton icon={<QrCode size={16} />} active={tab === 'tables'} onClick={() => onTabChange('tables')}>桌台 / 二维码</AdminNavButton> : null}
+          {!isKitchenRole ? <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton> : null}
+          {!isKitchenRole ? <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton> : null}
+          {!isKitchenRole ? <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton> : null}
+          {!isKitchenRole ? <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton> : null}
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>退出登录</button>
       </aside>
@@ -456,7 +466,7 @@ export function AdminPage() {
           {adminToast ? <div className={`admin-toast toast-${adminToast.type}`}>{adminToast.msg}</div> : null}
           {message ? <p className="admin-message">{message}<button type="button" className="print-warning-dismiss" style={{marginLeft:8}} onClick={()=>setMessage(null)}>×</button></p> : null}
           {tab === 'dashboard' ? (menuOnlyMode ? <AdminSection title="仪表盘"><p className="admin-message-muted">当前为纯菜单展示模式，暂未启用点餐功能。</p></AdminSection> : <Dashboard syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} onOpenOrders={() => setTab('orders')} setTab={setTab} enableQrOrdering={enableQrOrdering} />) : null}
-          {tab === 'orders' ? (menuOnlyMode ? <AdminSection title="订单管理"><p className="admin-message-muted">当前为纯菜单展示模式，暂未启用点餐功能。</p></AdminSection> : <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} />) : null}
+          {tab === 'orders' ? (menuOnlyMode ? <AdminSection title="订单管理"><p className="admin-message-muted">当前为纯菜单展示模式，暂未启用点餐功能。</p></AdminSection> : <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} readOnly={isKitchenRole} />) : null}
           {tab === 'tables' ? (enableQrOrdering ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : <AdminSection title="桌台管理"><p className="admin-message-muted">当前未启用扫码点餐功能，桌台管理已关闭。</p></AdminSection>) : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} requestSync={requestSync} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
@@ -1132,6 +1142,15 @@ const quickMenuCsvHeaders: MenuCsvHeader[] = [
 ];
 type MenuCsvRow = Record<MenuCsvHeader, string>;
 type CsvImportResult = { success: number; failed: number; translationFailed: number; errors: string[] };
+type CsvImportPreviewSummary = {
+  createCategories: number;
+  createItems: number;
+  updateItems: number;
+  missingImages: number;
+  missingTranslations: number;
+  optionErrors: string[];
+  warnings: string[];
+};
 type MenuTranslationFields = Pick<
   Partial<MenuItem>,
   'name_zh' | 'description_zh' | 'name_en' | 'description_en' | 'name_el' | 'description_el'
@@ -1244,6 +1263,78 @@ function parseMenuCsv(csvText: string): MenuCsvRow[] {
       return next;
     })
     .filter((row) => !isMenuCsvDescriptionRow(row));
+}
+
+function buildCsvImportPreview(
+  rows: MenuCsvRow[],
+  categories: MenuCategory[],
+  items: MenuItem[],
+): CsvImportPreviewSummary {
+  const knownCategoryKeys = new Set(
+    categories.flatMap((category) => [
+      normalized(category.name_zh),
+      normalized(category.name_en),
+      normalized(category.name_el),
+    ]).filter(Boolean),
+  );
+  const virtualCategories = [...categories];
+  const optionErrors: string[] = [];
+  const warnings: string[] = [];
+  let createCategories = 0;
+  let createItems = 0;
+  let updateItems = 0;
+  let missingImages = 0;
+  let missingTranslations = 0;
+
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    if (!row.image_url.trim()) missingImages += 1;
+    if (!row.name_en || !row.name_el || !row.description_en || !row.description_el) missingTranslations += 1;
+    if (!row.category_zh && !row.category_en && !row.category_el) warnings.push(`第 ${rowNumber} 行缺少分类名称`);
+    if (!row.name_zh && !row.name_en && !row.name_el) warnings.push(`第 ${rowNumber} 行缺少菜品名称`);
+    if (!row.price || !Number.isFinite(Number(row.price))) warnings.push(`第 ${rowNumber} 行价格可能不正确`);
+
+    if (row.options.trim()) {
+      try {
+        parseOptionsJson(row.options);
+      } catch (error) {
+        optionErrors.push(`第 ${rowNumber} 行 options：${formatUnknownError(error)}`);
+      }
+    }
+
+    let category = findMatchingCategory(virtualCategories, row);
+    if (!category) {
+      const keys = [normalized(row.category_zh), normalized(row.category_en), normalized(row.category_el)].filter(Boolean);
+      const alreadyPlanned = keys.some((key) => knownCategoryKeys.has(key));
+      if (!alreadyPlanned) {
+        keys.forEach((key) => knownCategoryKeys.add(key));
+        createCategories += 1;
+      }
+      category = {
+        id: `csv-preview-${createCategories}-${index}`,
+        name_zh: row.category_zh || row.category_en || row.category_el || '未命名分类',
+        name_en: row.category_en || null,
+        name_el: row.category_el || null,
+        sort_order: virtualCategories.length + 1,
+        is_active: true,
+      };
+      virtualCategories.push(category);
+    }
+
+    const existing = findMatchingItem(items, row, category.id);
+    if (existing) updateItems += 1;
+    else createItems += 1;
+  });
+
+  return {
+    createCategories,
+    createItems,
+    updateItems,
+    missingImages,
+    missingTranslations,
+    optionErrors,
+    warnings,
+  };
 }
 
 function parseCsvRows(input: string) {
@@ -1496,6 +1587,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
   const [draft, setDraft] = useState<Partial<MenuItem>>(emptyItem);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [imageFilter, setImageFilter] = useState<'all' | 'missing'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkPrice, setBulkPrice] = useState('');
   const [csvPreview, setCsvPreview] = useState<MenuCsvRow[]>([]);
@@ -1531,14 +1623,15 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
     const keyword = searchTerm.trim().toLowerCase();
     return items.filter((item) => {
       const categoryMatches = categoryFilter === 'all' || item.category_id === categoryFilter;
+      const imageMatches = imageFilter === 'all' || !item.image_url;
       const keywordMatches =
         !keyword ||
         [item.name_zh, item.name_en, item.name_el]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(keyword));
-      return categoryMatches && keywordMatches;
+      return categoryMatches && imageMatches && keywordMatches;
     });
-  }, [items, categoryFilter, searchTerm]);
+  }, [items, categoryFilter, imageFilter, searchTerm]);
 
   const totalItemPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
   const pagedItems = useMemo(
@@ -1550,8 +1643,12 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
     () => items.filter((item) => selectedIds.has(item.id)),
     [items, selectedIds],
   );
+  const csvImportPreview = useMemo(
+    () => buildCsvImportPreview(csvPreview, categories, items),
+    [csvPreview, categories, items],
+  );
 
-  useEffect(() => { setItemPage(1); }, [categoryFilter, searchTerm]);
+  useEffect(() => { setItemPage(1); }, [categoryFilter, imageFilter, searchTerm]);
 
   const itemStats = useMemo(() => {
     const all = items.filter((i) => !i.deleted_at);
@@ -1560,6 +1657,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
       available: all.filter((i) => i.is_available && !i.is_sold_out).length,
       soldOut: all.filter((i) => i.is_sold_out).length,
       delisted: all.filter((i) => !i.is_available).length,
+      missingImages: all.filter((i) => !i.image_url).length,
     };
   }, [items]);
 
@@ -1659,6 +1757,23 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
     link.download = `restaurant-menu-${dateToKey(new Date().toISOString())}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function exportMissingImageCsv() {
+    const categoryById = new Map(categories.map((category) => [category.id, category]));
+    const rows = items
+      .filter((item) => !item.image_url && !item.deleted_at)
+      .map((item) => ({
+        category_zh: item.category_id ? categoryById.get(item.category_id)?.name_zh ?? '' : '',
+        name_zh: item.name_zh ?? '',
+        name_en: item.name_en ?? '',
+        name_el: item.name_el ?? '',
+        description_zh: item.description_zh ?? '',
+        suggested_prompt: `realistic restaurant menu photo of ${item.name_en || item.name_zh || item.name_el}, natural light, clean plate, no text, no watermark`,
+      }));
+    const headers = ['category_zh', 'name_zh', 'name_en', 'name_el', 'description_zh', 'suggested_prompt'];
+    const csv = `\uFEFF${[headers.join(','), ...rows.map((row) => headers.map((header) => escapeCsv(String(row[header as keyof typeof row] ?? ''))).join(','))].join('\n')}`;
+    downloadFile(csv, `missing-menu-images-${dateToKey(new Date().toISOString())}.csv`, 'text/csv;charset=utf-8');
   }
 
   async function previewCsv(file: File | null) {
@@ -1819,6 +1934,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
         <div className="istat istat-green"><span>已上架</span><strong>{itemStats.available}</strong></div>
         <div className="istat istat-gray"><span>已下架</span><strong>{itemStats.delisted}</strong></div>
         <div className="istat istat-orange"><span>售罄</span><strong>{itemStats.soldOut}</strong></div>
+        <div className="istat istat-red"><span>缺图片</span><strong>{itemStats.missingImages}</strong></div>
       </div>
 
       {/* 顶部工具栏 */}
@@ -1835,6 +1951,13 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           <Search size={16} />
           <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="搜索…" />
         </span>
+        <button className={imageFilter === 'missing' ? 'primary-button' : 'secondary-button'} type="button" onClick={() => setImageFilter((value) => value === 'missing' ? 'all' : 'missing')}>
+          {imageFilter === 'missing' ? '显示全部' : '只看缺图'}
+        </button>
+        <button className="secondary-button" type="button" disabled={itemStats.missingImages === 0} onClick={exportMissingImageCsv}>
+          <Download size={15} />
+          缺图清单
+        </button>
         <button className="secondary-button" type="button" onClick={() => setShowNewForm((v) => !v)}>
           <Plus size={15} />
           {showNewForm ? '收起' : '新增'}
@@ -1897,6 +2020,22 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
             确认导入
           </button>
           {csvPreview.length > 0 ? <span>预览 {csvPreview.length} 条</span> : null}
+          {csvPreview.length > 0 ? (
+            <div className="csv-preview-summary">
+              <div><span>新增菜品</span><strong>{csvImportPreview.createItems}</strong></div>
+              <div><span>更新菜品</span><strong>{csvImportPreview.updateItems}</strong></div>
+              <div><span>新增分类</span><strong>{csvImportPreview.createCategories}</strong></div>
+              <div><span>缺图片</span><strong>{csvImportPreview.missingImages}</strong></div>
+              <div><span>待补翻译</span><strong>{csvImportPreview.missingTranslations}</strong></div>
+            </div>
+          ) : null}
+          {csvPreview.length > 0 && (csvImportPreview.warnings.length > 0 || csvImportPreview.optionErrors.length > 0) ? (
+            <div className="csv-error-box csv-preview-warning">
+              {[...csvImportPreview.warnings, ...csvImportPreview.optionErrors].slice(0, 10).map((error) => (
+                <p key={error}>{error}</p>
+              ))}
+            </div>
+          ) : null}
           {csvResult ? (
             <strong className={csvResult.failed > 0 ? 'csv-result-warn' : 'csv-result-ok'}>
               成功 {csvResult.success} / 失败 {csvResult.failed}
@@ -2016,7 +2155,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
   );
 }
 
-function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled, onSoundEnabledChange, restaurantName, paperWidth, setPaperWidth }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; requestSync: () => void; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; restaurantName: string; paperWidth: string; setPaperWidth: (v: string) => void; }) {
+function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled, onSoundEnabledChange, restaurantName, paperWidth, setPaperWidth, readOnly = false }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; syncVersion: number; requestSync: () => void; soundEnabled: boolean; onSoundEnabledChange: (v: boolean) => void; restaurantName: string; paperWidth: string; setPaperWidth: (v: string) => void; readOnly?: boolean; }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [billRequests, setBillRequests] = useState<BillRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -2098,7 +2237,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
           dateTo: bounds.to,
           tableNumber: tableFilter === 'all' ? null : Number(tableFilter),
         }),
-        fetchPendingBillRequests(),
+        readOnly ? Promise.resolve([]) : fetchPendingBillRequests(),
         fetchAdminPendingOrders(),
         fetchRestaurantTables(),
       ]);
@@ -2420,8 +2559,13 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
 
   return (
     <AdminSection title="订单管理" onRefresh={load}>
+      {readOnly ? (
+        <p className="admin-message-muted kitchen-readonly-banner">
+          当前为厨房只读账号：可以查看订单和预览小票，不能收款、清桌、取消或归档订单。
+        </p>
+      ) : null}
       {/* ─ 结账提醒 ─ */}
-      {billRequests.length ? (
+      {!readOnly && billRequests.length ? (
         <section className="bill-alerts-new">
           {billRequests.map((request) => (
             <div className="bill-alert-item" key={request.id}>
@@ -2491,10 +2635,12 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
         </div>
         <div className="stat-card tool-card">
           <span>提醒设置</span>
-          <label className="tool-row">
-            <input checked={autoPrintEnabled} type="checkbox" onChange={toggleAutoPrint} />
-            自动打印
-          </label>
+          {!readOnly ? (
+            <label className="tool-row">
+              <input checked={autoPrintEnabled} type="checkbox" onChange={toggleAutoPrint} />
+              自动打印
+            </label>
+          ) : null}
           <label className="tool-row">
             <input checked={soundEnabled} type="checkbox" onChange={() => { const n = !soundEnabled; onSoundEnabledChange(n); try { localStorage.setItem('restaurant:order-sound-enabled', n ? '1' : '0'); } catch { /* noop */ } if (n) { unlockAudio(); playOrderNotification(); } toast(n ? '声音提醒已开启' : '声音提醒已关闭'); }} />
             {soundEnabled ? '🔔 有声' : '🔕 静音'}
@@ -2516,7 +2662,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
       {printWarning ? <p className="print-warning-banner">⚠ {printWarning}<button type="button" onClick={() => setPrintWarning(null)} className="print-warning-dismiss">×</button></p> : null}
 
       {/* ─ 批量操作 ─ */}
-        <div className="bulk-action-bar">
+        {!readOnly ? <div className="bulk-action-bar">
           <label className="checkbox-label">
             <input type="checkbox" checked={filteredOrders.length > 0 && filteredOrders.every((o) => selectedOrderIds.has(o.id))} onChange={(e) => { if (e.target.checked) setSelectedOrderIds(new Set(filteredOrders.map((o) => o.id))); else setSelectedOrderIds(new Set()); }} />
             全选
@@ -2524,7 +2670,7 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
           <strong>已选 {selectedOrderIds.size} 张</strong>
           <button className="danger-inline" type="button" disabled={selectedOrderIds.size === 0} onClick={() => promptDeleteOrders(Array.from(selectedOrderIds), `批量归档 ${selectedOrderIds.size} 张订单`)}><Trash2 size={14} /> 批量归档</button>
           {selectedOrderIds.size > 0 ? <button className="secondary-button" type="button" onClick={() => setSelectedOrderIds(new Set())}>取消</button> : null}
-        </div>
+        </div> : null}
 
       {/* ─ 订单列表 ─ */}
       <div className="order-list-new">
@@ -2566,15 +2712,15 @@ function OrderManager({ onMessage, toast, syncVersion, requestSync, soundEnabled
                   <div className="ocr-right">
                     <strong className="ocr-price">{formatPrice(Number(order.total_price))}</strong>
                     <div className="ocr-actions">
-                      {!isPaid && s !== 'cancelled' ? (
+                      {!readOnly && !isPaid && s !== 'cancelled' ? (
                         <button className="mini-btn primary" onClick={() => setPayOrder(order)}>收款</button>
                       ) : null}
                       <button className="mini-btn" onClick={() => previewKitchenTicket(order)}>预览</button>
-                      <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button>
-                      {!isPaid && s !== 'cancelled' ? (
+                      {!readOnly ? <button className="mini-btn" onClick={() => printKitchenTicket(order)}><Printer size={13} />打印</button> : null}
+                      {!readOnly && !isPaid && s !== 'cancelled' ? (
                         <button className="mini-btn danger-text" onClick={() => changeStatus(order.id, 'cancelled')}>取消</button>
                       ) : null}
-                      <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `归档订单 #${order.order_number}`)}><Trash2 size={13} /></button>
+                      {!readOnly ? <button className="mini-btn danger-text" onClick={() => promptDeleteOrders([order.id], `归档订单 #${order.order_number}`)}><Trash2 size={13} /></button> : null}
                     </div>
                   </div>
                 </div>
@@ -3188,7 +3334,7 @@ function SystemSettings({
   adminRole,
 }: {
   realtimeStatus: RealtimeConnectionStatus;
-  adminRole: 'admin' | 'staff' | null;
+  adminRole: AdminRole | null;
 }) {
   return (
     <AdminSection title="系统设置">
@@ -3205,6 +3351,10 @@ function SystemSettings({
         <div><strong>访问控制</strong><span>管理员登录与 RLS 策略保持不变</span></div>
       </div>
       <SystemHealthSection realtimeStatus={realtimeStatus} />
+      <CommercialReadinessSection realtimeStatus={realtimeStatus} adminRole={adminRole} />
+      <RolePermissionGuide />
+      <PrintAgentDeliveryGuide />
+      <PrintAgentStatusSection />
       {adminRole === 'admin' ? (
         <DataBackupSection />
       ) : (
@@ -3218,6 +3368,232 @@ function SystemSettings({
           </div>
         </AdminSection>
       )}
+    </AdminSection>
+  );
+}
+
+function CommercialReadinessSection({
+  realtimeStatus,
+  adminRole,
+}: {
+  realtimeStatus: RealtimeConnectionStatus;
+  adminRole: AdminRole | null;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<{
+    settingsReady: boolean;
+    contactReady: boolean;
+    menuCount: number;
+    itemCount: number;
+    tableCount: number;
+    paymentReady: boolean;
+    aiReady: boolean;
+  }>({
+    settingsReady: false,
+    contactReady: false,
+    menuCount: 0,
+    itemCount: 0,
+    tableCount: 0,
+    paymentReady: false,
+    aiReady: false,
+  });
+
+  const loadReadiness = async () => {
+    setLoading(true);
+    try {
+      const [settings, menu, tables] = await Promise.all([
+        getRestaurantSettings().catch(() => null),
+        getPublicMenu().catch(() => []),
+        fetchRestaurantTables().catch(() => []),
+      ]);
+      const itemCount = menu.reduce((total, group) => total + group.items.length, 0);
+      setSummary({
+        settingsReady: Boolean(settings?.name_zh || settings?.name_en || settings?.name_el),
+        contactReady: Boolean(settings?.phone || settings?.whatsapp_url || settings?.instagram_url || settings?.map_url),
+        menuCount: menu.length,
+        itemCount,
+        tableCount: tables.filter((table) => table.is_active).length,
+        paymentReady: settings?.accept_cash_payment !== false || settings?.accept_pos_payment !== false,
+        aiReady: false,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReadiness();
+  }, []);
+
+  const checklist = [
+    {
+      title: '餐馆资料',
+      ok: summary.settingsReady,
+      text: summary.settingsReady ? '已填写餐馆名称' : '建议先在餐馆设置填写名称、地址和营业时间',
+    },
+    {
+      title: '联系方式',
+      ok: summary.contactReady,
+      text: summary.contactReady ? '已配置电话/社交/地图入口' : '建议补充电话、WhatsApp、Instagram 或地图链接',
+    },
+    {
+      title: '菜单数据',
+      ok: summary.menuCount > 0 && summary.itemCount > 0,
+      text: `${summary.menuCount} 个分类，${summary.itemCount} 道前台可见菜品`,
+    },
+    {
+      title: '桌台二维码',
+      ok: summary.tableCount > 0,
+      text: summary.tableCount > 0 ? `${summary.tableCount} 张启用桌台` : '扫码点餐需要至少创建一张桌台',
+    },
+    {
+      title: '付款方式',
+      ok: summary.paymentReady,
+      text: summary.paymentReady ? '现金/POS 至少启用一种' : '请至少启用一种顾客付款方式',
+    },
+    {
+      title: '实时连接',
+      ok: realtimeStatus === 'connected',
+      text: realtimeStatus === 'connected' ? '后台实时订单连接正常' : '请保持后台在线，若断开请刷新页面',
+    },
+  ];
+
+  const readyCount = checklist.filter((item) => item.ok).length;
+
+  return (
+    <AdminSection title="商业交付检查" onRefresh={loadReadiness}>
+      <div className="readiness-hero">
+        <div>
+          <strong>{loading ? '检查中…' : `${readyCount} / ${checklist.length} 项已就绪`}</strong>
+          <span>用于新客户上线前确认：资料、菜单、桌台、付款、实时订单和账号权限。</span>
+        </div>
+        <span className={`readiness-score ${readyCount === checklist.length ? 'is-ok' : 'is-warn'}`}>
+          {readyCount === checklist.length ? '可演示' : '待完善'}
+        </span>
+      </div>
+      <div className="readiness-grid">
+        {checklist.map((item) => (
+          <div className={`readiness-card ${item.ok ? 'is-ok' : 'is-warn'}`} key={item.title}>
+            {item.ok ? <CheckCircle2 size={18} /> : <Clock3 size={18} />}
+            <div>
+              <strong>{item.title}</strong>
+              <span>{item.text}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="readiness-note">
+        当前账号角色：{adminRole === 'admin' ? '管理员' : adminRole === 'staff' ? '员工' : adminRole === 'kitchen' ? '厨房只读' : '未识别'}。正式交付前建议用测试桌码完成一次扫码下单、后台收款、清桌和打印助手测试。
+      </p>
+    </AdminSection>
+  );
+}
+
+function RolePermissionGuide() {
+  const roles = [
+    { role: '老板 / 管理员', scope: '餐馆设置、菜单、桌台二维码、数据备份、归档删除、员工账号管理' },
+    { role: '前台员工', scope: '查看订单、POS 点单、确认收款、清桌、查看打印状态' },
+    { role: '厨房', scope: '只读查看订单和小票预览，不开放收款、清桌、菜单、桌台和系统设置' },
+  ];
+
+  return (
+    <AdminSection title="员工权限建议">
+      <div className="role-guide-grid">
+        {roles.map((item) => (
+          <div className="role-guide-card" key={item.role}>
+            <strong>{item.role}</strong>
+            <span>{item.scope}</span>
+          </div>
+        ))}
+      </div>
+      <p className="admin-message-muted">
+        说明：当前数据库支持 admin / staff / kitchen 三类角色。厨房账号是只读订单屏；更细分的权限，例如“只允许改制作状态”，可作为后续专项扩展。
+      </p>
+    </AdminSection>
+  );
+}
+
+function PrintAgentDeliveryGuide() {
+  return (
+    <AdminSection title="本地自动打印助手">
+      <div className="print-agent-guide">
+        <div>
+          <Printer size={22} />
+          <strong>适合前台电脑 / Windows 平板</strong>
+          <span>安装 YANLCPrintAgent 后，程序会监听新订单并自动打印厨房小票。电脑关机、程序关闭或网络断开时不会自动打印。</span>
+        </div>
+        <ol>
+          <li>先安装打印机驱动，并确认 Windows 测试页能打印。</li>
+          <li>运行 YANLC 打印助手设置，填写 Supabase、后台账号和打印机。</li>
+          <li>点击测试打印，确认小票纸宽和打印机正确。</li>
+          <li>启动自动打印，并按需要设置开机自启。</li>
+        </ol>
+      </div>
+      <p className="admin-message-muted">
+        厨房小票只用于后厨出餐，不是希腊税务正式发票；正式收据仍由餐馆原收银机/POS 开具。
+      </p>
+    </AdminSection>
+  );
+}
+
+function PrintAgentStatusSection() {
+  const [status, setStatus] = useState<PrintAgentStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadStatus = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setStatus(await fetchPrintAgentStatus());
+    } catch (err) {
+      setError(formatUnknownError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  const lastSeen = status?.last_seen_at ? new Date(status.last_seen_at).getTime() : 0;
+  const online = lastSeen > 0 && Date.now() - lastSeen < 90_000 && status?.status !== 'error';
+
+  return (
+    <AdminSection title="打印助手状态" onRefresh={loadStatus}>
+      <div className="print-agent-status-grid">
+        <div className={`print-agent-status-card ${online ? 'is-ok' : status?.status === 'error' ? 'is-error' : 'is-warn'}`}>
+          <Printer size={22} />
+          <div>
+            <strong>{loading ? '检查中…' : online ? '打印助手在线' : status ? '打印助手未在线' : '未启用状态回传'}</strong>
+            <span>{status?.agent_name ?? 'YANLCPrintAgent'}</span>
+          </div>
+        </div>
+        <div className="print-agent-status-card">
+          <Clock3 size={22} />
+          <div>
+            <strong>最后在线</strong>
+            <span>{status?.last_seen_at ? new Date(status.last_seen_at).toLocaleString('zh-CN') : '暂无记录'}</span>
+          </div>
+        </div>
+        <div className="print-agent-status-card">
+          <CheckCircle2 size={22} />
+          <div>
+            <strong>最后打印</strong>
+            <span>{status?.last_printed_at ? new Date(status.last_printed_at).toLocaleString('zh-CN') : '暂无记录'}</span>
+          </div>
+        </div>
+        <div className={`print-agent-status-card ${status?.last_error ? 'is-error' : ''}`}>
+          <Activity size={22} />
+          <div>
+            <strong>最近错误</strong>
+            <span>{status?.last_error || '暂无错误'}</span>
+          </div>
+        </div>
+      </div>
+      {error ? <p className="admin-message admin-message-danger">读取打印助手状态失败：{error}</p> : null}
+      {!status && !loading ? <p className="admin-message-muted">如需显示在线状态，请先给客户数据库执行打印助手状态补丁，并升级本地打印助手。</p> : null}
     </AdminSection>
   );
 }
@@ -3258,6 +3634,8 @@ function SystemHealthSection({
   const dbOk = health?.checks?.database === 'connected';
   const configOk = health?.checks?.config === 'readable';
   const rtOk = realtimeStatus === 'connected';
+  const deepseekOk = health?.checks?.deepseek === 'configured';
+  const openaiOk = health?.checks?.openai_images === 'configured';
   const overallOk = health?.status === 'ok' && rtOk;
 
   return (
@@ -3289,6 +3667,20 @@ function SystemHealthSection({
           <div>
             <strong>Realtime</strong>
             <span>{rtOk ? '已连接' : realtimeStatus === 'connecting' ? '连接中…' : '已断开'}</span>
+          </div>
+        </div>
+        <div className={`health-check-card ${deepseekOk ? 'is-ok' : 'is-warn'}`}>
+          <ChefHat size={20} />
+          <div>
+            <strong>菜单 AI</strong>
+            <span>{loading ? '检查中…' : deepseekOk ? 'DeepSeek 已配置' : '未配置 DeepSeek Key'}</span>
+          </div>
+        </div>
+        <div className={`health-check-card ${openaiOk ? 'is-ok' : 'is-warn'}`}>
+          <Activity size={20} />
+          <div>
+            <strong>AI 图片</strong>
+            <span>{loading ? '检查中…' : openaiOk ? 'OpenAI 图片已配置' : '未配置 OpenAI Key'}</span>
           </div>
         </div>
       </div>

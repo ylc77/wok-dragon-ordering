@@ -26,6 +26,17 @@ For existing customer databases that need the admin "delete table" button, run:
 
 建议先在 Supabase Dashboard 导出备份，或至少导出完整数据 CSV，再执行补丁。执行后用后台订单、菜单、桌台、扫码点餐做一次冒烟验证。
 
+## 2026-07-03 商业增强补丁
+
+需要打印助手在线状态、厨房只读账号的老客户，执行：
+
+1. `2026-07-03-print-agent-status-kitchen-role.sql`
+   - 目的：新增 `print_agent_status`，让本地打印助手回传最后在线、最后打印、最近错误。
+   - 目的：扩展 `profiles.role`，新增 `kitchen` 厨房只读角色。
+   - 权限：`kitchen` 只能读取订单列表、订单明细和桌台基础信息；不能收款、清桌、改菜单、改设置或删除。
+   - 说明：补丁会覆盖 `admin_order_page` 和 `admin_order_stats` 的只读权限判断；如果客户定制过这两个 RPC，执行前请先人工比对。
+   - 幂等性：可重复执行，使用 `create or replace function`、`drop policy if exists` 和 `create table if not exists`。
+
 ## 2026-06-26 安全补丁顺序
 
 如果老客户已经有扫码点餐、菜单 options、删除密码等近期功能，建议按下面顺序执行这三个补丁：

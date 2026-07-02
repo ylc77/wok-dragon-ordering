@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { AdminDashboardSummary, AdminOrderPage, AdminOrderStats, BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, RealtimeConnectionStatus, RestaurantTable, TableEntryState, TableJoinResult, TableReentryRequest, TableSession, TableSessionState } from './types';
+import type { AdminDashboardSummary, AdminOrderPage, AdminOrderStats, BillPaymentMethod, BillRequest, CartItem, Order, OrderStatus, PrintAgentStatus, RealtimeConnectionStatus, RestaurantTable, TableEntryState, TableJoinResult, TableReentryRequest, TableSession, TableSessionState } from './types';
 
 function requireClient() {
   if (!supabase) throw new Error('Supabase is not configured.');
@@ -455,6 +455,21 @@ export async function saveRestaurantTable(table: RestaurantTable) {
     })
     .eq('id', table.id);
   if (error) throw error;
+}
+
+export async function fetchPrintAgentStatus(): Promise<PrintAgentStatus | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('print_agent_status')
+    .select('*')
+    .order('last_seen_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    if (error.code === '42P01' || error.code === '42501') return null;
+    throw error;
+  }
+  return (data ?? null) as PrintAgentStatus | null;
 }
 
 export async function deleteRestaurantTable(tableId: string) {

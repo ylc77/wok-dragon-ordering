@@ -228,6 +228,20 @@ export type BillRequest = {
 
 export type RealtimeConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
+export type AdminRole = 'admin' | 'staff' | 'kitchen';
+
+export type PrintAgentStatus = {
+  id: string;
+  agent_name: string;
+  status: 'online' | 'offline' | 'error';
+  last_seen_at: string;
+  last_printed_at: string | null;
+  last_error: string | null;
+  printer_name: string | null;
+  version: string | null;
+  updated_at: string;
+};
+
 export type AdminOrderPage = {
   orders: Order[];
   page: number;

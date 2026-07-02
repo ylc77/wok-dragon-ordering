@@ -11288,3 +11288,307 @@ body {
     line-height: 1.55;
   }
 }
+
+/* Commercial delivery MVP panels: readiness, CSV preflight and print guidance. */
+.csv-preview-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+}
+
+.csv-preview-summary div {
+  background: #fff;
+  border: 1px solid #eadfd3;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.csv-preview-summary span {
+  color: #6b7280;
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.csv-preview-summary strong {
+  color: #111827;
+  display: block;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.csv-preview-warning {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+  width: 100%;
+}
+
+.readiness-hero {
+  align-items: center;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(34, 197, 94, 0.14), transparent 32%),
+    linear-gradient(135deg, #fff, #fff8f1);
+  border: 1px solid #eadfd3;
+  border-radius: 18px;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 18px;
+}
+
+.readiness-hero strong {
+  color: #111827;
+  display: block;
+  font-size: 24px;
+  font-weight: 950;
+  margin-bottom: 4px;
+}
+
+.readiness-hero span {
+  color: #6b7280;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.readiness-score {
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 950;
+  padding: 10px 14px;
+}
+
+.readiness-score.is-ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.readiness-score.is-warn {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.readiness-grid,
+.role-guide-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.readiness-card,
+.role-guide-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.readiness-card.is-ok {
+  border-color: #bbf7d0;
+}
+
+.readiness-card.is-warn {
+  border-color: #fed7aa;
+}
+
+.readiness-card svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.readiness-card.is-ok svg {
+  color: #16a34a;
+}
+
+.readiness-card.is-warn svg {
+  color: #d97706;
+}
+
+.readiness-card strong,
+.role-guide-card strong {
+  color: #111827;
+  display: block;
+  font-weight: 950;
+  margin-bottom: 5px;
+}
+
+.readiness-card span,
+.role-guide-card span,
+.print-agent-guide span {
+  color: #6b7280;
+  line-height: 1.55;
+}
+
+.readiness-note {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  color: #4b5563;
+  font-weight: 700;
+  line-height: 1.6;
+  margin: 14px 0 0;
+  padding: 14px 16px;
+}
+
+.role-guide-card {
+  display: grid;
+}
+
+.print-agent-guide {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.print-agent-guide > div,
+.print-agent-guide ol {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  margin: 0;
+  padding: 18px;
+}
+
+.print-agent-guide > div {
+  display: grid;
+  gap: 10px;
+}
+
+.print-agent-guide > div svg {
+  color: var(--accent);
+}
+
+.print-agent-guide strong {
+  color: #111827;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.print-agent-guide ol {
+  color: #374151;
+  display: grid;
+  gap: 8px;
+  font-weight: 750;
+  line-height: 1.55;
+  padding-left: 36px;
+}
+
+.print-agent-status-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.print-agent-status-card {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.print-agent-status-card svg {
+  background: #f3f4f6;
+  border-radius: 12px;
+  color: #4b5563;
+  flex: 0 0 auto;
+  padding: 8px;
+}
+
+.print-agent-status-card strong {
+  color: #111827;
+  display: block;
+  font-weight: 950;
+  margin-bottom: 4px;
+}
+
+.print-agent-status-card span {
+  color: #6b7280;
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.print-agent-status-card.is-ok {
+  border-color: #bbf7d0;
+}
+
+.print-agent-status-card.is-ok svg {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.print-agent-status-card.is-warn {
+  border-color: #fed7aa;
+}
+
+.print-agent-status-card.is-warn svg {
+  background: #fff7ed;
+  color: #d97706;
+}
+
+.print-agent-status-card.is-error {
+  border-color: #fecaca;
+}
+
+.print-agent-status-card.is-error svg {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.kitchen-readonly-banner {
+  border-left: 4px solid #f59e0b;
+  margin-bottom: 14px;
+}
+
+.istat-red {
+  border-left-color: #ef4444;
+}
+
+.health-check-card.is-warn {
+  border-color: #fed7aa;
+}
+
+.health-check-card.is-warn svg {
+  background: #fff7ed;
+  color: #d97706;
+}
+
+@media (max-width: 980px) {
+  .csv-preview-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .readiness-grid,
+  .role-guide-grid,
+  .print-agent-guide,
+  .print-agent-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .csv-preview-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .readiness-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .readiness-hero strong {
+    font-size: 21px;
+  }
+}

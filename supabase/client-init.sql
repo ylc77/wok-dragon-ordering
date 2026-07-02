@@ -8,10 +8,14 @@ create schema if not exists private;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text not null check (role in ('admin', 'staff')),
+  role text not null check (role in ('admin', 'staff', 'kitchen')),
   display_name text,
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles
+  drop constraint if exists profiles_role_check,
+  add constraint profiles_role_check check (role in ('admin', 'staff', 'kitchen'));
 
 create table if not exists public.restaurant_settings (
   id uuid primary key default gen_random_uuid(),
@@ -48,6 +52,21 @@ alter table public.restaurant_settings
   drop constraint if exists restaurant_settings_payment_method_check,
   add constraint restaurant_settings_payment_method_check
     check (accept_pos_payment or accept_cash_payment);
+
+create table if not exists public.print_agent_status (
+  id uuid primary key default gen_random_uuid(),
+  agent_name text not null default 'YANLCPrintAgent',
+  status text not null default 'offline' check (status in ('online', 'offline', 'error')),
+  last_seen_at timestamptz not null default now(),
+  last_printed_at timestamptz,
+  last_error text,
+  printer_name text,
+  version text,
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists idx_print_agent_status_agent_name
+  on public.print_agent_status (agent_name);
 
 create table if not exists public.menu_categories (
   id uuid primary key default gen_random_uuid(),
@@ -226,6 +245,20 @@ as $$
   );
 $$;
 
+create or replace function private.is_order_viewer()
+returns boolean
+language sql
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.id = (select auth.uid())
+      and p.role in ('admin', 'staff', 'kitchen')
+  );
+$$;
+
 create or replace function private.is_admin()
 returns boolean
 language sql
@@ -268,6 +301,7 @@ for each row execute function public.set_updated_at();
 
 alter table public.profiles enable row level security;
 alter table public.restaurant_settings enable row level security;
+alter table public.print_agent_status enable row level security;
 alter table public.menu_categories enable row level security;
 alter table public.menu_items enable row level security;
 
@@ -275,7 +309,9 @@ grant usage on schema public to anon, authenticated;
 grant usage on schema private to anon, authenticated;
 grant execute on function private.is_admin() to anon, authenticated;
 grant execute on function private.is_staff() to anon, authenticated;
+grant execute on function private.is_order_viewer() to authenticated;
 grant select on public.restaurant_settings to anon, authenticated;
+grant select, insert, update on public.print_agent_status to authenticated;
 grant select on public.menu_categories to anon, authenticated;
 grant select on public.menu_items to anon, authenticated;
 grant select, insert, update, delete on public.profiles to authenticated;
@@ -292,6 +328,28 @@ using (
   id = (select auth.uid())
   or (select private.is_staff())
 );
+
+drop policy if exists "print_agent_status_staff_read" on public.print_agent_status;
+create policy "print_agent_status_staff_read"
+on public.print_agent_status
+for select
+to authenticated
+using ((select private.is_order_viewer()));
+
+drop policy if exists "print_agent_status_staff_write" on public.print_agent_status;
+create policy "print_agent_status_staff_write"
+on public.print_agent_status
+for insert
+to authenticated
+with check ((select private.is_staff()));
+
+drop policy if exists "print_agent_status_staff_update" on public.print_agent_status;
+create policy "print_agent_status_staff_update"
+on public.print_agent_status
+for update
+to authenticated
+using ((select private.is_staff()))
+with check ((select private.is_staff()));
 
 drop policy if exists "profiles_staff_manage" on public.profiles;
 create policy "profiles_staff_manage"
@@ -509,6 +567,13 @@ to authenticated
 using ((select private.is_staff()))
 with check ((select private.is_staff()));
 
+drop policy if exists "tables_kitchen_read" on public.restaurant_tables;
+create policy "tables_kitchen_read"
+on public.restaurant_tables
+for select
+to authenticated
+using ((select private.is_order_viewer()));
+
 drop policy if exists "sessions_participant_read" on public.table_sessions;
 create policy "sessions_participant_read"
 on public.table_sessions
@@ -601,6 +666,16 @@ to authenticated
 using ((select private.is_staff()))
 with check ((select private.is_staff()));
 
+drop policy if exists "orders_kitchen_read" on public.orders;
+create policy "orders_kitchen_read"
+on public.orders
+for select
+to authenticated
+using (
+  deleted_at is null
+  and (select private.is_order_viewer())
+);
+
 drop policy if exists "order_items_participant_read" on public.order_items;
 create policy "order_items_participant_read"
 on public.order_items
@@ -625,6 +700,21 @@ for all
 to authenticated
 using ((select private.is_staff()))
 with check ((select private.is_staff()));
+
+drop policy if exists "order_items_kitchen_read" on public.order_items;
+create policy "order_items_kitchen_read"
+on public.order_items
+for select
+to authenticated
+using (
+  (select private.is_order_viewer())
+  and exists (
+    select 1
+    from public.orders o
+    where o.id = order_items.order_id
+      and o.deleted_at is null
+  )
+);
 
 create or replace function public.join_table_session(p_qr_token text)
 returns table(session_id uuid, table_id uuid, table_number int)
@@ -2188,6 +2278,68 @@ grant execute on function public.confirm_bill_and_close_session(uuid) to authent
 grant execute on function public.handle_bill_request(uuid) to authenticated;
 grant execute on function public.mark_order_kitchen_printed(uuid) to authenticated;
 
+create or replace function public.report_print_agent_status(
+  p_agent_name text default 'YANLCPrintAgent',
+  p_status text default 'online',
+  p_printer_name text default null,
+  p_version text default null,
+  p_last_printed_at timestamptz default null,
+  p_last_error text default null
+)
+returns public.print_agent_status
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_row public.print_agent_status%rowtype;
+begin
+  if not (select private.is_staff()) then
+    raise exception 'admin or staff role is required';
+  end if;
+
+  if coalesce(p_status, 'online') not in ('online', 'offline', 'error') then
+    raise exception 'invalid print agent status';
+  end if;
+
+  insert into public.print_agent_status (
+    agent_name,
+    status,
+    last_seen_at,
+    last_printed_at,
+    last_error,
+    printer_name,
+    version,
+    updated_at
+  )
+  values (
+    coalesce(nullif(trim(p_agent_name), ''), 'YANLCPrintAgent'),
+    coalesce(p_status, 'online'),
+    now(),
+    p_last_printed_at,
+    p_last_error,
+    p_printer_name,
+    p_version,
+    now()
+  )
+  on conflict (agent_name)
+  do update set
+    status = excluded.status,
+    last_seen_at = excluded.last_seen_at,
+    last_printed_at = coalesce(excluded.last_printed_at, public.print_agent_status.last_printed_at),
+    last_error = excluded.last_error,
+    printer_name = excluded.printer_name,
+    version = excluded.version,
+    updated_at = now()
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
+revoke execute on function public.report_print_agent_status(text, text, text, text, timestamptz, text) from public, anon;
+grant execute on function public.report_print_agent_status(text, text, text, text, timestamptz, text) to authenticated;
+
 -- Legacy compatibility definition.
 -- It is superseded later in this file after private.admin_settings is created.
 -- Keep this block so older incremental sections can run in order; do not treat it as the final delete strategy.
@@ -3488,8 +3640,8 @@ as $$
 declare
   v_result jsonb;
 begin
-  if not (select private.is_staff()) then
-    raise exception 'admin or staff role is required';
+  if not (select private.is_order_viewer()) then
+    raise exception 'admin, staff or kitchen role is required';
   end if;
 
   select jsonb_build_object(
@@ -3672,8 +3824,8 @@ declare
   v_page_size int := least(greatest(coalesce(p_page_size, 50), 1), 100);
   v_result jsonb;
 begin
-  if not (select private.is_staff()) then
-    raise exception 'admin or staff role is required';
+  if not (select private.is_order_viewer()) then
+    raise exception 'admin, staff or kitchen role is required';
   end if;
   if p_status is not null and p_status not in ('pending', 'preparing', 'served', 'paid', 'cancelled') then
     raise exception 'invalid order status';
@@ -3751,8 +3903,8 @@ as $$
 declare
   v_result jsonb;
 begin
-  if not (select private.is_staff()) then
-    raise exception 'admin or staff role is required';
+  if not (select private.is_order_viewer()) then
+    raise exception 'admin, staff or kitchen role is required';
   end if;
 
   select jsonb_build_object(
@@ -3782,6 +3934,7 @@ create table if not exists private.admin_settings (
   key text primary key,
   value text
 );
+
 revoke all on private.admin_settings from public, anon, authenticated;
 
 -- 2. 迁移旧 delete_password 到 private（如果有值）
