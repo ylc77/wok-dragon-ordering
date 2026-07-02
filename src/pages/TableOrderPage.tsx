@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Ban, Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Ban, Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, UtensilsCrossed, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from './MenuPage';
 import { SafeImage } from '../components/SafeImage';
@@ -568,7 +568,7 @@ export function TableOrderPage() {
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card table-entry-card">
           <div className="session-brand">
-            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
+            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
             <strong>{restaurantName}</strong>
           </div>
           <p style={{ textAlign: 'center', margin: '16px 0' }}>当前餐厅暂未开启扫码点餐，请联系店员。</p>
@@ -582,7 +582,7 @@ export function TableOrderPage() {
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card table-entry-card">
           <div className="session-brand">
-            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
+            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
             <strong>{restaurantName}</strong>
           </div>
           <ShoppingBag size={34} />
@@ -610,7 +610,7 @@ export function TableOrderPage() {
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card">
           <div className="session-brand">
-            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
+            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
             <strong>{restaurantName}</strong>
           </div>
           <ReceiptText size={34} />
@@ -628,7 +628,7 @@ export function TableOrderPage() {
     <main className={`order-shell ${cartSummary.isEmpty ? 'cart-empty' : 'cart-has-items'}`}>
       <header className="order-topbar">
         <div className="order-brand">
-          <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
+          <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
           <span>
             <strong>{restaurantName}</strong>
             <small>

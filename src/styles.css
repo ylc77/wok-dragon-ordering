@@ -7607,3 +7607,115 @@ body {
   border-color: #f2cac6;
   color: var(--accent-dark);
 }
+
+/* QR entry and session-ended screens: first customer touchpoint polish. */
+.session-ended-shell {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(178, 38, 34, 0.14), transparent 34%),
+    linear-gradient(180deg, #fffaf4 0%, #f5eee7 100%);
+  min-height: 100dvh;
+}
+
+.session-ended-card {
+  border: 1px solid rgba(226, 214, 200, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 28px 80px rgba(57, 20, 14, 0.14);
+  overflow: hidden;
+  padding: clamp(28px, 6vw, 44px);
+  position: relative;
+  width: min(100%, 520px);
+}
+
+.session-ended-card::before {
+  background: linear-gradient(90deg, var(--accent), #d08a1d, var(--accent));
+  content: '';
+  height: 5px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.session-ended-card > svg {
+  background: #fff1f0;
+  border-radius: 18px;
+  color: var(--accent-dark);
+  height: 64px;
+  margin-top: 10px;
+  padding: 14px;
+  width: 64px;
+}
+
+.session-ended-card h1 {
+  color: #171717;
+  font-size: clamp(26px, 6vw, 36px);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.08;
+  margin: 18px 0 10px;
+}
+
+.session-ended-card p {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.session-brand {
+  background: #fffaf5;
+  border: 1px solid #f0e4d8;
+  border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(34, 24, 18, 0.05);
+  display: inline-flex;
+  margin: 0 auto 10px;
+  max-width: 100%;
+  padding: 7px 12px 7px 7px;
+}
+
+.session-brand .brand-logo,
+.session-brand .brand-mark {
+  height: 38px;
+  width: 38px;
+}
+
+.session-brand > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-entry-card .primary-button.stretch {
+  border-radius: 16px;
+  box-shadow: 0 14px 28px rgba(178, 38, 34, 0.2);
+  font-size: 16px;
+  min-height: 54px;
+}
+
+.table-entry-card .language-switch {
+  margin-top: 6px;
+}
+
+.session-ended-card .bill-dialog-warning {
+  border-radius: 14px;
+  text-align: left;
+}
+
+@media (max-width: 480px) {
+  .session-ended-shell {
+    align-items: flex-end;
+    padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .session-ended-card {
+    border-radius: 24px;
+    padding: 26px 18px;
+  }
+
+  .session-brand {
+    padding-right: 10px;
+  }
+
+  .session-brand > strong {
+    max-width: 210px;
+  }
+}
