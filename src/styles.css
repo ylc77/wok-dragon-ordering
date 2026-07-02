@@ -10175,3 +10175,246 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Customer ordering menu polish: clearer scanning on phone and tablet. */
+.order-shell {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(178, 38, 34, 0.055), transparent 32%),
+    linear-gradient(180deg, #fffaf6, #f7f4ef 42%, #f5f2ed);
+}
+
+.order-topbar {
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 26px rgba(57, 20, 14, 0.045);
+}
+
+.order-brand strong {
+  color: #171717;
+  font-weight: 950;
+}
+
+.order-brand small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-menu {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.order-table-banner {
+  background:
+    linear-gradient(135deg, rgba(178, 38, 34, 0.08), rgba(255, 255, 255, 0.94) 34%),
+    #fff;
+  border-color: #eadfd3;
+  border-radius: 20px;
+  box-shadow: 0 18px 46px rgba(57, 20, 14, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.order-table-banner::after {
+  background: radial-gradient(circle, rgba(178, 38, 34, 0.12), transparent 65%);
+  content: "";
+  height: 110px;
+  pointer-events: none;
+  position: absolute;
+  right: -44px;
+  top: -58px;
+  width: 110px;
+}
+
+.order-table-banner strong {
+  color: #111827;
+  letter-spacing: 0;
+}
+
+.order-table-banner p {
+  line-height: 1.55;
+}
+
+.order-category-tabs {
+  border: 1px solid #eadfd3;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(57, 20, 14, 0.055);
+  margin-bottom: 20px;
+  padding: 10px;
+  top: 64px;
+}
+
+.order-category-tabs a {
+  border-color: #f0e2d5;
+  border-radius: 999px;
+  box-shadow: inset 0 -1px 0 rgba(57, 20, 14, 0.035);
+  min-height: 38px;
+}
+
+.order-category-tabs a.active {
+  box-shadow: 0 9px 18px rgba(178, 38, 34, 0.14);
+}
+
+.order-menu-groups h2 {
+  color: #171717;
+  font-size: 21px;
+  letter-spacing: 0;
+  margin: 22px 0 12px;
+}
+
+.order-list {
+  align-items: stretch;
+}
+
+.order-list .menu-card {
+  border-color: #eadfd3;
+  box-shadow: 0 14px 34px rgba(57, 20, 14, 0.065);
+}
+
+.order-list .menu-card:hover {
+  border-color: #e7cfc0;
+  box-shadow: 0 18px 42px rgba(57, 20, 14, 0.095);
+}
+
+.order-list .menu-card h3 {
+  line-height: 1.25;
+}
+
+.order-list .menu-card p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.order-list .menu-card-title strong {
+  flex: 0 0 auto;
+}
+
+.order-list .dish-add-button {
+  box-shadow: 0 12px 24px rgba(178, 38, 34, 0.2);
+  min-width: 108px;
+}
+
+.order-list .dish-add-button:disabled {
+  box-shadow: none;
+}
+
+.order-list .dish-quantity-control {
+  box-shadow: 0 9px 20px rgba(178, 38, 34, 0.08);
+}
+
+.mobile-cart-bar {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.mobile-cart-bar strong {
+  font-size: 16px;
+}
+
+.mobile-cart-bar em {
+  font-weight: 950;
+}
+
+@media (min-width: 768px) {
+  .order-table-banner {
+    padding: 22px 24px;
+  }
+
+  .order-menu-groups h2 {
+    padding-left: 2px;
+  }
+}
+
+@media (max-width: 767px) {
+  .order-topbar {
+    min-height: 58px;
+    padding: 8px 10px;
+  }
+
+  .order-brand .brand-mark {
+    height: 34px;
+    width: 34px;
+  }
+
+  .order-brand strong {
+    font-size: 14px;
+  }
+
+  .order-menu {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .order-table-banner {
+    align-items: flex-start;
+    border-radius: 16px;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .order-table-banner strong {
+    font-size: 22px;
+  }
+
+  .order-table-banner p {
+    max-width: none;
+  }
+
+  .order-category-tabs {
+    border-left: 0;
+    border-radius: 0;
+    border-right: 0;
+    margin-left: -10px;
+    margin-right: -10px;
+    padding: 8px 10px;
+    top: 58px;
+  }
+
+  .order-category-tabs a {
+    font-size: 13px;
+    line-height: 1.25;
+    max-width: 116px;
+    min-height: 40px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .order-menu-groups h2 {
+    font-size: 18px;
+    margin: 18px 0 10px;
+  }
+
+  .order-list .menu-card {
+    border-radius: 16px;
+  }
+
+  .order-list .menu-card-title {
+    align-items: start;
+  }
+
+  .order-list .menu-card-title strong {
+    font-size: 14px;
+    padding: 5px 8px;
+  }
+
+  .order-list .dish-add-button,
+  .order-list .dish-quantity-control {
+    min-height: 44px;
+  }
+
+  .mobile-cart-bar {
+    min-height: 62px;
+  }
+}
+
+@media (max-width: 390px) {
+  .order-category-tabs a {
+    max-width: 104px;
+  }
+
+  .order-list .menu-card p {
+    -webkit-line-clamp: 2;
+  }
+}
