@@ -9587,3 +9587,218 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Admin shell polish: navigation, topbar and mobile drawer. */
+.admin-shell {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(178, 38, 34, 0.06), transparent 34%),
+    linear-gradient(180deg, #f6f7f8, #eef0f2);
+}
+
+.admin-sidebar {
+  background:
+    radial-gradient(circle at 30% 0%, rgba(255, 255, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, #151719, #0d0f11);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 14px 0 42px rgba(15, 17, 19, 0.16);
+}
+
+.admin-brand {
+  border-radius: 16px;
+}
+
+.admin-brand:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-brand-mark {
+  box-shadow: 0 12px 26px rgba(178, 38, 34, 0.28);
+}
+
+.admin-sidebar button,
+.admin-sidebar a {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 15px;
+  line-height: 1.2;
+  min-height: 48px;
+  padding: 12px 13px;
+}
+
+.admin-sidebar button svg,
+.admin-sidebar a svg {
+  color: rgba(255, 255, 255, 0.74);
+  flex: 0 0 auto;
+}
+
+.admin-sidebar button:hover,
+.admin-sidebar a:hover {
+  color: #fff;
+  transform: translateX(1px);
+}
+
+.admin-sidebar button.active {
+  color: #fff;
+}
+
+.admin-sidebar button.active svg {
+  color: #fff;
+}
+
+.admin-logout {
+  border-radius: 12px !important;
+  min-height: 42px;
+}
+
+.admin-logout:hover {
+  background: rgba(220, 38, 38, 0.12) !important;
+}
+
+.admin-topbar {
+  backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.055);
+}
+
+.admin-topbar > strong {
+  color: #111827;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.realtime-dot {
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+}
+
+.realtime-dot.connecting {
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+}
+
+.realtime-dot.disconnected {
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+}
+
+.admin-clock,
+.admin-user,
+.logout-inline {
+  flex: 0 0 auto;
+}
+
+.admin-clock {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  color: #374151;
+  padding: 8px 10px;
+}
+
+.admin-user {
+  background: #fff;
+  border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  max-width: min(320px, 34vw);
+}
+
+.admin-user b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-inline {
+  border-radius: 999px;
+  min-height: 36px;
+  min-width: 36px;
+  justify-content: center;
+}
+
+.logout-inline:hover {
+  background: #fee2e2;
+}
+
+.admin-content {
+  padding-top: 28px;
+}
+
+.admin-mobile-topbar {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.admin-mobile-topbar strong {
+  color: #111827;
+  letter-spacing: 0;
+}
+
+.admin-mobile-menu-btn {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.admin-mobile-drawer {
+  background:
+    radial-gradient(circle at 24% 0%, rgba(255, 255, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, #151719, #0d0f11);
+  width: min(86vw, 320px);
+}
+
+.admin-mobile-drawer .admin-brand {
+  padding: 8px 6px 16px !important;
+}
+
+.admin-mobile-drawer .admin-nav-list {
+  gap: 7px;
+}
+
+.admin-mobile-drawer .admin-nav-list button {
+  min-height: 50px;
+}
+
+.admin-mobile-drawer-close {
+  border-radius: 999px;
+  height: 40px;
+  justify-content: center;
+  min-width: 40px;
+}
+
+.admin-mobile-drawer-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-mobile-overlay {
+  background: rgba(15, 23, 42, 0.52);
+}
+
+@media (max-width: 1024px) and (min-width: 768px) {
+  .admin-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .admin-sidebar {
+    width: 220px;
+  }
+
+  .admin-sidebar button,
+  .admin-sidebar a {
+    font-size: 14px;
+    padding-left: 11px;
+    padding-right: 11px;
+  }
+
+  .admin-content {
+    padding: 22px;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-content {
+    padding: 16px 14px 26px;
+  }
+
+  .admin-mobile-topbar {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
