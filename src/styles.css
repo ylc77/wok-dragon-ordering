@@ -7879,3 +7879,276 @@ body {
     font-size: 24px;
   }
 }
+
+/* Merchant setup pages: category and table/QR management polish. */
+.item-stats-row {
+  gap: 14px;
+}
+
+.istat {
+  background: linear-gradient(180deg, #fff, #fbfcfd);
+  border: 1px solid #e1e6eb;
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+  min-height: 86px;
+  padding: 16px;
+}
+
+.istat span {
+  color: #6b7280;
+  font-weight: 850;
+}
+
+.istat strong {
+  color: #111827;
+  font-size: 28px;
+  font-weight: 950;
+}
+
+.admin-table {
+  display: grid;
+  gap: 10px;
+}
+
+.cat-table-head {
+  border: 1px solid #dfe5eb;
+  border-bottom: 1px solid #dfe5eb;
+  padding: 10px 14px;
+}
+
+.cat-row-summary {
+  min-height: 58px;
+  padding: 8px 2px;
+}
+
+.cat-row-summary strong {
+  color: #111827;
+  font-weight: 950;
+}
+
+.cat-row-summary .item-row-actions {
+  justify-content: flex-end;
+}
+
+.category-edit-row {
+  background: #f8fafc;
+  border-color: #dfe5eb;
+}
+
+.category-form-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  padding: 14px;
+}
+
+.category-form-main .field-label,
+.category-form-main label {
+  color: #374151;
+  font-weight: 850;
+}
+
+.category-form-main input,
+.category-form-main select {
+  border-radius: 12px;
+  min-height: 44px;
+}
+
+.category-active-toggle {
+  border-radius: 12px;
+  font-weight: 900;
+}
+
+.item-new-form {
+  background: #fff;
+  border: 1px solid #dfe5eb;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.055);
+  margin-bottom: 14px;
+  padding: 16px;
+}
+
+.item-new-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.table-admin-grid {
+  gap: 18px;
+}
+
+.table-card {
+  background:
+    linear-gradient(180deg, #fff, #fbfcfd);
+  border: 1px solid #dfe5eb;
+  border-radius: 18px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  grid-template-columns: 172px minmax(0, 1fr);
+  overflow: hidden;
+  padding: 16px;
+}
+
+.qr-box {
+  background:
+    linear-gradient(180deg, #fffaf3, #f8f4ed);
+  border: 1px solid #eadfd3;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+  min-height: 190px;
+}
+
+.qr-box svg {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  padding: 8px;
+}
+
+.qr-box strong {
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.table-form {
+  align-items: end;
+  background: #f8fafc;
+  border: 1px solid #eef0f2;
+  border-radius: 14px;
+  gap: 10px;
+  padding: 12px;
+}
+
+.table-form .field-label {
+  font-weight: 850;
+}
+
+.table-form input {
+  border-radius: 10px;
+  min-height: 42px;
+}
+
+.table-card-body .availability-badge {
+  margin: 10px 0 0;
+}
+
+.table-occupancy-status {
+  border-radius: 14px;
+  margin: 10px 0 12px;
+  min-height: 50px;
+}
+
+.table-occupancy-status span {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.table-primary-action {
+  margin: 12px 0;
+}
+
+.clear-table-button {
+  border-radius: 14px;
+  min-height: 48px;
+}
+
+.table-maintenance-actions {
+  border-top-color: #e5e7eb;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.maintenance-button {
+  background: #fff;
+  border-radius: 10px;
+  min-height: 38px;
+}
+
+.maintenance-button-danger {
+  background: #fff5f5;
+}
+
+.qr-url {
+  border: 1px solid #eef0f2;
+  border-radius: 12px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.table-card-body > small {
+  color: #6b7280;
+  display: block;
+  line-height: 1.55;
+  margin-top: 8px;
+}
+
+.table-reentry-admin {
+  border-radius: 14px;
+}
+
+@media (max-width: 1180px) {
+  .table-card {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .item-stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .item-new-form-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .cat-row-summary {
+    gap: 7px;
+    padding: 8px 0;
+  }
+
+  .cat-row-summary .item-row-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-content: stretch;
+    margin-top: 6px;
+  }
+
+  .cat-row-summary .item-row-actions button {
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .table-card {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .qr-box {
+    min-height: 180px;
+  }
+
+  .table-form {
+    grid-template-columns: 1fr;
+  }
+
+  .table-maintenance-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .maintenance-button {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 430px) {
+  .item-stats-row,
+  .table-maintenance-actions,
+  .cat-row-summary .item-row-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .istat {
+    min-height: 72px;
+  }
+}
