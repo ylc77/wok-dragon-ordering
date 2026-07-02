@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock3, ExternalLink, Instagram, MapPin, MessageCircle, Phone, UtensilsCrossed } from 'lucide-react';
+import { Clock3, ExternalLink, Flame, Instagram, MapPin, MessageCircle, Phone, QrCode, Store, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SafeImage } from '../components/SafeImage';
 import { MenuCard } from './MenuPage';
@@ -114,7 +114,7 @@ export function HomePage() {
       <section className="hero-section">
         <div className="hero-copy">
           <div className="hero-brand-lockup" aria-hidden="true">
-            <SafeImage src={settings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
+            <SafeImage src={settings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={22} /></span>} />
             <strong>{name}</strong>
           </div>
           <h1>{name || t('home.title')}</h1>
@@ -133,7 +133,7 @@ export function HomePage() {
             fallback={
               <div className="hero-image-fallback" aria-hidden="true">
                 <div className="hif-inner">
-                  <span className="hif-mark">餐</span>
+                  <span className="hif-mark" aria-hidden="true"><UtensilsCrossed size={96} /></span>
                   <strong>{name || t('home.title')}</strong>
                   <span className="hif-sub">{t('home.subtitle')}</span>
                 </div>
@@ -144,9 +144,9 @@ export function HomePage() {
       </section>
 
       <section className="home-selling-points">
-        <div className="selling-point"><span className="sp-icon">🔥</span><strong>{lang === 'el' ? 'Γρήγορο Wok' : 'Fast Wok'}</strong><p>{lang === 'el' ? 'Φρέσκα υλικά, γρήγορη προετοιμασία' : 'Fresh ingredients, quick preparation'}</p></div>
-        <div className="selling-point"><span className="sp-icon">🏠</span><strong>{lang === 'el' ? 'Φαγητό στο κατάστημα' : 'Dine-in & Takeaway'}</strong><p>{lang === 'el' ? 'Απολαύστε στο εστιατόριο ή πάρτε στο σπίτι' : 'Enjoy in our restaurant or take away'}</p></div>
-        <div className="selling-point"><span className="sp-icon">📱</span><strong>{lang === 'el' ? 'Παραγγελία QR' : 'QR Ordering'}</strong><p>{lang === 'el' ? 'Σαρώστε, επιλέξτε, παραγγείλτε' : 'Scan, choose, order from your table'}</p></div>
+        <div className="selling-point"><span className="sp-icon"><Flame size={22} /></span><strong>{t('home.fastWokTitle')}</strong><p>{t('home.fastWokText')}</p></div>
+        <div className="selling-point"><span className="sp-icon"><Store size={22} /></span><strong>{t('home.dineTakeawayTitle')}</strong><p>{t('home.dineTakeawayText')}</p></div>
+        <div className="selling-point"><span className="sp-icon"><QrCode size={22} /></span><strong>{t('home.qrOrderingTitle')}</strong><p>{t('home.qrOrderingText')}</p></div>
       </section>
 
       <section className="home-intro">
@@ -164,11 +164,11 @@ export function HomePage() {
       {featuredSection}
 
       <section className="home-order-guide">
-        <h2>{lang === 'el' ? 'Παραγγελία από το τραπέζι' : 'Order from your table'}</h2>
+        <h2>{t('home.orderGuideTitle')}</h2>
         <div className="order-steps">
-          <div className="order-step"><span>1</span><strong>{lang === 'el' ? 'Σαρώστε το QR' : 'Scan QR code'}</strong><p>{lang === 'el' ? 'Στο τραπέζι σας' : 'On your table'}</p></div>
-          <div className="order-step"><span>2</span><strong>{lang === 'el' ? 'Επιλέξτε πιάτα' : 'Choose dishes'}</strong><p>{lang === 'el' ? 'Από το μενού' : 'From the menu'}</p></div>
-          <div className="order-step"><span>3</span><strong>{lang === 'el' ? 'Στείλτε παραγγελία' : 'Send order'}</strong><p>{lang === 'el' ? 'Καλή όρεξη!' : 'Enjoy!'}</p></div>
+          <div className="order-step"><span>1</span><strong>{t('home.stepScanTitle')}</strong><p>{t('home.stepScanText')}</p></div>
+          <div className="order-step"><span>2</span><strong>{t('home.stepChooseTitle')}</strong><p>{t('home.stepChooseText')}</p></div>
+          <div className="order-step"><span>3</span><strong>{t('home.stepSendTitle')}</strong><p>{t('home.stepSendText')}</p></div>
         </div>
       </section>
 

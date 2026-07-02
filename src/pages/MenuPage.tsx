@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, ChevronUp } from 'lucide-react';
+import { Search, ChevronUp, ImageIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SafeImage } from '../components/SafeImage';
 import { getPublicMenu, getRestaurantSettings } from '../lib/menuApi';
@@ -90,7 +90,7 @@ function DishImage({ item, alt }: { item: MenuItem; alt: string }) {
       width="118"
       height="118"
       loading="lazy"
-      fallback={<div className="menu-card-fallback" aria-hidden="true"><span className="mcf-icon">🍽️</span></div>}
+      fallback={<div className="menu-card-fallback" aria-hidden="true"><span className="mcf-icon"><ImageIcon size={28} /></span></div>}
     />
   );
 }
