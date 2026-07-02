@@ -102,6 +102,7 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
   const mainRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
   const manualRef = useRef(false);
+  const itemCount = visibleGroups.reduce((sum, group) => sum + group.items.length, 0);
 
   // 滚动联动：监听右侧 main 容器
   useEffect(() => {
@@ -165,6 +166,7 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
 
   return (
     <div className="menu-mobile-root">
+      <SearchBar search={search} setSearch={setSearch} count={itemCount} lang={lang} />
       <div className="menu-mobile-body">
         {visibleGroups.length > 1 ? (
           <aside ref={railRef} className="mobile-rail">
@@ -268,6 +270,7 @@ export function MenuPage() {
 
   const filteredGroups = useFilteredGroups(publicGroups, search, lang);
   const visibleGroups = filteredGroups.filter((g) => g.items.length > 0);
+  const visibleItemCount = visibleGroups.reduce((sum, group) => sum + group.items.length, 0);
 
   // 移动端锁定 body 滚动
   useEffect(() => {
@@ -286,6 +289,9 @@ export function MenuPage() {
   return (
     <main className="page-shell">
       <div className="menu-desktop-only"><MenuIntro settings={settings} /></div>
+      <div className="menu-desktop-only">
+        <SearchBar search={search} setSearch={setSearch} count={visibleItemCount} lang={lang} />
+      </div>
 
       {loading ? <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>{t('common.loading')}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
