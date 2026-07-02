@@ -8902,3 +8902,245 @@ body {
     width: 100%;
   }
 }
+
+/* System and backup polish: clearer maintenance handoff screens. */
+.system-settings-card {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(178, 38, 34, 0.08), transparent 34%),
+    #fff;
+  border: 1px solid #e1e6eb;
+  border-radius: 18px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.06);
+  gap: 14px;
+  padding: 18px;
+}
+
+.system-settings-card > svg,
+.admin-panel-card > svg {
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.system-settings-card h2,
+.admin-panel-card h2 {
+  color: #111827;
+  font-size: 18px;
+  font-weight: 950;
+  margin: 0 0 5px;
+}
+
+.system-settings-card p,
+.admin-panel-card p {
+  color: #5f6670;
+  line-height: 1.6;
+}
+
+.admin-system-grid {
+  gap: 14px;
+  margin: 16px 0 22px;
+}
+
+.admin-system-grid div {
+  background:
+    linear-gradient(180deg, #fff, #fbfcfd);
+  border: 1px solid #e1e6eb;
+  border-radius: 16px;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.045);
+  min-height: 98px;
+  padding: 16px;
+}
+
+.admin-system-grid strong {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.admin-system-grid span {
+  line-height: 1.55;
+}
+
+.health-status-grid {
+  gap: 14px;
+}
+
+.health-check-card {
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+  min-height: 92px;
+  padding: 16px;
+}
+
+.health-check-card svg {
+  background: #f8fafc;
+  border-radius: 12px;
+  color: #6b7280;
+  height: 42px;
+  padding: 10px;
+  width: 42px;
+}
+
+.health-check-card.is-ok svg {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.health-check-card.is-error svg {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.health-check-card strong {
+  color: #111827;
+  font-weight: 950;
+}
+
+.health-meta {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+}
+
+.backup-control-panel {
+  border-radius: 18px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.055);
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.backup-table-checklist,
+.backup-date-range,
+.backup-format-selector,
+.backup-actions {
+  background: #fbfcfd;
+  border: 1px solid #e1e6eb;
+  border-radius: 16px;
+  margin: 0;
+  padding: 14px;
+}
+
+.backup-checklist-header strong,
+.backup-date-range > strong,
+.backup-format-selector > strong {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.backup-checklist-actions button,
+.backup-format-buttons button {
+  min-height: 38px;
+}
+
+.backup-checklist-item {
+  background: #fff;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  min-height: 46px;
+  padding: 9px 12px;
+}
+
+.backup-checklist-item input {
+  accent-color: var(--accent);
+  height: 18px;
+  width: 18px;
+}
+
+.backup-checklist-item span {
+  color: #111827;
+  font-weight: 900;
+}
+
+.backup-checklist-item code {
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.backup-date-inputs input[type="date"] {
+  border-radius: 10px;
+  min-height: 40px;
+}
+
+.backup-actions .primary-button {
+  min-height: 46px;
+  min-width: 150px;
+}
+
+.backup-message {
+  border-radius: 12px;
+  font-weight: 850;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
+.backup-message[data-type="success"] {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.backup-message[data-type="error"] {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 767px) {
+  .system-settings-card,
+  .admin-panel-card {
+    align-items: flex-start;
+  }
+
+  .admin-system-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .health-meta {
+    align-items: flex-start;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .backup-checklist-header,
+  .backup-date-inputs,
+  .backup-format-selector,
+  .backup-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .backup-checklist-actions,
+  .backup-format-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .backup-date-inputs label {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .backup-date-inputs input[type="date"],
+  .backup-actions .primary-button {
+    width: 100%;
+  }
+
+  .backup-checklist-item {
+    align-items: flex-start;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .backup-checklist-item code {
+    grid-column: 2;
+    justify-self: start;
+    margin-left: 0;
+  }
+}
