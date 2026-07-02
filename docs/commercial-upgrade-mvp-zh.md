@@ -66,7 +66,7 @@
 - 前台员工：订单、POS 点单、确认收款、清桌
 - 厨房：只读查看订单和小票预览，不开放收款、清桌、菜单、桌台和系统设置
 
-老客户需要执行 `supabase/patches-archive/2026-07-03-print-agent-status-kitchen-role.sql` 后才支持 `kitchen` 角色和打印助手状态回传。
+当前 1.0 商业交付版已经把 `kitchen` 角色和打印助手状态回传合入 `supabase/client-init.sql`。项目尚未售卖给老客户，暂无需要执行的升级 patch。
 
 ### 6. 运行状态提示
 

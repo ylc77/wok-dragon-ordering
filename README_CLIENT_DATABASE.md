@@ -28,8 +28,8 @@
 - `supabase/client-init.sql` 是新客户初始化的唯一权威 SQL 文件。
 - 它包含表结构、RLS、RPC、Storage bucket / policy、默认数据和必要索引。
 - `supabase/schema.sql` 是 legacy 快照，不用于新客户部署。
-- 新客户不需要逐个执行 `supabase/patches-archive/` 里的历史补丁。
-- 老客户升级不要重新执行 `client-init.sql`，应先备份数据库，再按 `supabase/patches/README.md` 执行缺失补丁。
+- 当前 1.0 商业交付版暂无老客户升级补丁。
+- 后续如果已经有真实客户数据库需要升级，再新增日期命名的 patch。
 
 ## 三、确认 Storage
 
@@ -213,6 +213,6 @@ pnpm print-agent -- --install-startup
 - 每个客户建议独立 Supabase 项目。
 - 定期导出数据备份。
 - 不要提交 `.env.local`、`print-agent/config.json`、`print-agent/logs/`。
-- 老客户升级前必须先备份数据库。
-- 老客户不要重新执行 `supabase/client-init.sql`。
+- 当前项目还没有已上线老客户数据库，暂无需要执行的升级 patch。
+- 后续如需升级已有客户数据库，必须先备份数据库，再按新增 patch 的说明执行。
 - 如果客户需要正式支付、税务发票或多打印机分流，应作为专业版定制评估。

@@ -29,7 +29,7 @@
 │   ├── schema.sql                # legacy schema 快照（不要用于新客户部署）
 │   ├── demo-menu.sql             # 演示菜单数据
 │   ├── seed.sql                  # 初始种子数据（仅第一客户）
-│   └── patches/                  # 老客户升级补丁
+│   └── patches/                  # 后续已有客户升级补丁说明
 ├── docs/                         # 文档
 ├── vercel.json                   # Vercel 配置
 └── package.json
@@ -220,8 +220,8 @@
 ## 数据库维护规则
 
 所有数据库结构改动必须同时维护：
-1. `supabase/patches/` — 用于老客户升级（增量 SQL）
-2. `supabase/client-init.sql` — 用于新客户初始化（完整 SQL）
+1. `supabase/client-init.sql` — 用于新客户初始化（完整 SQL）
+2. `supabase/patches/` — 如果已有真实客户数据库，再新增增量 SQL 和执行说明
 3. `docs/` — 更新部署文档
 
 不要只在 Supabase SQL Editor 手动改库而不提交 SQL 文件。

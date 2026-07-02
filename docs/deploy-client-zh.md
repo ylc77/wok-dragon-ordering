@@ -18,7 +18,7 @@
 3. 点击 **Run**，等待执行完成
 4. 确认没有报错
 
-> `supabase/client-init.sql` 是新客户初始化的唯一权威文件，已经包含完整表结构、RLS、RPC、Storage bucket/policy 和默认数据。不要执行 `supabase/schema.sql`，它只是 legacy 快照；也不要为新客户逐个执行 `supabase/patches-archive/`。
+> `supabase/client-init.sql` 是新客户初始化的唯一权威文件，已经包含完整表结构、RLS、RPC、Storage bucket/policy 和默认数据。不要执行 `supabase/schema.sql`，它只是 legacy 快照；当前 1.0 商业交付版没有需要执行的升级 patch。
 
 > 如果报错 `publication supabase_realtime drop table restaurant_settings` 之类的，忽略即可——新项目还没有这个表在 Realtime 中。
 
@@ -203,16 +203,11 @@ DEEPSEEK_API_KEY=sk-xxx（可选，用于菜单自动翻译）
 
 修改后刷新前台页面即可看到效果。
 
-## 十三、执行升级补丁（老客户）
+## 十三、升级补丁说明
 
-如果 Supabase 项目是旧版，需要在 SQL Editor 依次执行以下补丁：
+当前项目还没有已上线老客户数据库，1.0 商业交付版暂无需要执行的升级 patch。
 
-升级前必须先备份数据库。老客户不要重新执行 `supabase/client-init.sql`，应按 `supabase/patches/README.md` 的顺序选择并执行缺失补丁。
-
-```sql
--- 品牌外观自定义
-supabase/patches/2026-06-25-brand-customization.sql
-```
+新客户只执行 `supabase/client-init.sql`。后续如果已经有真实客户数据库需要升级，再新增日期命名的 SQL patch，并在 `supabase/patches/README.md` 写清楚执行顺序、前置依赖和验证方式。升级前必须先备份客户数据库。
 
 ## 十三、功能模块开关
 
@@ -231,9 +226,9 @@ supabase/patches/2026-06-25-brand-customization.sql
 
 ## 重要提示
 
-- **新客户部署：** 只执行 `supabase/client-init.sql`（不要执行 `schema.sql`，无需执行 patches 目录旧文件）
-- **老客户升级：** 先备份数据库，不要执行 client-init.sql（会覆盖数据），参考 `supabase/patches/README.md` 和 `supabase/patches-archive/` 按顺序补丁升级
+- **新客户部署：** 只执行 `supabase/client-init.sql`（不要执行 `schema.sql`）
+- **已有客户升级：** 当前暂无升级 patch；后续有真实客户后，再按新增 patch 单独升级
 - **演示数据：** `supabase/demo-menu.sql` 可选执行
 - **SQL Editor 操作：** 复制 SQL 文件内容粘贴执行，不是输入文件路径
 - **不要** 只在 Supabase SQL Editor 手动改表结构而不提交 SQL 文件
-- `supabase/patches/README.md` 有详细说明
+- `supabase/patches/README.md` 说明当前 patch 策略

@@ -2,7 +2,7 @@
 -- This file is kept only as an old schema snapshot for reference.
 -- Do NOT use it to initialize a new customer database.
 -- New customer setup must run supabase/client-init.sql only.
--- Historical customer upgrades should use supabase/patches-archive/.
+-- Current 1.0 delivery has no active customer upgrade patches.
 
 -- Wok Dragon Express / 龙城酒楼 legacy schema snapshot.
 

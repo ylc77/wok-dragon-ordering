@@ -76,7 +76,7 @@ supabase/schema.sql
 - [docs/deploy-client-zh.md](docs/deploy-client-zh.md)
 - [docs/client-install-checklist-zh.md](docs/client-install-checklist-zh.md)
 
-老客户升级前必须先备份数据库，并按 `supabase/patches/README.md` 选择补丁执行，不要重新执行 `client-init.sql`。
+当前 1.0 商业交付版暂无老客户升级补丁。后续如果已经有真实客户数据库需要升级，再新增日期命名的 patch，并先备份数据库。
 
 ## 五、本地打印助手
 
@@ -181,7 +181,7 @@ pnpm run smoke
 src/pages/       前台页面和后台页面
 src/lib/         API、类型、本地化、图片、导入导出工具
 api/             Vercel Serverless Functions
-supabase/        新客户初始化 SQL、demo 数据、历史补丁
+supabase/        新客户初始化 SQL、demo 数据、patch 说明
 print-agent/     Windows 本地自动打印助手
 docs/            部署、交付、维护和客户文档
 scripts/         smoke test、录屏等辅助脚本
