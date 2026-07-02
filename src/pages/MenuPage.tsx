@@ -293,9 +293,9 @@ export function MenuPage() {
         <SearchBar search={search} setSearch={setSearch} count={visibleItemCount} lang={lang} />
       </div>
 
-      {loading ? <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>{t('common.loading')}</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
-      {!loading && visibleGroups.length === 0 ? <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>{search ? (lang === 'el' ? 'Δεν βρέθηκαν πιάτα' : 'No dishes found') : t('common.empty')}</p> : null}
+      {loading ? <p className="app-state-card menu-state-card"><span className="state-spinner" aria-hidden="true" />{t('common.loading')}</p> : null}
+      {error ? <p className="app-state-card menu-state-card error-text">{error}</p> : null}
+      {!loading && visibleGroups.length === 0 ? <p className="app-state-card menu-state-card">{search ? (lang === 'el' ? 'Δεν βρέθηκαν πιάτα' : 'No dishes found') : t('common.empty')}</p> : null}
 
       {/* 移动端 */}
       <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} settings={settings} />

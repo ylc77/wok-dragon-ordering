@@ -101,9 +101,11 @@ export function HomePage() {
 
   if (loading) {
     return (
-      <main>
-        <section className="hero-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '40vh' }}>
-          <p style={{ color: 'var(--color-muted)', fontSize: '18px' }}>{t('common.loading')}</p>
+      <main className="home-page">
+        <section className="app-state-card home-loading-card">
+          <span className="state-spinner" aria-hidden="true" />
+          <strong>{t('common.loading')}</strong>
+          <p>{t('home.subtitle')}</p>
         </section>
       </main>
     );

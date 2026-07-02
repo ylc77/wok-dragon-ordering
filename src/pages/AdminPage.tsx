@@ -364,8 +364,9 @@ export function AdminPage() {
 
   if (!hasSupabaseConfig || !supabase) {
     return (
-      <main className="admin-shell">
-        <div className="admin-empty">
+      <main className="admin-login">
+        <div className="admin-empty app-state-card admin-config-empty">
+          <span className="admin-login-mark"><UtensilsCrossed size={24} /></span>
           <h1>后台管理</h1>
           <p>请先配置 `.env.local` 中的 Supabase URL 和 publishable key。</p>
         </div>
@@ -374,7 +375,15 @@ export function AdminPage() {
   }
 
   if (!sessionReady) {
-    return <main className="admin-shell">正在加载后台...</main>;
+    return (
+      <main className="admin-login">
+        <div className="admin-empty app-state-card">
+          <span className="state-spinner" aria-hidden="true" />
+          <h1>正在加载后台</h1>
+          <p>请稍候，正在确认登录状态。</p>
+        </div>
+      </main>
+    );
   }
 
   if (!loggedIn) {
@@ -492,7 +501,9 @@ function AdminLogin({ onMessage, message }: { onMessage: (value: string | null) 
   return (
     <main className="admin-login">
       <form onSubmit={login}>
+        <span className="admin-login-mark"><UtensilsCrossed size={24} /></span>
         <h1>后台登录</h1>
+        <p className="admin-login-subtitle">餐馆订单、菜单、桌台和 POS 管理入口</p>
         <label>
           邮箱
           <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" />
