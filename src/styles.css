@@ -6927,3 +6927,328 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Final interaction polish: dialogs, drawers and touch-first controls. */
+.print-confirm-overlay {
+  align-items: center;
+  backdrop-filter: blur(3px);
+  background: rgba(17, 24, 39, 0.46);
+  display: flex;
+  justify-content: center;
+  padding: 22px;
+}
+
+.print-confirm-dialog {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 18px;
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.28);
+  max-height: min(82dvh, 720px);
+  overflow: auto;
+}
+
+.print-confirm-dialog h2,
+.print-confirm-dialog h3 {
+  color: #111827;
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.print-confirm-meta,
+.print-confirm-warning,
+.print-confirm-items {
+  border-radius: 14px;
+}
+
+.print-confirm-actions {
+  background: rgba(255, 255, 255, 0.96);
+  bottom: 0;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-left: -2px;
+  margin-right: -2px;
+  padding-top: 12px;
+  position: sticky;
+}
+
+.print-confirm-actions button {
+  min-height: 44px;
+  min-width: 112px;
+}
+
+.bill-dialog {
+  border-radius: 20px;
+  max-height: min(84dvh, 720px);
+  overflow: auto;
+}
+
+.bill-dialog-actions {
+  background: rgba(255, 255, 255, 0.96);
+  bottom: 0;
+  padding-top: 12px;
+  position: sticky;
+}
+
+.bill-payment-options button {
+  border-radius: 14px;
+  min-height: 92px;
+}
+
+.cart-panel .primary-button.stretch,
+.bill-checkout-button {
+  border-radius: 14px;
+  min-height: 52px;
+}
+
+.cart-panel-head button,
+.cart-note-head button {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.cart-panel-head button:hover,
+.cart-note-head button:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.admin-mobile-topbar {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  min-height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 35;
+}
+
+.admin-mobile-menu-btn {
+  border-radius: 10px;
+  min-height: 40px;
+  min-width: 40px;
+}
+
+.admin-mobile-menu-btn:hover {
+  background: #f3f4f6;
+}
+
+.admin-mobile-drawer {
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.24);
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+.admin-mobile-drawer .admin-nav-list button {
+  border-radius: 12px;
+}
+
+.admin-mobile-drawer .admin-nav-list button.active {
+  background: var(--accent);
+}
+
+.admin-mobile-overlay {
+  backdrop-filter: blur(2px);
+}
+
+.admin-empty-state {
+  border-radius: 16px;
+}
+
+.admin-message {
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(34, 197, 94, 0.12);
+  font-weight: 900;
+}
+
+.item-editor-actions {
+  background: rgba(248, 250, 252, 0.96);
+  bottom: 0;
+  margin-left: -4px;
+  margin-right: -4px;
+  padding: 14px 4px 0;
+  position: sticky;
+}
+
+.item-editor-actions .primary-button,
+.item-editor-actions .secondary-button,
+.category-edit-actions .primary-button,
+.category-edit-actions .secondary-button,
+.category-edit-actions .small-primary {
+  border-radius: 12px;
+  min-height: 46px;
+}
+
+.category-edit-row,
+.category-form-panel {
+  border-radius: 16px;
+}
+
+.cat-table-head {
+  background: #eef1f4;
+  border-radius: 12px;
+  color: #4b5563;
+  min-height: 42px;
+}
+
+.table-card {
+  transition: box-shadow 160ms ease, transform 120ms ease;
+}
+
+.table-card:hover {
+  transform: translateY(-1px);
+}
+
+.qr-box {
+  border-radius: 14px;
+}
+
+.table-primary-action button,
+.clear-table-button,
+.maintenance-button {
+  border-radius: 10px;
+}
+
+.settings-save-bar {
+  bottom: 0;
+  box-shadow: 0 -12px 30px rgba(15, 23, 42, 0.07);
+  position: sticky;
+  z-index: 4;
+}
+
+.pos-success-card {
+  background: linear-gradient(180deg, #f0fdf4, #ecfdf5);
+  box-shadow: 0 10px 24px rgba(22, 101, 52, 0.08);
+}
+
+.pos-success-card > div:first-child svg {
+  flex: 0 0 auto;
+}
+
+.pos-success-actions button {
+  border-radius: 12px;
+  min-height: 42px;
+}
+
+.pos-cart-total {
+  background: #fafafa;
+  border: 1px solid #edf0f2;
+  border-radius: 14px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.pos-cart-total strong {
+  color: var(--accent-dark);
+  font-size: 28px;
+  font-weight: 950;
+}
+
+.pos-cart-lines {
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.pos-cart-line {
+  align-items: center;
+}
+
+.pos-pay-opt input {
+  height: 16px;
+  width: 16px;
+}
+
+@media (max-width: 767px) {
+  .print-confirm-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .print-confirm-dialog,
+  .bill-dialog {
+    border-radius: 22px 22px 0 0;
+    max-height: 86dvh;
+    width: 100%;
+  }
+
+  .print-confirm-actions,
+  .bill-dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .print-confirm-actions button,
+  .bill-dialog-actions button {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .bill-payment-options {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-mobile-drawer {
+    max-width: min(86vw, 320px);
+    width: 86vw;
+  }
+
+  .item-editor-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-left: -12px;
+    margin-right: -12px;
+    padding: 12px 12px calc(4px + env(safe-area-inset-bottom));
+  }
+
+  .settings-save-bar {
+    align-items: stretch;
+    flex-direction: column;
+    margin-left: -2px;
+    margin-right: -2px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .settings-save-bar .primary-button,
+  .settings-save-bar .secondary-button {
+    width: 100%;
+  }
+
+  .table-card {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .qr-box {
+    min-height: 132px;
+  }
+
+  .pos-success-card {
+    gap: 12px;
+  }
+
+  .pos-cart-total {
+    align-items: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .admin-content {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .filter-input,
+  .filter-label,
+  .filter-label select,
+  .order-filter-row .secondary-button,
+  .order-filter-row .primary-button {
+    width: 100%;
+  }
+
+  .bulk-action-bar .danger-inline,
+  .bulk-action-bar .secondary-button {
+    width: 100%;
+  }
+}
