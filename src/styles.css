@@ -9144,3 +9144,243 @@ body {
     margin-left: 0;
   }
 }
+
+/* Menu operations polish: CSV import, AI assist and option editor. */
+.csv-import-panel {
+  align-items: stretch;
+  background:
+    linear-gradient(135deg, rgba(178, 38, 34, 0.06), transparent 36%),
+    #fff;
+  border: 1px solid #e1e6eb;
+  border-radius: 18px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.055);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 16px;
+}
+
+.csv-import-panel > .muted {
+  background: #fff7ed;
+  border: 1px solid #f0e2d5;
+  border-radius: 14px;
+  color: #7c2d12;
+  font-weight: 750;
+  grid-column: 1 / -1;
+  line-height: 1.6;
+  padding: 11px 12px;
+}
+
+.csv-import-panel label {
+  background: #fbfcfd;
+  border: 1px solid #e1e6eb;
+  border-radius: 14px;
+  color: #111827;
+  min-width: 0;
+  padding: 12px;
+}
+
+.csv-import-panel input[type="file"] {
+  cursor: pointer;
+  min-height: 44px;
+  width: 100%;
+}
+
+.csv-import-panel > .primary-button {
+  align-self: end;
+  min-height: 46px;
+  min-width: 132px;
+}
+
+.csv-import-panel > span,
+.csv-import-panel > strong {
+  align-self: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 900;
+  justify-content: center;
+  padding: 8px 12px;
+}
+
+.csv-import-panel > span {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.csv-result-ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.csv-result-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.csv-error-box,
+.csv-preview-table {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.csv-error-box {
+  background: #fff7f7;
+  border-radius: 14px;
+}
+
+.csv-preview-table {
+  background: #fbfcfd;
+  border-radius: 14px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.csv-preview-table div {
+  background: #fff;
+  border: 1px solid #eef0f2;
+  border-radius: 12px;
+  padding: 9px 10px;
+}
+
+.csv-preview-table b {
+  background: #fff7ed;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  justify-self: end;
+  padding: 5px 9px;
+}
+
+.item-ai-panel {
+  background:
+    linear-gradient(135deg, #fff8f2, #fff 70%);
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(146, 64, 14, 0.08);
+  padding: 16px;
+}
+
+.item-ai-head strong {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.item-ai-head small {
+  color: #7c2d12;
+}
+
+.item-ai-actions .secondary-button {
+  border-color: #f0c9ae;
+  color: #9a3412;
+  min-height: 42px;
+}
+
+.item-ai-actions .secondary-button:hover:not(:disabled) {
+  background: #fff7ed;
+}
+
+.item-ai-prompt textarea {
+  background: #fff;
+  border-radius: 12px;
+  min-height: 112px;
+}
+
+.options-template-row {
+  background: #fbfcfd;
+  border: 1px solid #e1e6eb;
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.options-template-row .secondary-button {
+  background: #fff;
+  border-radius: 12px;
+  min-height: 42px;
+}
+
+.option-group-card {
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.ogc-head strong {
+  color: #111827;
+  font-weight: 950;
+}
+
+.ogc-meta {
+  background: #f8fafc;
+  border-radius: 999px;
+  justify-self: start;
+  padding: 4px 8px;
+}
+
+.ogc-delete {
+  border-radius: 999px;
+  min-height: 34px;
+}
+
+.ogc-chip {
+  border-radius: 999px;
+}
+
+.item-options-json {
+  background: #fbfcfd;
+  border: 1px dashed #d1d5db;
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.item-options-json[open] {
+  border-style: solid;
+}
+
+@media (max-width: 1180px) {
+  .csv-import-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .csv-import-panel > .primary-button,
+  .csv-import-panel > span,
+  .csv-import-panel > strong {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .csv-import-panel {
+    padding: 12px;
+  }
+
+  .csv-preview-table div {
+    grid-template-columns: 1fr;
+  }
+
+  .csv-preview-table b {
+    justify-self: start;
+  }
+
+  .item-ai-panel {
+    padding: 14px;
+  }
+
+  .item-ai-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .options-template-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .ogc-head {
+    grid-template-columns: 1fr;
+  }
+
+  .ogc-delete {
+    grid-column: auto;
+    grid-row: auto;
+    justify-self: stretch;
+  }
+}
