@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, ChevronUp, ImageIcon } from 'lucide-react';
+import { Search, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SafeImage } from '../components/SafeImage';
-import { getPublicMenu, getRestaurantSettings } from '../lib/menuApi';
-import { formatPrice, getLocalizedField } from '../lib/localized';
-import type { Language, MenuGroup, MenuItem, RestaurantSettings } from '../lib/types';
+import { MenuCard } from '../components/MenuCard';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { getPublicMenu } from '../lib/publicMenuApi';
+import { getPublicRestaurantSettings } from '../lib/publicRestaurantApi';
+import { getOptimizedImageUrl } from '../lib/imageUrl';
+import { getLocalizedField } from '../lib/localized';
+import type { Language, MenuGroup, RestaurantSettings } from '../lib/types';
 
 /* ── 共享逻辑 ── */
 
@@ -18,7 +21,7 @@ function useMenuData() {
 
   useEffect(() => {
     document.title = 'Menu';
-    getRestaurantSettings().then(setSettings).catch(() => {});
+    getPublicRestaurantSettings().then(setSettings).catch(() => {});
     getPublicMenu().then(setGroups).catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, []);
 
@@ -46,7 +49,7 @@ function MenuIntro({ settings, tag = '菜' }: { settings: RestaurantSettings | n
   return (
     <section className="page-heading">
       <div>
-        <SafeImage src={settings?.logo_url} className="brand-logo" alt="" fallback={<span className="page-brand-mark">{tag}</span>} />
+        <SafeImage src={settings?.logo_url} optimizedSrc={getOptimizedImageUrl(settings?.logo_url, 'logo')} className="brand-logo" alt="" fallback={<span className="page-brand-mark">{tag}</span>} />
         <div>
           <h1>{t('nav.menu')}</h1>
           <p>{t('common.priceNote')}</p>
@@ -64,38 +67,6 @@ function SearchBar({ search, setSearch, count, lang }: { search: string; setSear
     </div>
   );
 }
-
-export function MenuCard({ item, lang, action }: { item: MenuItem; lang: Language; action?: ReactNode }) {
-  const { t } = useTranslation();
-  const name = getLocalizedField(lang, { zh: item.name_zh, en: item.name_en, el: item.name_el });
-  const desc = getLocalizedField(lang, { zh: item.description_zh, en: item.description_en, el: item.description_el });
-  return (
-    <article className={`menu-card${item.is_sold_out ? ' sold-out' : ''}`}>
-      <DishImage item={item} alt={name} />
-      {item.is_sold_out ? <span className="sold-out-badge">{t('common.soldOut')}</span> : null}
-      <div>
-        <div className="menu-card-title"><h3>{name}</h3><strong>{formatPrice(Number(item.price), lang)}</strong></div>
-        {desc ? <p>{desc}</p> : null}
-        {action}
-      </div>
-    </article>
-  );
-}
-
-function DishImage({ item, alt }: { item: MenuItem; alt: string }) {
-  return (
-    <SafeImage
-      src={item.image_url}
-      alt={alt}
-      width="118"
-      height="118"
-      loading="lazy"
-      fallback={<div className="menu-card-fallback" aria-hidden="true"><span className="mcf-icon"><ImageIcon size={28} /></span></div>}
-    />
-  );
-}
-
-/* ── 移动端菜单 ── */
 
 function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visibleGroups: MenuGroup[]; lang: Language; search: string; setSearch: (v: string) => void; settings: RestaurantSettings | null; }) {
   const [activeCat, setActiveCat] = useState('');
@@ -178,7 +149,7 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
           </aside>
         ) : null}
         <main ref={mainRef} className="mobile-main">
-          <SafeImage src={settings?.logo_url} className="mobile-head-logo" alt="" fallback={null} />
+          <SafeImage src={settings?.logo_url} optimizedSrc={getOptimizedImageUrl(settings?.logo_url, 'logo')} className="mobile-head-logo" alt="" fallback={null} />
           {visibleGroups.map((g) => (
             <section className="menu-group" id={`mcat-${g.id}`} key={g.id}>
               <h2>{getLocalizedField(lang, { zh: g.name_zh, en: g.name_en, el: g.name_el })}</h2>
@@ -261,6 +232,7 @@ export function MenuPage() {
   const { groups, settings, loading, error } = useMenuData();
   const [search, setSearch] = useState('');
   const [showBackTop, setShowBackTop] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   // 过滤掉不适合公开菜单展示的分类（如餐具）
   const publicGroups = useMemo(() => groups.filter((g) => {
@@ -288,20 +260,26 @@ export function MenuPage() {
 
   return (
     <main className="page-shell">
-      <div className="menu-desktop-only"><MenuIntro settings={settings} /></div>
-      <div className="menu-desktop-only">
-        <SearchBar search={search} setSearch={setSearch} count={visibleItemCount} lang={lang} />
-      </div>
+      {isDesktop ? (
+        <>
+          <div className="menu-desktop-only"><MenuIntro settings={settings} /></div>
+          <div className="menu-desktop-only">
+            <SearchBar search={search} setSearch={setSearch} count={visibleItemCount} lang={lang} />
+          </div>
+        </>
+      ) : null}
 
       {loading ? <p className="app-state-card menu-state-card"><span className="state-spinner" aria-hidden="true" />{t('common.loading')}</p> : null}
       {error ? <p className="app-state-card menu-state-card error-text">{error}</p> : null}
       {!loading && visibleGroups.length === 0 ? <p className="app-state-card menu-state-card">{search ? (lang === 'el' ? 'Δεν βρέθηκαν πιάτα' : 'No dishes found') : t('common.empty')}</p> : null}
 
       {/* 移动端 */}
-      <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} settings={settings} />
+      {!isDesktop ? (
+        <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} settings={settings} />
+      ) : null}
 
       {/* 桌面端 */}
-      <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} />
+      {isDesktop ? <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} /> : null}
 
       {showBackTop ? (
         <button className="menu-back-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title={lang === 'el' ? 'Πίσω στην κορυφή' : 'Back to top'}>

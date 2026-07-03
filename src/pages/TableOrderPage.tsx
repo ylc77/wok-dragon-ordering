@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Ban, Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, UtensilsCrossed, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { MenuCard } from './MenuPage';
+import { MenuCard } from '../components/MenuCard';
 import { SafeImage } from '../components/SafeImage';
 import { playSuccessSound } from '../lib/audio';
-import { getPublicMenu, getRestaurantSettings, requireAnonymousSession } from '../lib/menuApi';
+import { getRestaurantSettings, requireAnonymousSession } from '../lib/menuApi';
+import { getPublicMenu } from '../lib/publicMenuApi';
 import { hasSupabaseConfig } from '../lib/supabase';
+import { getOptimizedImageUrl } from '../lib/imageUrl';
 import { formatPrice, getLocalizedField } from '../lib/localized';
 import {
   addCartItem,
@@ -26,6 +28,7 @@ import {
 } from '../lib/orderApi';
 import type { BillPaymentMethod, CartItem, Language, MenuGroup, MenuItem, MenuItemOptionGroup, Order, RealtimeConnectionStatus, RestaurantSettings, SelectedOption, TableEntryState, TableReentryRequest, TableSessionState } from '../lib/types';
 import { LanguageSwitch } from '../components/LanguageSwitch';
+import '../styles/order.css';
 
 export function TableOrderPage() {
   const { qrToken = '' } = useParams();
@@ -568,7 +571,7 @@ export function TableOrderPage() {
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card table-entry-card">
           <div className="session-brand">
-            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
+            <SafeImage src={restaurantSettings?.logo_url} optimizedSrc={getOptimizedImageUrl(restaurantSettings?.logo_url, 'logo')} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
             <strong>{restaurantName}</strong>
           </div>
           <p style={{ textAlign: 'center', margin: '16px 0' }}>当前餐厅暂未开启扫码点餐，请联系店员。</p>
@@ -582,7 +585,7 @@ export function TableOrderPage() {
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card table-entry-card">
           <div className="session-brand">
-            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
+            <SafeImage src={restaurantSettings?.logo_url} optimizedSrc={getOptimizedImageUrl(restaurantSettings?.logo_url, 'logo')} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
             <strong>{restaurantName}</strong>
           </div>
           <ShoppingBag size={34} />
@@ -610,7 +613,7 @@ export function TableOrderPage() {
       <main className="order-shell session-ended-shell">
         <section className="session-ended-card">
           <div className="session-brand">
-            <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
+            <SafeImage src={restaurantSettings?.logo_url} optimizedSrc={getOptimizedImageUrl(restaurantSettings?.logo_url, 'logo')} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
             <strong>{restaurantName}</strong>
           </div>
           <ReceiptText size={34} />
@@ -628,7 +631,7 @@ export function TableOrderPage() {
     <main className={`order-shell ${cartSummary.isEmpty ? 'cart-empty' : 'cart-has-items'}`}>
       <header className="order-topbar">
         <div className="order-brand">
-          <SafeImage src={restaurantSettings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
+          <SafeImage src={restaurantSettings?.logo_url} optimizedSrc={getOptimizedImageUrl(restaurantSettings?.logo_url, 'logo')} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={21} /></span>} />
           <span>
             <strong>{restaurantName}</strong>
             <small>

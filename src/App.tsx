@@ -4,7 +4,8 @@ import { Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitch } from './components/LanguageSwitch';
 import { SafeImage } from './components/SafeImage';
-import { getRestaurantSettings, subscribeToRestaurantSettings } from './lib/menuApi';
+import { getPublicRestaurantSettings } from './lib/publicRestaurantApi';
+import { getOptimizedImageUrl } from './lib/imageUrl';
 import { getLocalizedField } from './lib/localized';
 import type { Language, RestaurantSettings } from './lib/types';
 
@@ -29,8 +30,15 @@ function PublicShell() {
     : '';
 
   useEffect(() => {
-    void getRestaurantSettings().then(setSettings).catch(() => setSettings(null));
-    return subscribeToRestaurantSettings(setSettings);
+    let cancelled = false;
+    void getPublicRestaurantSettings()
+      .then((next) => {
+        if (!cancelled) setSettings(next);
+      })
+      .catch(() => {
+        if (!cancelled) setSettings(null);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   // 品牌色 + 标题 + favicon
@@ -72,7 +80,7 @@ function PublicShell() {
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand" to="/">
-            <SafeImage src={settings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
+            <SafeImage src={settings?.logo_url} optimizedSrc={getOptimizedImageUrl(settings?.logo_url, 'logo')} className="brand-logo" alt="" fallback={<span className="brand-mark">餐</span>} />
             <span>
               <strong>{restaurantName}</strong>
               {restaurantAddress ? <small>{restaurantAddress}</small> : null}

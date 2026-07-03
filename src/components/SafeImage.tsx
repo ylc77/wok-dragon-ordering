@@ -1,7 +1,8 @@
-import { useState, type ImgHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useState, type ImgHTMLAttributes, type ReactNode } from 'react';
 
 export type SafeImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   src?: string | null;
+  optimizedSrc?: string | null;
   fallback: ReactNode;
 };
 
@@ -12,20 +13,37 @@ export type SafeImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & 
  * - src 有值但加载失败 (onError) → 切换到 fallback
  * - 加载成功 → 正常渲染 img
  */
-export function SafeImage({ src, fallback, alt = '', className, ...imgProps }: SafeImageProps) {
+export function SafeImage({ src, optimizedSrc, fallback, alt = '', className, loading = 'lazy', decoding = 'async', onError, ...imgProps }: SafeImageProps) {
   const [failed, setFailed] = useState(false);
-  const resolved = src?.trim();
+  const original = src?.trim() ?? '';
+  const optimized = optimizedSrc?.trim() ?? '';
+  const resolved = optimized || original;
+  const [currentSrc, setCurrentSrc] = useState(resolved);
 
-  if (!resolved || failed) {
+  useEffect(() => {
+    setFailed(false);
+    setCurrentSrc(resolved);
+  }, [resolved]);
+
+  if (!currentSrc || failed) {
     return <>{fallback}</>;
   }
 
   return (
     <img
-      src={resolved}
+      src={currentSrc}
       alt={alt}
       className={className}
-      onError={() => setFailed(true)}
+      loading={loading}
+      decoding={decoding}
+      onError={(event) => {
+        onError?.(event);
+        if (currentSrc !== original && original) {
+          setCurrentSrc(original);
+          return;
+        }
+        setFailed(true);
+      }}
       {...imgProps}
     />
   );

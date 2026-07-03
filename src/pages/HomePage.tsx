@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { Clock3, ExternalLink, Flame, Instagram, MapPin, MessageCircle, Phone, QrCode, Store, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SafeImage } from '../components/SafeImage';
-import { MenuCard } from './MenuPage';
-import { getPublicMenu, getRestaurantSettings, subscribeToRestaurantSettings } from '../lib/menuApi';
+import { MenuCard } from '../components/MenuCard';
+import { getHomeMenuPreview } from '../lib/publicMenuApi';
+import { getPublicRestaurantSettings } from '../lib/publicRestaurantApi';
+import { getOptimizedImageUrl } from '../lib/imageUrl';
 import { getLocalizedField, pickLocalized } from '../lib/localized';
 import type { Language, MenuGroup, MenuItem, RestaurantSettings } from '../lib/types';
 
@@ -18,16 +20,26 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
-      getRestaurantSettings().then(setSettings).catch((err) => setError(err.message)),
-      getPublicMenu()
-        .then((menuGroups) => {
-          setGroups(menuGroups.filter((group) => group.items.length > 0).slice(0, 8));
-          setFeaturedItems(menuGroups.flatMap((group) => group.items).slice(0, 4));
+      getPublicRestaurantSettings().then((next) => {
+        if (!cancelled) setSettings(next);
+      }).catch((err) => {
+        if (!cancelled) setError(err.message);
+      }),
+      getHomeMenuPreview(4)
+        .then(({ groups: menuGroups, featuredItems: previewItems }) => {
+          if (cancelled) return;
+          setGroups(menuGroups.filter((group) => (group.item_count ?? group.items.length) > 0).slice(0, 8));
+          setFeaturedItems(previewItems);
         })
-        .catch((err) => setError(err.message)),
-    ]).finally(() => setLoading(false));
-    return subscribeToRestaurantSettings(setSettings);
+        .catch((err) => {
+          if (!cancelled) setError(err.message);
+        }),
+    ]).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const name = settings
@@ -64,6 +76,7 @@ export function HomePage() {
   ].filter((link) => Boolean(link.url?.trim()));
   const heroItem = featuredItems.find((item) => Boolean(item.image_url));
   const heroImageUrl = settings?.hero_image_url?.trim() || heroItem?.image_url;
+  const logoImageUrl = settings?.logo_url?.trim();
 
   const featuredSection = featuredItems.length === 0 ? null : (
     <section className="home-menu-preview">
@@ -92,7 +105,7 @@ export function HomePage() {
         {groups.map((group) => (
           <Link className="category-entry" to={`/menu#category-${group.id}`} key={group.id}>
             <strong>{getLocalizedField(lang, { zh: group.name_zh, en: group.name_en, el: group.name_el })}</strong>
-            <span>{group.items.length}</span>
+            <span>{group.item_count ?? group.items.length}</span>
           </Link>
         ))}
       </div>
@@ -116,7 +129,7 @@ export function HomePage() {
       <section className="hero-section">
         <div className="hero-copy">
           <div className="hero-brand-lockup" aria-hidden="true">
-            <SafeImage src={settings?.logo_url} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={22} /></span>} />
+            <SafeImage src={logoImageUrl} optimizedSrc={getOptimizedImageUrl(logoImageUrl, 'logo')} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={22} /></span>} />
             <strong>{name}</strong>
           </div>
           <h1>{name || t('home.title')}</h1>
@@ -131,7 +144,12 @@ export function HomePage() {
         <div className="hero-media">
           <SafeImage
             src={heroImageUrl}
+            optimizedSrc={getOptimizedImageUrl(heroImageUrl, 'hero')}
             alt={name}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            sizes="(max-width: 768px) 100vw, 52vw"
             fallback={
               <div className="hero-image-fallback" aria-hidden="true">
                 <div className="hif-inner">

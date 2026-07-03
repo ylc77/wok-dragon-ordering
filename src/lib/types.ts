@@ -96,6 +96,7 @@ export type MenuItem = {
 
 export type MenuGroup = MenuCategory & {
   items: MenuItem[];
+  item_count?: number;
 };
 
 export type TableJoinResult = {

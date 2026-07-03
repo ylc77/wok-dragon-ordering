@@ -1,12 +1,25 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { changeAppLanguage } from '../i18n';
 
 export function LanguageSwitch({ className = 'icon-text-button' }: { className?: string }) {
   const { i18n } = useTranslation();
+  const [isChanging, setIsChanging] = useState(false);
   const current = i18n.language?.startsWith('el') ? 'el' : 'en';
   const next = current === 'el' ? 'en' : 'el';
 
+  async function handleChangeLanguage() {
+    if (isChanging) return;
+    setIsChanging(true);
+    try {
+      await changeAppLanguage(next);
+    } finally {
+      setIsChanging(false);
+    }
+  }
+
   return (
-    <button className={className} type="button" title={next === 'en' ? 'English' : 'Ελληνικά'} onClick={() => i18n.changeLanguage(next)}>
+    <button className={className} type="button" title={next === 'en' ? 'English' : 'Ελληνικά'} onClick={handleChangeLanguage} disabled={isChanging}>
       {current === 'el' ? <GreekFlag /> : <BritishFlag />}
       <span>{current.toUpperCase()}</span>
     </button>
