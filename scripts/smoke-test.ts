@@ -77,7 +77,8 @@ async function checkPageWidth(page: Page, route: string, width: number) {
   const name = `${route} @ ${width}px`;
   try {
     await page.goto(`${baseUrl}${route}`, { waitUntil: 'domcontentloaded', timeout: 12_000 });
-    await page.waitForTimeout(700);
+    await page.waitForFunction(() => document.body.innerText.replace(/\s+/g, ' ').trim().length > 0, null, { timeout: 5_000 }).catch(() => undefined);
+    await page.waitForTimeout(300);
     const data = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,
