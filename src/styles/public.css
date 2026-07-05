@@ -2121,6 +2121,44 @@
   font-weight: 800;
 }
 
+.legal-details-list,
+.legal-service-list {
+  background: #fffaf6;
+  border: 1px solid #f0e2d5;
+  border-radius: 14px;
+  margin: 14px 0 22px;
+  padding: 14px 16px;
+}
+
+.legal-details-list {
+  display: grid;
+  gap: 10px;
+}
+
+.legal-details-list div {
+  display: grid;
+  gap: 4px;
+}
+
+.legal-details-list dt {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.legal-details-list dd {
+  color: #171717;
+  font-weight: 800;
+  margin: 0;
+}
+
+.legal-service-list {
+  display: grid;
+  gap: 8px;
+  list-style: disc;
+  padding-left: 34px;
+}
+
 .legal-contact-block {
   background: #fff7ed;
   border: 1px solid #f2d8c5;
