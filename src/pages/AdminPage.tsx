@@ -6,6 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, Minus, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, ShoppingBag, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
 import '../styles/admin.css';
 import '../styles/print.css';
+import { LegalSubmissionNotice } from '../components/LegalSubmissionNotice';
 import { formatPrice, getLocalizedField } from '../lib/localized';
 import { getPublicMenu, getRestaurantSettings, adminHardDeleteMenuCategory, adminHardDeleteMenuItem, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
@@ -525,6 +526,7 @@ function AdminLogin({ onMessage, message }: { onMessage: (value: string | null) 
           <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
         </label>
         {message ? <p className="error-text">{message}</p> : null}
+        <LegalSubmissionNotice className="admin-legal-notice" />
         <button className="primary-button stretch" type="submit">
           登录
         </button>
@@ -4657,6 +4659,7 @@ function POSTab({ toast, requestSync, soundEnabled, onOpenOrders, restaurantName
                 <input type="checkbox" checked={autoPrintReceipt} onChange={(e) => togglePOSAutoPrint(e.target.checked)} />自动打印
               </label>
             </div>
+            <LegalSubmissionNotice className="pos-legal-notice" />
             <div className="pos-cart-actions">
               <button className="secondary-button" onClick={() => setClearCartConfirmOpen(true)} disabled={submitting || cart.length === 0}>清空</button>
               <button className="primary-button" disabled={cart.length === 0 || submitting} onClick={submitPOS}>{submitting ? '提交中...' : '提交订单'}</button>

@@ -2017,8 +2017,206 @@
   margin-top: 56px;
 }
 
+.site-footer-inner {
+  align-items: flex-start;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: 1180px;
+  text-align: left;
+}
+
 .site-footer p,
 .site-footer small {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  justify-content: flex-end;
+  max-width: 560px;
+}
+
+.site-footer-links a {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.site-footer-links a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.legal-page {
+  background: linear-gradient(180deg, #fffaf6 0%, #f8f4ef 100%);
+  min-height: 70vh;
+  padding: clamp(24px, 5vw, 56px);
+}
+
+.legal-hero,
+.legal-card {
+  margin: 0 auto;
+  max-width: 920px;
+}
+
+.legal-hero {
+  padding: 24px 0;
+}
+
+.legal-hero span {
+  color: var(--accent);
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.legal-hero h1 {
+  color: #171717;
+  font-size: clamp(34px, 6vw, 58px);
+  line-height: 1.04;
+  margin: 0 0 12px;
+}
+
+.legal-hero p,
+.legal-hero small {
+  color: #667085;
+}
+
+.legal-card {
+  background: #fff;
+  border: 1px solid #eadfd3;
+  border-radius: 24px;
+  box-shadow: 0 18px 46px rgba(57, 20, 14, 0.08);
+  color: #374151;
+  padding: clamp(24px, 4vw, 44px);
+}
+
+.legal-card h2,
+.legal-card h3 {
+  color: #171717;
+}
+
+.legal-card h2 {
+  font-size: clamp(24px, 4vw, 34px);
+  margin-top: 0;
+}
+
+.legal-card h3 {
+  margin: 28px 0 8px;
+}
+
+.legal-card p {
+  line-height: 1.68;
+}
+
+.legal-card a {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.legal-contact-block {
+  background: #fff7ed;
+  border: 1px solid #f2d8c5;
+  border-radius: 16px;
+  display: grid;
+  gap: 6px;
+  margin-top: 28px;
+  padding: 16px;
+}
+
+.legal-submit-notice {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 10px 0;
+}
+
+.legal-submit-notice a {
+  color: var(--accent);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.legal-submit-notice a:hover {
+  text-decoration: underline;
+}
+
+.cookie-banner {
+  align-items: flex-end;
+  background: rgba(17, 24, 39, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.24);
+  color: #fff;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  left: 50%;
+  max-width: min(980px, calc(100vw - 32px));
+  padding: 18px;
+  position: fixed;
+  transform: translateX(-50%);
+  width: 100%;
+  z-index: 1200;
+}
+
+.cookie-banner p {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+.cookie-banner a {
+  color: #fff;
+  font-weight: 900;
+}
+
+.cookie-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cookie-actions button {
+  white-space: nowrap;
+}
+
+.cookie-preferences {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.cookie-preferences label {
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  display: grid;
+  gap: 2px 10px;
+  grid-template-columns: auto 1fr;
+  padding: 10px;
+}
+
+.cookie-preferences input {
+  margin-top: 4px;
+}
+
+.cookie-preferences span,
+.cookie-preferences small {
+  grid-column: 2;
+}
+
+.cookie-preferences small {
   color: rgba(255, 255, 255, 0.68);
 }
 
@@ -2072,9 +2270,31 @@
     padding: 24px 16px;
   }
 
-.home-menu-preview .section-title-row,
+  .home-menu-preview .section-title-row,
   .home-category-preview .section-title-row {
     align-items: stretch;
     gap: 14px;
+  }
+
+  .site-footer-inner,
+  .cookie-banner {
+    grid-template-columns: 1fr;
+  }
+
+  .site-footer-inner {
+    display: grid;
+    text-align: center;
+  }
+
+  .site-footer-links {
+    justify-content: center;
+  }
+
+  .cookie-actions {
+    justify-content: stretch;
+  }
+
+  .cookie-actions button {
+    flex: 1 1 100%;
   }
 }

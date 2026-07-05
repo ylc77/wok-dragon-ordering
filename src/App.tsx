@@ -4,6 +4,8 @@ import { Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitch } from './components/LanguageSwitch';
 import { SafeImage } from './components/SafeImage';
+import { CookieBanner } from './components/CookieBanner';
+import { SiteFooter } from './components/SiteFooter';
 import { getPublicRestaurantSettings } from './lib/publicRestaurantApi';
 import { getOptimizedImageUrl } from './lib/imageUrl';
 import { getLocalizedField } from './lib/localized';
@@ -13,6 +15,7 @@ const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ defau
 const MenuPage = lazy(() => import('./pages/MenuPage').then((module) => ({ default: module.MenuPage })));
 const TableOrderPage = lazy(() => import('./pages/TableOrderPage').then((module) => ({ default: module.TableOrderPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
+const LegalPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
 
 function PublicShell() {
   const { t, i18n } = useTranslation();
@@ -98,7 +101,7 @@ function PublicShell() {
           <nav className={`nav-links ${mobileNavOpen ? 'is-open' : ''}`} aria-label={t('nav.primary')}>
             <NavLink to="/" end>{t('nav.home')}</NavLink>
             <NavLink to="/menu">{t('nav.menu')}</NavLink>
-            <a href="/#contact">{t('nav.contact')}</a>
+            <NavLink to="/contact">{t('nav.contact')}</NavLink>
           </nav>
           <div className="site-header-actions">
           <LanguageSwitch />
@@ -109,10 +112,18 @@ function PublicShell() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/menu" element={<MenuPage />} />
+          <Route path="/privacy-policy" element={<LegalPage />} />
+          <Route path="/terms-of-service" element={<LegalPage />} />
+          <Route path="/cookie-policy" element={<LegalPage />} />
+          <Route path="/contact" element={<LegalPage />} />
+          <Route path="/cancellation-policy" element={<LegalPage />} />
+          <Route path="/refund-policy" element={<LegalPage />} />
           <Route path="/table/:qrToken" element={<TableOrderPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
+      <SiteFooter name={restaurantName} address={restaurantAddress} settings={settings} />
+      <CookieBanner />
     </>
   );
 }

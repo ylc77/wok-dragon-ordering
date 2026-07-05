@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Ban, Banknote, CreditCard, Minus, Plus, ReceiptText, ShoppingBag, Trash2, UtensilsCrossed, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { LegalSubmissionNotice } from '../components/LegalSubmissionNotice';
 import { MenuCard } from '../components/MenuCard';
 import { SafeImage } from '../components/SafeImage';
 import { playSuccessSound } from '../lib/audio';
@@ -840,6 +841,7 @@ export function TableOrderPage() {
           <span>{t('order.selectedCount', { count: cartSummary.totalQuantity })}</span>
           <strong>{formatPrice(cartSummary.totalPrice)}</strong>
         </div>
+        <LegalSubmissionNotice className="cart-legal-notice" />
         <button
           className="primary-button stretch"
           type="button"

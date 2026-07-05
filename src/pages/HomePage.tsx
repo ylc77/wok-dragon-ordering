@@ -210,12 +210,6 @@ export function HomePage() {
         </div>
       </section>
 
-      <footer className="site-footer">
-        <strong>{name || t('home.title')}</strong>
-        {address ? <p>{address}</p> : null}
-        <small>© {new Date().getFullYear()}</small>
-      </footer>
-
     </main>
   );
 }
