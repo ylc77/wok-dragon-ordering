@@ -315,7 +315,7 @@ grant select, insert, update on public.print_agent_status to authenticated;
 grant select on public.menu_categories to anon, authenticated;
 grant select on public.menu_items to anon, authenticated;
 grant select, insert, update, delete on public.profiles to authenticated;
-grant insert, update, delete on public.restaurant_settings to authenticated;
+revoke insert, update, delete on public.restaurant_settings from authenticated;
 grant insert, update, delete on public.menu_categories to authenticated;
 grant insert, update, delete on public.menu_items to authenticated;
 
@@ -373,7 +373,7 @@ using (true);
 drop policy if exists "settings_staff_manage" on public.restaurant_settings;
 create policy "settings_staff_manage"
 on public.restaurant_settings
-for all
+for update
 to authenticated
 using (
   (select private.is_staff())
@@ -4095,4 +4095,26 @@ alter table public.restaurant_settings
 -- 模块开关：控制 POS / 外卖 / 扫码点餐的启用
 alter table public.restaurant_settings
   add column if not exists enable_pos boolean not null default true,
-  add column if not exists enable_qr_ordering boolean not null default true;
+  add column if not exists enable_qr_ordering boolean not null default true,
+  add column if not exists plan_tier text not null default 'professional',
+  add column if not exists feature_flags jsonb not null default '{"csv_import":true,"ai_menu":true,"ai_image":true,"data_backup":true,"print_agent":true}'::jsonb;
+
+alter table public.restaurant_settings
+  drop constraint if exists restaurant_settings_plan_tier_check,
+  add constraint restaurant_settings_plan_tier_check
+    check (plan_tier in ('basic', 'standard', 'professional'));
+
+grant update (
+  name_zh, name_en, name_el,
+  logo_url, hero_image_url,
+  intro_zh, intro_en, intro_el,
+  phone, whatsapp_url, instagram_url,
+  address_zh, address_en, address_el,
+  map_url,
+  opening_hours_zh, opening_hours_en, opening_hours_el,
+  wolt_url, efood_url, box_url,
+  accept_pos_payment, accept_cash_payment,
+  ordering_enabled, ordering_paused_at,
+  brand_color, favicon_url, meta_title,
+  footer_text_zh, footer_text_en, footer_text_el
+) on public.restaurant_settings to authenticated;

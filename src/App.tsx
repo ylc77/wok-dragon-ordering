@@ -16,12 +16,14 @@ const MenuPage = lazy(() => import('./pages/MenuPage').then((module) => ({ defau
 const TableOrderPage = lazy(() => import('./pages/TableOrderPage').then((module) => ({ default: module.TableOrderPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
 const LegalPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
+const VendorSettingsPage = lazy(() => import('./pages/VendorSettingsPage').then((module) => ({ default: module.VendorSettingsPage })));
 
 function PublicShell() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isTableOrder = location.pathname.startsWith('/table/');
+  const isVendorSettings = location.pathname === '/_vendor-settings';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const lang: Language = i18n.language?.startsWith('zh') ? 'zh' : i18n.language?.startsWith('en') ? 'en' : 'el';
@@ -65,6 +67,10 @@ function PublicShell() {
 
   if (isAdmin) {
     return <Suspense fallback={null}><AdminPage /></Suspense>;
+  }
+
+  if (isVendorSettings) {
+    return <Suspense fallback={null}><VendorSettingsPage /></Suspense>;
   }
 
   if (isTableOrder) {

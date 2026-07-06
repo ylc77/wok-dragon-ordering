@@ -1,5 +1,15 @@
 export type Language = 'el' | 'en' | 'zh';
 
+export type PlanTier = 'basic' | 'standard' | 'professional';
+
+export type FeatureFlags = {
+  csv_import: boolean;
+  ai_menu: boolean;
+  ai_image: boolean;
+  data_backup: boolean;
+  print_agent: boolean;
+};
+
 export type RestaurantSettings = {
   id: string;
   name_zh: string | null;
@@ -35,6 +45,8 @@ export type RestaurantSettings = {
   footer_text_el?: string | null;
   enable_pos?: boolean;
   enable_qr_ordering?: boolean;
+  plan_tier?: PlanTier;
+  feature_flags?: Partial<FeatureFlags> | null;
 };
 
 export type MenuCategory = {

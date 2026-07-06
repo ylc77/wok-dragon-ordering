@@ -8,6 +8,7 @@ import '../styles/admin.css';
 import '../styles/print.css';
 import { LegalSubmissionNotice } from '../components/LegalSubmissionNotice';
 import { formatPrice, getLocalizedField } from '../lib/localized';
+import { DEFAULT_FEATURE_FLAGS, getFeatureFlags } from '../lib/featureFlags';
 import { getPublicMenu, getRestaurantSettings, adminHardDeleteMenuCategory, adminHardDeleteMenuItem, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { downloadFile, exportRowsToCSV, exportRowsToJSON, fetchAllTableData, generateBackupFilename } from '../lib/dataExport';
@@ -43,6 +44,7 @@ import type {
   AdminDashboardSummary,
   AdminOrderStats,
   AdminRole,
+  FeatureFlags,
   MenuCategory,
   MenuGroup,
   MenuItem,
@@ -283,6 +285,7 @@ export function AdminPage() {
   });
   const [enablePos, setEnablePos] = useState(true);
   const [enableQrOrdering, setEnableQrOrdering] = useState(true);
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(DEFAULT_FEATURE_FLAGS);
   const [syncVersion, setSyncVersion] = useState(0);
   const requestSync = useCallback(() => setSyncVersion((c) => c + 1), []);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -341,11 +344,12 @@ export function AdminPage() {
 
   useEffect(() => {
     if (!supabase) return;
-    getRestaurantSettings().then((s) => {
+    supabase.from('restaurant_settings').select('*').limit(1).maybeSingle().then(({ data: s }) => {
       setRestaurantName(s?.name_zh || s?.name_en || s?.name_el || '餐馆');
       setEnablePos(s?.enable_pos !== false);
       setEnableQrOrdering(s?.enable_qr_ordering !== false);
-    }).catch(() => {});
+      setFeatureFlags(getFeatureFlags(s as RestaurantSettings | null));
+    });
   }, [syncVersion]);
 
   useEffect(() => {
@@ -473,8 +477,8 @@ export function AdminPage() {
           {tab === 'tables' ? (enableQrOrdering ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : <AdminSection title="桌台管理"><p className="admin-message-muted">当前未启用扫码点餐功能，桌台管理已关闭。</p></AdminSection>) : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} requestSync={requestSync} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
-          {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} /> : null}
-          {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} /> : null}
+          {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} features={featureFlags} /> : null}
+          {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} features={featureFlags} /> : null}
           {tab === 'pos' ? <POSTab toast={showAdminToast} requestSync={requestSync} soundEnabled={soundEnabled} onOpenOrders={() => setTab('orders')} restaurantName={restaurantName} /> : null}
         </section>
       </div>
@@ -807,10 +811,24 @@ function SettingsEditor({ onMessage, toast, requestSync }: { onMessage: (value: 
       onMessage('现金和刷卡至少需要启用一种付款方式。');
       return;
     }
-    const payload = { ...emptySettings, ...settings };
-    const { error } = settings.id
-      ? await supabase.from('restaurant_settings').update(payload).eq('id', settings.id)
-      : await supabase.from('restaurant_settings').insert(payload);
+    if (!settings.id) {
+      onMessage('未找到餐馆设置记录，请先完成数据库初始化。');
+      return;
+    }
+    const payload = {
+      name_zh: settings.name_zh ?? '', name_en: settings.name_en ?? '', name_el: settings.name_el ?? '',
+      logo_url: settings.logo_url || null, hero_image_url: settings.hero_image_url || null,
+      intro_zh: settings.intro_zh ?? '', intro_en: settings.intro_en ?? '', intro_el: settings.intro_el ?? '',
+      phone: settings.phone ?? '', whatsapp_url: settings.whatsapp_url ?? '', instagram_url: settings.instagram_url ?? '',
+      address_zh: settings.address_zh ?? '', address_en: settings.address_en ?? '', address_el: settings.address_el ?? '',
+      map_url: settings.map_url ?? '',
+      opening_hours_zh: settings.opening_hours_zh ?? '', opening_hours_en: settings.opening_hours_en ?? '', opening_hours_el: settings.opening_hours_el ?? '',
+      wolt_url: settings.wolt_url ?? '', efood_url: settings.efood_url ?? '', box_url: settings.box_url ?? '',
+      accept_pos_payment: settings.accept_pos_payment !== false, accept_cash_payment: settings.accept_cash_payment !== false,
+      brand_color: settings.brand_color || null, favicon_url: settings.favicon_url || null, meta_title: settings.meta_title || null,
+      footer_text_zh: settings.footer_text_zh ?? '', footer_text_en: settings.footer_text_en ?? '', footer_text_el: settings.footer_text_el ?? '',
+    };
+    const { error } = await supabase.from('restaurant_settings').update(payload).eq('id', settings.id);
     if (error) onMessage(error.message); else { toast('餐馆信息已保存'); requestSync(); }
     if (!error) load();
   }
@@ -899,21 +917,6 @@ function SettingsEditor({ onMessage, toast, requestSync }: { onMessage: (value: 
           <TextField label="主色调" value={settings.brand_color} onChange={(v) => setSettings({ ...settings, brand_color: v })} />
           <TextField label="网页标题" value={settings.meta_title} onChange={(v) => setSettings({ ...settings, meta_title: v })} />
           <TextField label="浏览器图标 URL" value={settings.favicon_url} onChange={(v) => setSettings({ ...settings, favicon_url: v })} />
-        </div>
-      </div>
-
-      {/* ── 模块开关 ── */}
-      <div className="settings-card">
-        <div className="settings-card-head"><h3>功能模块</h3><p className="settings-card-desc">按需启用或关闭餐厅功能。</p></div>
-        <div className="settings-checkbox-row">
-          <label>
-            <input type="checkbox" checked={settings.enable_pos !== false} onChange={(e) => setSettings({ ...settings, enable_pos: e.target.checked })} />
-            前台点单 POS
-          </label>
-          <label>
-            <input type="checkbox" checked={settings.enable_qr_ordering !== false} onChange={(e) => setSettings({ ...settings, enable_qr_ordering: e.target.checked })} />
-            扫码点餐
-          </label>
         </div>
       </div>
 
@@ -1585,7 +1588,7 @@ function mergeMissingAiMenuContent(value: Partial<MenuItem>, completion: MenuAiC
   };
 }
 
-function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; }) {
+function ItemEditor({ onMessage, toast, features }: { onMessage: (value: string | null) => void; toast: (msg: string, type?: 'success' | 'error' | 'warning') => void; features: FeatureFlags; }) {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [draft, setDraft] = useState<Partial<MenuItem>>(emptyItem);
@@ -1966,11 +1969,11 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
           <Plus size={15} />
           {showNewForm ? '收起' : '新增'}
         </button>
-        <button className="secondary-button" type="button" onClick={() => { setShowCsvImport((v) => !v); }}>
+        {features.csv_import ? <button className="secondary-button" type="button" onClick={() => { setShowCsvImport((v) => !v); }}>
           <Upload size={15} />
           {showCsvImport ? '收起' : '导入'}
-        </button>
-        <button
+        </button> : null}
+        {features.csv_import ? <button
           className="secondary-button"
           type="button"
           onClick={() => {
@@ -1979,8 +1982,8 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
         >
           <Download size={15} />
           快速CSV
-        </button>
-        <button
+        </button> : null}
+        {features.csv_import ? <button
           className="secondary-button"
           type="button"
           onClick={() => {
@@ -1989,17 +1992,17 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
         >
           <Download size={15} />
           完整CSV
-        </button>
-        <button className="secondary-button" type="button" onClick={exportCsv}>
+        </button> : null}
+        {features.csv_import ? <button className="secondary-button" type="button" onClick={exportCsv}>
           <Download size={15} />
           导出
-        </button>
+        </button> : null}
       </div>
 
       {/* - 新增菜品表单（可折叠） - */}
       {showNewForm ? (
         <div className="item-new-form">
-          <ItemForm value={draft} categories={categories} onChange={setDraft} onToast={toast} />
+          <ItemForm value={draft} categories={categories} onChange={setDraft} onToast={toast} enableAiMenu={features.ai_menu} enableAiImage={features.ai_image} />
           <div className="item-new-form-actions">
             <button className="primary-button" type="button" onClick={() => { void saveItem(draft).then((saved) => { if (saved) setShowNewForm(false); }); }}>
               <Plus size={15} />
@@ -2010,7 +2013,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
       ) : null}
 
       {/* - CSV 导入面板（可折叠） - */}
-      {showCsvImport ? (
+      {features.csv_import && showCsvImport ? (
         <div className="csv-import-panel">
           <p className="muted" style={{ margin: 0 }}>
             快速模板适合首次录入；完整模板适合批量维护翻译、售罄、排序和口味选项。空白可选字段不会覆盖已有数据。
@@ -2104,6 +2107,7 @@ function ItemEditor({ onMessage, toast }: { onMessage: (value: string | null) =>
             onDuplicate={duplicateItem}
             onDelete={(target) => promptDeleteItems([target.id], `隐藏菜品"${target.name_zh || target.name_en || target.name_el}"`)}
             toast={toast}
+            features={features}
             key={item.id}
           />
         ))}
@@ -3336,9 +3340,11 @@ function wrapCanvasText(
 function SystemSettings({
   realtimeStatus,
   adminRole,
+  features,
 }: {
   realtimeStatus: RealtimeConnectionStatus;
   adminRole: AdminRole | null;
+  features: FeatureFlags;
 }) {
   return (
     <AdminSection title="系统设置">
@@ -3357,11 +3363,11 @@ function SystemSettings({
       <SystemHealthSection realtimeStatus={realtimeStatus} />
       <CommercialReadinessSection realtimeStatus={realtimeStatus} adminRole={adminRole} />
       <RolePermissionGuide />
-      <PrintAgentDeliveryGuide />
-      <PrintAgentStatusSection />
-      {adminRole === 'admin' ? (
+      {features.print_agent ? <PrintAgentDeliveryGuide /> : null}
+      {features.print_agent ? <PrintAgentStatusSection /> : null}
+      {features.data_backup && adminRole === 'admin' ? (
         <DataBackupSection />
-      ) : (
+      ) : features.data_backup ? (
         <AdminSection title="数据备份">
           <div className="admin-panel-card">
             <Database size={24} />
@@ -3371,7 +3377,7 @@ function SystemSettings({
             </div>
           </div>
         </AdminSection>
-      )}
+      ) : null}
     </AdminSection>
   );
 }
@@ -4033,12 +4039,13 @@ function CategoryForm({
 }
 
 function ItemRow({
-  item, categories, selected, onSelect, onMessage, onSave, onDuplicate, onDelete, toast,
+  item, categories, selected, onSelect, onMessage, onSave, onDuplicate, onDelete, toast, features,
 }: {
   item: MenuItem; categories: MenuCategory[]; selected: boolean;
   onSelect: (checked: boolean) => void; onMessage: (value: string | null) => void;
   onSave: (item: Partial<MenuItem>) => Promise<boolean>; onDuplicate: (item: MenuItem) => void; onDelete: (item: MenuItem) => void;
   toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
+  features: FeatureFlags;
 }) {
   const [value, setValue] = useState<Partial<MenuItem>>(item);
   const [editing, setEditing] = useState(false);
@@ -4079,6 +4086,8 @@ function ItemRow({
             categories={categories}
             onChange={setValue}
             onToast={toast}
+            enableAiMenu={features.ai_menu}
+            enableAiImage={features.ai_image}
           />
           <div className="item-editor-actions">
             <button className="primary-button" type="button" onClick={() => { void saveAndClose(); }}>保存修改</button>
@@ -4133,11 +4142,13 @@ function removeOptionGroup(current: MenuItemOptionGroup[], groupId: string): Men
 }
 
 function ItemForm({
-  value, categories, onChange, onToast,
+  value, categories, onChange, onToast, enableAiMenu = true, enableAiImage = true,
 }: {
   value: Partial<MenuItem>; categories: MenuCategory[];
   onChange: (value: Partial<MenuItem>) => void;
   onToast?: (msg: string, type?: 'success' | 'error' | 'warning') => void;
+  enableAiMenu?: boolean;
+  enableAiImage?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -4264,22 +4275,22 @@ function ItemForm({
             <TextField label="Περιγραφή" value={value.description_el} onChange={(v) => onChange({ ...value, description_el: v })} />
           </div>
         </div>
-        <div className="item-ai-panel">
+        {enableAiMenu || enableAiImage ? <div className="item-ai-panel">
           <div className="item-ai-head">
             <div>
               <strong>AI 辅助</strong>
               <small>输入一个菜名后，可自动补英文/希腊语、三语描述和图片提示词。已有内容不会被自动覆盖。</small>
             </div>
             <div className="item-ai-actions">
-              <button className="secondary-button" type="button" disabled={aiLoading || aiImageLoading} onClick={() => { void handleAiCompleteDescriptions(); }}>
+              {enableAiMenu ? <button className="secondary-button" type="button" disabled={aiLoading || aiImageLoading} onClick={() => { void handleAiCompleteDescriptions(); }}>
                 {aiLoading ? '生成中…' : 'AI 补全菜单内容'}
-              </button>
-              <button className="secondary-button" type="button" disabled={aiLoading || aiImageLoading} onClick={() => { void handleAiGenerateImage(); }}>
+              </button> : null}
+              {enableAiImage ? <button className="secondary-button" type="button" disabled={aiLoading || aiImageLoading} onClick={() => { void handleAiGenerateImage(); }}>
                 {aiImageLoading ? '生成图片中…' : 'AI 生成图片'}
-              </button>
+              </button> : null}
             </div>
           </div>
-          <label className="item-ai-prompt">
+          {enableAiImage ? <label className="item-ai-prompt">
             图片提示词
             <textarea
               className="text-field"
@@ -4288,8 +4299,8 @@ function ItemForm({
               placeholder="点击 AI 补全菜单内容后会生成图片提示词；后续配置 OPENAI_API_KEY 后可直接生成图片。"
               onChange={(event) => setAiImagePrompt(event.target.value)}
             />
-          </label>
-        </div>
+          </label> : null}
+        </div> : null}
       </section>
 
       <section className="item-editor-card item-options-section">
