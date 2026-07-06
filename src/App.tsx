@@ -23,7 +23,7 @@ function PublicShell() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isTableOrder = location.pathname.startsWith('/table/');
-  const isVendorSettings = location.pathname === '/_vendor-settings';
+  const isVendorSettings = location.pathname === '/settings';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const lang: Language = i18n.language?.startsWith('zh') ? 'zh' : i18n.language?.startsWith('en') ? 'en' : 'el';
