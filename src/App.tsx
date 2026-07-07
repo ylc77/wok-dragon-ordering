@@ -114,9 +114,9 @@ function PublicShell() {
             {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <nav className={`nav-links ${mobileNavOpen ? 'is-open' : ''}`} aria-label={t('nav.primary')}>
-            <NavLink to="/" end>{t('nav.home')}</NavLink>
-            <NavLink to="/menu">{t('nav.menu')}</NavLink>
-            <NavLink to="/contact">{t('nav.contact')}</NavLink>
+            <NavLink to="/" end onClick={() => setMobileNavOpen(false)}>{t('nav.home')}</NavLink>
+            <NavLink to="/menu" onClick={() => setMobileNavOpen(false)}>{t('nav.menu')}</NavLink>
+            <NavLink to="/contact" onClick={() => setMobileNavOpen(false)}>{t('nav.contact')}</NavLink>
           </nav>
           <div className="site-header-actions">
           <LanguageSwitch />

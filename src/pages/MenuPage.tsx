@@ -68,11 +68,12 @@ function SearchBar({ search, setSearch, count, lang }: { search: string; setSear
   );
 }
 
-function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visibleGroups: MenuGroup[]; lang: Language; search: string; setSearch: (v: string) => void; settings: RestaurantSettings | null; }) {
+function MobileMenu({ visibleGroups, lang, search, setSearch, settings, targetCategoryId }: { visibleGroups: MenuGroup[]; lang: Language; search: string; setSearch: (v: string) => void; settings: RestaurantSettings | null; targetCategoryId: string | null; }) {
   const [activeCat, setActiveCat] = useState('');
   const mainRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
   const manualRef = useRef(false);
+  const handledTargetRef = useRef<string | null>(null);
   const itemCount = visibleGroups.reduce((sum, group) => sum + group.items.length, 0);
 
   // 滚动联动：监听右侧 main 容器
@@ -135,6 +136,14 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
     setTimeout(() => { manualRef.current = false; }, 800);
   }, []);
 
+  useEffect(() => {
+    if (!targetCategoryId || handledTargetRef.current === targetCategoryId) return;
+    if (!visibleGroups.some((group) => group.id === targetCategoryId)) return;
+    handledTargetRef.current = targetCategoryId;
+    const frame = window.requestAnimationFrame(() => scrollTo(`mcat-${targetCategoryId}`));
+    return () => window.cancelAnimationFrame(frame);
+  }, [scrollTo, targetCategoryId, visibleGroups]);
+
   return (
     <div className="menu-mobile-root">
       <SearchBar search={search} setSearch={setSearch} count={itemCount} lang={lang} />
@@ -164,9 +173,10 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings }: { visi
 
 /* ── 桌面端菜单 ── */
 
-function DesktopMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups: MenuGroup[]; lang: Language; search: string; setSearch: (v: string) => void }) {
+function DesktopMenu({ visibleGroups, lang, search, setSearch, targetCategoryId }: { visibleGroups: MenuGroup[]; lang: Language; search: string; setSearch: (v: string) => void; targetCategoryId: string | null }) {
   const [activeCat, setActiveCat] = useState('');
   const manualRef = useRef(false);
+  const handledTargetRef = useRef<string | null>(null);
 
   // 滚动联动：桌面端用 window scroll
   useEffect(() => {
@@ -198,6 +208,14 @@ function DesktopMenu({ visibleGroups, lang, search, setSearch }: { visibleGroups
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(() => { manualRef.current = false; }, 800);
   }, []);
+
+  useEffect(() => {
+    if (!targetCategoryId || handledTargetRef.current === targetCategoryId) return;
+    if (!visibleGroups.some((group) => group.id === targetCategoryId)) return;
+    handledTargetRef.current = targetCategoryId;
+    const frame = window.requestAnimationFrame(() => scrollTo(`dcat-${targetCategoryId}`));
+    return () => window.cancelAnimationFrame(frame);
+  }, [scrollTo, targetCategoryId, visibleGroups]);
 
   return (
     <div className="menu-desktop-only">
@@ -233,6 +251,10 @@ export function MenuPage() {
   const [search, setSearch] = useState('');
   const [showBackTop, setShowBackTop] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const location = useLocation();
+  const targetCategoryId = location.hash.startsWith('#category-')
+    ? decodeURIComponent(location.hash.slice('#category-'.length))
+    : null;
 
   // 过滤掉不适合公开菜单展示的分类（如餐具）
   const publicGroups = useMemo(() => groups.filter((g) => {
@@ -275,11 +297,11 @@ export function MenuPage() {
 
       {/* 移动端 */}
       {!isDesktop ? (
-        <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} settings={settings} />
+        <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} settings={settings} targetCategoryId={targetCategoryId} />
       ) : null}
 
       {/* 桌面端 */}
-      {isDesktop ? <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} /> : null}
+      {isDesktop ? <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} targetCategoryId={targetCategoryId} /> : null}
 
       {showBackTop ? (
         <button className="menu-back-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title={lang === 'el' ? 'Πίσω στην κορυφή' : 'Back to top'}>
