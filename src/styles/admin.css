@@ -4468,14 +4468,7 @@
     grid-template-columns: 1fr;
   }
 }
-/* Legal settings admin module */
-.legal-settings-entry {
-  align-items: center;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-}
-
+/* Legal settings editor */
 .legal-settings-header {
   align-items: flex-start;
   gap: 16px;
@@ -4609,7 +4602,6 @@
 }
 
 @media (max-width: 767px) {
-  .legal-settings-entry,
   .settings-save-bar {
     align-items: stretch;
     flex-direction: column;

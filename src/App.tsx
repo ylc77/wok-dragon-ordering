@@ -17,13 +17,14 @@ const TableOrderPage = lazy(() => import('./pages/TableOrderPage').then((module)
 const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
 const LegalPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
 const VendorSettingsPage = lazy(() => import('./pages/VendorSettingsPage').then((module) => ({ default: module.VendorSettingsPage })));
+const VendorLegalSettingsPage = lazy(() => import('./pages/VendorLegalSettingsPage').then((module) => ({ default: module.VendorLegalSettingsPage })));
 
 function PublicShell() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isTableOrder = location.pathname.startsWith('/table/');
-  const isVendorSettings = location.pathname === '/settings';
+  const isVendorSettings = location.pathname.startsWith('/settings');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const lang: Language = i18n.language?.startsWith('zh') ? 'zh' : i18n.language?.startsWith('en') ? 'en' : 'el';
@@ -70,7 +71,15 @@ function PublicShell() {
   }
 
   if (isVendorSettings) {
-    return <Suspense fallback={null}><VendorSettingsPage /></Suspense>;
+    return (
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/settings" element={<VendorSettingsPage />} />
+          <Route path="/settings/legal" element={<VendorLegalSettingsPage />} />
+          <Route path="*" element={<Navigate to="/settings" replace />} />
+        </Routes>
+      </Suspense>
+    );
   }
 
   if (isTableOrder) {

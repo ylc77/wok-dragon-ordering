@@ -1,13 +1,12 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, FileText, LayoutDashboard, LogOut, Menu, Minus, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, ShoppingBag, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
+import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, Minus, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, ShoppingBag, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
 import '../styles/admin.css';
 import '../styles/print.css';
 import { LegalSubmissionNotice } from '../components/LegalSubmissionNotice';
-import { LegalSettingsEditor } from '../components/admin/LegalSettingsEditor';
 import { formatPrice, getLocalizedField } from '../lib/localized';
 import { DEFAULT_FEATURE_FLAGS, getFeatureFlags } from '../lib/featureFlags';
 import { getPublicMenu, getRestaurantSettings, adminHardDeleteMenuCategory, adminHardDeleteMenuItem, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
@@ -62,7 +61,7 @@ import type {
   TableSession,
 } from '../lib/types';
 
-type AdminTab = 'dashboard' | 'settings' | 'legal' | 'categories' | 'items' | 'orders' | 'tables' | 'system' | 'pos';
+type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'system' | 'pos';
 
 const emptySettings: Partial<RestaurantSettings> = {
   name_zh: '',
@@ -261,12 +260,10 @@ function groupOrdersBySession(orders: Order[]): OrderSessionGroup[] {
   );
 }
 export function AdminPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const [sessionReady, setSessionReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [adminEmail, setAdminEmail] = useState('管理员');
-  const [tab, setTab] = useState<AdminTab>(() => (location.pathname.includes('/legal-settings') ? 'legal' : 'dashboard'));
+  const [tab, setTab] = useState<AdminTab>('dashboard');
   const [message, setMessage] = useState<string | null>(null);
   const [adminToast, setAdminToast] = useState<{ msg: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const adminToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -305,14 +302,7 @@ export function AdminPage() {
   const onTabChange = (t: AdminTab) => {
     setTab(t);
     closeDrawer();
-    navigate(t === 'legal' ? '/admin/legal-settings' : '/admin', { replace: false });
   };
-
-  useEffect(() => {
-    const legalPath = location.pathname.includes('/legal-settings');
-    if (legalPath && tab !== 'legal') setTab('legal');
-    if (!legalPath && tab === 'legal') setTab('settings');
-  }, [location.pathname, tab]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -436,7 +426,6 @@ export function AdminPage() {
           {!isKitchenRole ? <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton> : null}
-          {!isKitchenRole ? <AdminNavButton icon={<FileText size={16} />} active={tab === 'legal'} onClick={() => onTabChange('legal')}>法律设置</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton> : null}
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>
@@ -458,7 +447,6 @@ export function AdminPage() {
           {!isKitchenRole ? <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton> : null}
-          {!isKitchenRole ? <AdminNavButton icon={<FileText size={16} />} active={tab === 'legal'} onClick={() => onTabChange('legal')}>法律设置</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton> : null}
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>退出登录</button>
@@ -491,7 +479,6 @@ export function AdminPage() {
           {tab === 'orders' ? (menuOnlyMode ? <AdminSection title="订单管理"><p className="admin-message-muted">当前为纯菜单展示模式，暂未启用点餐功能。</p></AdminSection> : <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} readOnly={isKitchenRole} />) : null}
           {tab === 'tables' ? (enableQrOrdering ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : <AdminSection title="桌台管理"><p className="admin-message-muted">当前未启用扫码点餐功能，桌台管理已关闭。</p></AdminSection>) : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} requestSync={requestSync} /> : null}
-          {tab === 'legal' ? <LegalSettingsEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} features={featureFlags} /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} features={featureFlags} /> : null}
@@ -867,16 +854,6 @@ function SettingsEditor({ onMessage, toast, requestSync }: { onMessage: (value: 
 
   return (
     <AdminSection title="餐馆信息" subtitle="管理餐馆名称、地址、营业时间、联系方式、外卖平台和收款方式" onRefresh={load}>
-      <div className="settings-card legal-settings-entry">
-        <div>
-          <h3>法律与商家信息设置</h3>
-          <p className="settings-card-desc">填写公司主体、税号、隐私联系邮箱、取消/退款规则和第三方服务，用于前台法律页面。</p>
-        </div>
-        <Link className="primary-button" to="/admin/legal-settings">
-          <FileText size={16} />
-          法律与商家信息设置
-        </Link>
-      </div>
       {/* 接单状态 */}
       <div className="settings-card ordering-status">
         <div>

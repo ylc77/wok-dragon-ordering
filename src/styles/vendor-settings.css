@@ -37,6 +37,15 @@
 .vendor-login-card .vendor-message { margin: 14px 0 0; }
 .vendor-message.is-error { background: #fff2f2; border-color: #f3b8b8; color: #a52323; }
 .vendor-settings-panel > footer { display: flex; justify-content: flex-end; padding: 20px 32px 28px; }
+.vendor-legal-entry { align-items: center; background: #fff7f7; border: 1px solid #e8b7ba; border-radius: 7px; color: #991b1f; display: flex; justify-content: space-between; padding: 16px 18px; text-decoration: none; }
+.vendor-legal-entry:hover { border-color: #c62026; box-shadow: 0 5px 18px rgba(198,32,38,.09); }
+.vendor-legal-entry span, .vendor-legal-entry strong, .vendor-legal-entry small { display: block; }
+.vendor-legal-entry small { color: #667085; margin-top: 4px; }
+.vendor-back-link { align-items: center; color: #475467; display: inline-flex; font-size: 14px; font-weight: 700; gap: 6px; margin-top: 18px; text-decoration: none; }
+.vendor-legal-shell { padding-top: 24px; }
+.vendor-legal-toolbar { align-items: center; display: flex; justify-content: space-between; margin: 0 auto 14px; max-width: 1200px; }
+.vendor-legal-toolbar .vendor-back-link { margin-top: 0; }
+.vendor-legal-shell > section { background: #fff; border: 1px solid #dfe2e6; border-radius: 8px; box-shadow: 0 18px 55px rgba(17,24,39,.08); margin: 0 auto; max-width: 1200px; padding: 26px; }
 @media (max-width: 720px) {
   .vendor-settings-shell { padding: 16px 10px; }
   .vendor-settings-panel > header { align-items: flex-start; gap: 14px; padding: 22px 18px; }
@@ -47,4 +56,6 @@
   .vendor-settings-panel > footer { padding: 18px; }
   .vendor-save-button { width: 100%; }
   .vendor-login-card input { font-size: 16px; }
+  .vendor-legal-toolbar { padding: 0 4px; }
+  .vendor-legal-shell > section { padding: 16px 12px; }
 }

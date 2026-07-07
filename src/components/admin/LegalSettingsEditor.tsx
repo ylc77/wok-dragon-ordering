@@ -13,6 +13,21 @@ import type { LegalSettings, LegalSettingsVersion, LegalServiceFlags } from '../
 type Props = {
   onMessage: (value: string | null) => void;
   toast: (msg: string, type?: 'success' | 'error' | 'warning') => void;
+  dataSource?: LegalSettingsDataSource;
+};
+
+export type LegalSettingsDataSource = {
+  fetchDraft: () => Promise<LegalSettings>;
+  fetchVersions: () => Promise<LegalSettingsVersion[]>;
+  saveDraft: (settings: LegalSettings) => Promise<LegalSettings>;
+  publish: (settings: LegalSettings) => Promise<LegalSettingsVersion>;
+};
+
+const adminDataSource: LegalSettingsDataSource = {
+  fetchDraft: fetchLegalSettingsDraft,
+  fetchVersions: fetchLegalVersions,
+  saveDraft: saveLegalSettingsDraft,
+  publish: publishLegalSettings,
 };
 
 const serviceGroups: Array<{ title: string; keys: Array<keyof LegalServiceFlags> }> = [
@@ -55,7 +70,7 @@ function TextArea({ label, value, onChange, rows = 4 }: {
   );
 }
 
-export function LegalSettingsEditor({ onMessage, toast }: Props) {
+export function LegalSettingsEditor({ onMessage, toast, dataSource = adminDataSource }: Props) {
   const [settings, setSettings] = useState<LegalSettings>(() => normalizeLegalSettings(null));
   const [versions, setVersions] = useState<LegalSettingsVersion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,8 +88,8 @@ export function LegalSettingsEditor({ onMessage, toast }: Props) {
     setLoading(true);
     try {
       const [draft, versionRows] = await Promise.all([
-        fetchLegalSettingsDraft(),
-        fetchLegalVersions(),
+        dataSource.fetchDraft(),
+        dataSource.fetchVersions(),
       ]);
       setSettings(draft);
       setVersions(versionRows);
@@ -100,7 +115,7 @@ export function LegalSettingsEditor({ onMessage, toast }: Props) {
   async function saveDraft() {
     setSaving(true);
     try {
-      const saved = await saveLegalSettingsDraft(settings);
+      const saved = await dataSource.saveDraft(settings);
       setSettings(saved);
       toast('法律信息草稿已保存');
       onMessage(null);
@@ -120,9 +135,9 @@ export function LegalSettingsEditor({ onMessage, toast }: Props) {
     }
     setPublishing(true);
     try {
-      const version = await publishLegalSettings(settings);
+      const version = await dataSource.publish(settings);
       setSettings(version.snapshot);
-      setVersions(await fetchLegalVersions());
+      setVersions(await dataSource.fetchVersions());
       toast(`法律配置已发布：${version.version_no}`);
       onMessage(null);
     } catch (err) {
@@ -327,4 +342,3 @@ export function LegalSettingsEditor({ onMessage, toast }: Props) {
     </section>
   );
 }
-

@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
-import { CheckCircle2, KeyRound, LockKeyhole, Save, Settings2 } from 'lucide-react';
+import { CheckCircle2, FileText, KeyRound, LockKeyhole, Save, Settings2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { DEFAULT_FEATURE_FLAGS, PLAN_PRESETS } from '../lib/featureFlags';
 import type { FeatureFlags, PlanTier } from '../lib/types';
 import '../styles/vendor-settings.css';
@@ -14,6 +15,8 @@ type VendorSettings = {
   enable_qr_ordering: boolean;
   feature_flags: FeatureFlags;
 };
+
+const VENDOR_SESSION_KEY = 'yanlc:vendor-settings-password';
 
 const FEATURE_LABELS: Record<keyof FeatureFlags, { title: string; description: string }> = {
   csv_import: { title: 'CSV 批量导入导出', description: '批量维护菜单和翻译内容' },
@@ -46,6 +49,7 @@ export function VendorSettingsPage() {
     setMessage(null);
     try {
       const next = await requestSettings(password, 'read');
+      sessionStorage.setItem(VENDOR_SESSION_KEY, password);
       setSettings({ ...next, feature_flags: { ...DEFAULT_FEATURE_FLAGS, ...next.feature_flags } });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '无法打开维护设置。');
@@ -118,6 +122,20 @@ export function VendorSettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="vendor-section">
+          <div className="vendor-section-title">
+            <FileText size={19} />
+            <div>
+              <h2>法律与商家信息</h2>
+              <p>独立维护法律主体、税号、隐私、Cookie 和订单条款，不在客户日常后台显示。</p>
+            </div>
+          </div>
+          <Link className="vendor-legal-entry" to="/settings/legal">
+            <span><strong>进入法律设置</strong><small>使用当前供应商维护密码继续</small></span>
+            <FileText size={20} />
+          </Link>
         </div>
 
         <div className="vendor-section">
