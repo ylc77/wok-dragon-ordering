@@ -13,9 +13,6 @@ const legalLinks = [
   { to: '/cookie-policy', label: 'Cookie Policy' },
   { to: '/contact', label: 'Contact' },
   { to: '/cancellation-policy', label: 'Cancellation Policy' },
-  { to: '/refund-policy', label: 'Refund Policy' },
-  { to: '/return-policy', label: 'Return Policy' },
-  { to: '/shipping-policy', label: 'Shipping Policy' },
 ];
 
 export function SiteFooter({ name, address, settings }: SiteFooterProps) {

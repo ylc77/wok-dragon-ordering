@@ -132,9 +132,6 @@ function PublicShell() {
           <Route path="/cookie-policy" element={<LegalPage />} />
           <Route path="/contact" element={<LegalPage />} />
           <Route path="/cancellation-policy" element={<LegalPage />} />
-          <Route path="/refund-policy" element={<LegalPage />} />
-          <Route path="/shipping-policy" element={<LegalPage />} />
-          <Route path="/return-policy" element={<LegalPage />} />
           <Route path="/table/:qrToken" element={<TableOrderPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -168,6 +168,31 @@ export function enabledServiceNames(settings: LegalSettings): string[] {
   return names;
 }
 
+export function enabledDataProcessorNames(settings: LegalSettings): string[] {
+  const processorKeys: Array<keyof LegalServiceFlags> = [
+    'supabase',
+    'vercel',
+    'posthog',
+    'sentry',
+    'openai',
+    'deepseek',
+    'stripe',
+    'viva',
+  ];
+  const names = processorKeys
+    .filter((key) => settings.service_flags[key])
+    .map((key) => serviceLabels[key]);
+  if (settings.other_service_notes.trim()) names.push(settings.other_service_notes.trim());
+  return names;
+}
+
+export function enabledPaymentMethodNames(settings: LegalSettings): string[] {
+  const paymentKeys: Array<keyof LegalServiceFlags> = ['cash', 'pos', 'stripe', 'viva'];
+  return paymentKeys
+    .filter((key) => settings.service_flags[key])
+    .map((key) => serviceLabels[key]);
+}
+
 export function validateLegalSettingsForPublish(settings: LegalSettings): string[] {
   const missing: string[] = [];
   if (!settings.business_name.trim()) missing.push('商家展示名称');
@@ -181,4 +206,3 @@ export function validateLegalSettingsForPublish(settings: LegalSettings): string
   if (!confirmationsDone) missing.push('客户最终确认');
   return missing;
 }
-

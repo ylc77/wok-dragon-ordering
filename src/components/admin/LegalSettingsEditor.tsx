@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { CheckCircle2, FileText, Save, ShieldCheck } from 'lucide-react';
 import { fetchLegalSettingsDraft, fetchLegalVersions, publishLegalSettings, saveLegalSettingsDraft } from '../../lib/adminLegalApi';
 import {
-  enabledServiceNames,
+  enabledDataProcessorNames,
+  enabledPaymentMethodNames,
   normalizeLegalSettings,
   serviceLabels,
   validateLegalSettingsForPublish,
@@ -32,7 +33,7 @@ const adminDataSource: LegalSettingsDataSource = {
 
 const serviceGroups: Array<{ title: string; keys: Array<keyof LegalServiceFlags> }> = [
   { title: '基础服务', keys: ['supabase', 'vercel'] },
-  { title: '支付方式 / 支付服务', keys: ['cash', 'pos', 'stripe', 'viva'] },
+  { title: '餐馆付款方式', keys: ['cash', 'pos'] },
   { title: '分析 / 监控', keys: ['posthog', 'sentry'] },
   { title: 'AI 服务', keys: ['deepseek', 'openai'] },
 ];
@@ -165,7 +166,7 @@ export function LegalSettingsEditor({ onMessage, toast, dataSource = adminDataSo
       <div className="admin-section-header legal-settings-header">
         <div>
           <h1>法律与商家信息设置</h1>
-          <p className="admin-section-subtitle">用于 Privacy Policy、Terms、Cookie Policy、Contact、Cancellation / Refund 页面。</p>
+          <p className="admin-section-subtitle">餐馆专用配置，用于 Privacy Policy、Terms、Cookie Policy、Contact 和 Cancellation Policy。</p>
         </div>
         <div className="legal-header-actions">
           <Link className="secondary-button" to="/privacy-policy" target="_blank">
@@ -239,7 +240,7 @@ export function LegalSettingsEditor({ onMessage, toast, dataSource = adminDataSo
       </div>
 
       <div className="settings-card">
-        <div className="settings-card-head"><h3>第三方服务</h3><p className="settings-card-desc">只勾选实际启用的服务。未勾选的服务不会显示在前台法律页面。</p></div>
+        <div className="settings-card-head"><h3>餐馆使用的服务与付款方式</h3><p className="settings-card-desc">只勾选实际启用的项目，未启用的服务不会显示在前台法律页面。</p></div>
         <div className="legal-service-grid">
           {serviceGroups.map((group) => (
             <div key={group.title} className="legal-check-card">
@@ -254,7 +255,8 @@ export function LegalSettingsEditor({ onMessage, toast, dataSource = adminDataSo
           ))}
         </div>
         <TextArea label="其他服务商说明" value={settings.other_service_notes} rows={2} onChange={(v) => update('other_service_notes', v)} />
-        <p className="settings-card-desc">当前前台会显示：{enabledServiceNames(settings).join('、') || '暂无第三方服务'}</p>
+        <p className="settings-card-desc">数据处理服务：{enabledDataProcessorNames(settings).join('、') || '暂无'}</p>
+        <p className="settings-card-desc">付款方式：{enabledPaymentMethodNames(settings).join('、') || '暂无'}</p>
       </div>
 
       <div className="settings-card">
@@ -269,24 +271,13 @@ export function LegalSettingsEditor({ onMessage, toast, dataSource = adminDataSo
       </div>
 
       <div className="settings-card">
-        <div className="settings-card-head"><h3>餐馆项目专用条款</h3></div>
+        <div className="settings-card-head"><h3>餐馆订单与食品信息条款</h3><p className="settings-card-desc">请按餐馆实际营业规则填写，尤其确认取消时点、付款方式和过敏原告知方式。</p></div>
         <TextArea label="订单条款" value={settings.order_terms} onChange={(v) => update('order_terms', v)} />
         <TextArea label="取消订单规则" value={settings.cancellation_policy} onChange={(v) => update('cancellation_policy', v)} />
         <TextArea label="付款规则" value={settings.payment_terms} onChange={(v) => update('payment_terms', v)} />
         <TextArea label="过敏原 / 菜品供应变动免责声明" value={settings.allergen_disclaimer} onChange={(v) => update('allergen_disclaimer', v)} />
         <TextArea label="厨房小票不是正式税务发票说明" value={settings.kitchen_receipt_disclaimer} onChange={(v) => update('kitchen_receipt_disclaimer', v)} />
         <TextArea label="正式收据开具说明" value={settings.official_receipt_disclaimer} onChange={(v) => update('official_receipt_disclaimer', v)} />
-      </div>
-
-      <div className="settings-card">
-        <div className="settings-card-head"><h3>服装 / 零售项目预留条款</h3></div>
-        <TextArea label="配送政策" value={settings.shipping_policy} onChange={(v) => update('shipping_policy', v)} />
-        <TextArea label="退货政策" value={settings.return_policy} onChange={(v) => update('return_policy', v)} />
-        <TextArea label="退款政策" value={settings.refund_policy} onChange={(v) => update('refund_policy', v)} />
-        <TextArea label="14 天撤回权说明" value={settings.withdrawal_right} onChange={(v) => update('withdrawal_right', v)} />
-        <Field label="退货地址" value={settings.return_address} onChange={(v) => update('return_address', v)} />
-        <TextArea label="退货运费责任" value={settings.return_shipping_responsibility} rows={2} onChange={(v) => update('return_shipping_responsibility', v)} />
-        <TextArea label="不支持退换的商品说明" value={settings.excluded_return_items} rows={2} onChange={(v) => update('excluded_return_items', v)} />
       </div>
 
       <div className="settings-card">
@@ -298,7 +289,6 @@ export function LegalSettingsEditor({ onMessage, toast, dataSource = adminDataSo
             ['/cookie-policy', 'Cookie Policy'],
             ['/contact', 'Contact'],
             ['/cancellation-policy', 'Cancellation Policy'],
-            ['/refund-policy', 'Refund Policy'],
           ].map(([href, label]) => (
             <Link key={href} to={href} target="_blank"><CheckCircle2 size={15} />{label}</Link>
           ))}
@@ -312,7 +302,7 @@ export function LegalSettingsEditor({ onMessage, toast, dataSource = adminDataSo
           {[
             ['identity_confirmed', '已确认商家身份信息'],
             ['payment_wording_confirmed', '已确认付款相关文案'],
-            ['policy_wording_confirmed', '已确认配送 / 取消 / 退款相关文案'],
+            ['policy_wording_confirmed', '已确认订单取消、食品供应和过敏原相关文案'],
             ['third_party_services_confirmed', '已确认实际启用的第三方服务'],
             ['template_notice_confirmed', '已知晓这些页面是基础法律页面模板，不能替代律师、会计师或当地合规专业人士的正式意见'],
           ].map(([key, label]) => (
