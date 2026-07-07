@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getPublishedLegalSettings } from '../lib/publicLegalApi';
 
 type CookieConsent = 'accepted' | 'rejected' | 'custom';
 
@@ -8,12 +9,14 @@ const STORAGE_KEY = 'wok-dragon-cookie-consent';
 interface CookiePreferences {
   consent: CookieConsent;
   analytics: boolean;
+  monitoring: boolean;
   marketing: boolean;
 }
 
 const defaultPreferences: CookiePreferences = {
   consent: 'rejected',
   analytics: false,
+  monitoring: false,
   marketing: false,
 };
 
@@ -35,16 +38,41 @@ export function CookieBanner() {
   const [visible, setVisible] = useState(false);
   const [managing, setManaging] = useState(false);
   const [analytics, setAnalytics] = useState(false);
+  const [monitoring, setMonitoring] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const [enabledCategories, setEnabledCategories] = useState({
+    analytics: false,
+    monitoring: false,
+    marketing: false,
+  });
 
   useEffect(() => {
     const saved = readPreferences();
     if (!saved) {
       setVisible(true);
-      return;
+    } else {
+      setAnalytics(saved.analytics);
+      setMonitoring(saved.monitoring);
+      setMarketing(saved.marketing);
     }
-    setAnalytics(saved.analytics);
-    setMarketing(saved.marketing);
+
+    void getPublishedLegalSettings()
+      .then((legal) => {
+        if (!legal) return;
+        setEnabledCategories({
+          analytics: legal.analytics_cookies_enabled,
+          monitoring: legal.error_monitoring_enabled,
+          marketing: legal.advertising_cookies_enabled,
+        });
+      })
+      .catch(() => {});
+
+    const openPreferences = () => {
+      setVisible(true);
+      setManaging(true);
+    };
+    window.addEventListener('wok-dragon:open-cookie-preferences', openPreferences);
+    return () => window.removeEventListener('wok-dragon:open-cookie-preferences', openPreferences);
   }, []);
 
   if (!visible) return null;
@@ -71,14 +99,19 @@ export function CookieBanner() {
               <small>Required for language choice, security and basic site functions.</small>
             </label>
             <label>
-              <input type="checkbox" checked={analytics} onChange={(event) => setAnalytics(event.target.checked)} />
+              <input type="checkbox" checked={analytics} disabled={!enabledCategories.analytics} onChange={(event) => setAnalytics(event.target.checked)} />
               <span>Analytics cookies</span>
-              <small>Optional. Not loaded until you allow them.</small>
+              <small>{enabledCategories.analytics ? 'Optional. Not loaded until you allow them.' : 'Not configured for this business.'}</small>
             </label>
             <label>
-              <input type="checkbox" checked={marketing} onChange={(event) => setMarketing(event.target.checked)} />
+              <input type="checkbox" checked={monitoring} disabled={!enabledCategories.monitoring} onChange={(event) => setMonitoring(event.target.checked)} />
+              <span>Error monitoring</span>
+              <small>{enabledCategories.monitoring ? 'Optional. Not loaded until you allow it.' : 'Not configured for this business.'}</small>
+            </label>
+            <label>
+              <input type="checkbox" checked={marketing} disabled={!enabledCategories.marketing} onChange={(event) => setMarketing(event.target.checked)} />
               <span>Marketing cookies</span>
-              <small>Optional. Not loaded until you allow them.</small>
+              <small>{enabledCategories.marketing ? 'Optional. Not loaded until you allow them.' : 'Not configured for this business.'}</small>
             </label>
           </div>
         ) : null}
@@ -91,11 +124,16 @@ export function CookieBanner() {
           Manage preferences
         </button>
         {managing ? (
-          <button className="primary-button" type="button" onClick={() => save({ consent: 'custom', analytics, marketing })}>
+          <button className="primary-button" type="button" onClick={() => save({ consent: 'custom', analytics, monitoring, marketing })}>
             Save preferences
           </button>
         ) : (
-          <button className="primary-button" type="button" onClick={() => save({ consent: 'accepted', analytics: true, marketing: true })}>
+          <button className="primary-button" type="button" onClick={() => save({
+            consent: 'accepted',
+            analytics: enabledCategories.analytics,
+            monitoring: enabledCategories.monitoring,
+            marketing: enabledCategories.marketing,
+          })}>
             Accept all
           </button>
         )}

@@ -219,6 +219,9 @@ export type Order = {
   updated_at: string;
   deleted_at?: string | null;
   kitchen_printed_at?: string | null;
+  legal_terms_version?: string | null;
+  privacy_policy_version?: string | null;
+  legal_accepted_at?: string | null;
   order_type?: string | null;
   restaurant_tables?: Pick<RestaurantTable, 'table_number' | 'label'> | null;
   order_items?: OrderItem[];

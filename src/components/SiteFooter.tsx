@@ -13,6 +13,9 @@ const legalLinks = [
   { to: '/cookie-policy', label: 'Cookie Policy' },
   { to: '/contact', label: 'Contact' },
   { to: '/cancellation-policy', label: 'Cancellation Policy' },
+  { to: '/refund-policy', label: 'Refund Policy' },
+  { to: '/return-policy', label: 'Return Policy' },
+  { to: '/shipping-policy', label: 'Shipping Policy' },
 ];
 
 export function SiteFooter({ name, address, settings }: SiteFooterProps) {
@@ -27,6 +30,13 @@ export function SiteFooter({ name, address, settings }: SiteFooterProps) {
         </div>
         <nav className="site-footer-links" aria-label="Legal links">
           {legalLinks.map((link) => <Link to={link.to} key={link.to}>{link.label}</Link>)}
+          <button
+            type="button"
+            className="footer-link-button"
+            onClick={() => window.dispatchEvent(new Event('wok-dragon:open-cookie-preferences'))}
+          >
+            Cookie preferences
+          </button>
         </nav>
       </div>
     </footer>

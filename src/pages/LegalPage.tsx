@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getPublicRestaurantSettings } from '../lib/publicRestaurantApi';
-import { buildLegalConfig, getBusinessAddress, getBusinessDisplayName } from '../lib/legalConfig';
-import type { LegalBusinessConfig } from '../lib/legalConfig';
-import type { Language, RestaurantSettings } from '../lib/types';
+import { enabledServiceNames, normalizeLegalSettings } from '../lib/legalTypes';
+import { getPublishedLegalVersion } from '../lib/publicLegalApi';
+import type { Language } from '../lib/types';
+import type { LegalSettings, LegalSettingsVersion } from '../lib/legalTypes';
 
 type LegalPageKind = 'privacy' | 'terms' | 'cookies' | 'contact' | 'cancellation' | 'refund' | 'shipping' | 'return';
 
@@ -40,240 +40,204 @@ function text(lang: Language, en: string, el: string): string {
   return lang === 'el' ? el : en;
 }
 
+function displayName(config: LegalSettings): string {
+  return config.business_name || config.legal_name || 'this business';
+}
+
+function businessAddress(config: LegalSettings): string {
+  return config.business_address || config.data_controller_address || 'Address to be confirmed';
+}
+
+function line(value?: string | null, fallback = 'To be confirmed'): string {
+  return value?.trim() || fallback;
+}
+
 export function LegalPage() {
   const location = useLocation();
   const { i18n } = useTranslation();
-  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+  const [version, setVersion] = useState<LegalSettingsVersion | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const kind = getPageKind(location.pathname);
   const lang = getLang(i18n.language);
   const meta = pageMeta[kind];
-  const config = useMemo(() => buildLegalConfig(settings, lang), [settings, lang]);
+  const config = useMemo(() => version?.snapshot ?? normalizeLegalSettings(null), [version]);
   const title = lang === 'el' ? meta.el : meta.en;
-  const businessName = getBusinessDisplayName(config);
+  const name = displayName(config);
+  const hasPublishedLegalInfo = Boolean(version?.is_current);
 
   useEffect(() => {
     let cancelled = false;
-    getPublicRestaurantSettings()
-      .then((next) => { if (!cancelled) setSettings(next); })
-      .catch(() => { if (!cancelled) setSettings(null); });
+    getPublishedLegalVersion()
+      .then((next) => { if (!cancelled) setVersion(next); })
+      .catch(() => { if (!cancelled) setVersion(null); })
+      .finally(() => { if (!cancelled) setLoaded(true); });
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    document.title = `${title} · ${businessName}`;
-  }, [title, businessName]);
+    document.title = `${title} · ${name}`;
+  }, [title, name]);
 
   return (
     <main className="legal-page">
       <section className="legal-hero">
         <span>{meta.eyebrow}</span>
         <h1>{title}</h1>
-        <p>{businessName} · {config.country}</p>
-        <small>Last updated: {config.lastUpdated}</small>
+        <p>{name} · {config.country}</p>
+        <small>
+          {hasPublishedLegalInfo ? `Version ${version?.version_no} · Last updated: ${config.last_updated}` : 'Legal information is not published yet.'}
+        </small>
       </section>
       <section className="legal-card">
-        {kind === 'privacy' ? <PrivacyContent config={config} lang={lang} /> : null}
-        {kind === 'terms' ? <TermsContent config={config} lang={lang} /> : null}
-        {kind === 'cookies' ? <CookieContent config={config} lang={lang} /> : null}
-        {kind === 'contact' ? <ContactContent config={config} lang={lang} /> : null}
-        {kind === 'cancellation' ? <CancellationContent config={config} lang={lang} /> : null}
-        {kind === 'refund' ? <RefundContent config={config} lang={lang} /> : null}
-        {kind === 'shipping' ? <ShippingContent config={config} lang={lang} /> : null}
-        {kind === 'return' ? <ReturnContent config={config} lang={lang} /> : null}
+        {!loaded ? <p>Loading legal information...</p> : null}
+        {loaded && !hasPublishedLegalInfo ? <LegalIncomplete /> : null}
+        {loaded && hasPublishedLegalInfo && kind === 'privacy' ? <PrivacyContent config={config} lang={lang} /> : null}
+        {loaded && hasPublishedLegalInfo && kind === 'terms' ? <TermsContent config={config} lang={lang} /> : null}
+        {loaded && hasPublishedLegalInfo && kind === 'cookies' ? <CookieContent config={config} lang={lang} /> : null}
+        {loaded && hasPublishedLegalInfo && kind === 'contact' ? <ContactContent config={config} lang={lang} /> : null}
+        {loaded && hasPublishedLegalInfo && kind === 'cancellation' ? <CancellationContent config={config} lang={lang} /> : null}
+        {loaded && hasPublishedLegalInfo && kind === 'refund' ? <RefundContent config={config} lang={lang} /> : null}
+        {loaded && hasPublishedLegalInfo && kind === 'shipping' ? <ShippingContent config={config} lang={lang} /> : null}
+        {loaded && hasPublishedLegalInfo && kind === 'return' ? <ReturnContent config={config} lang={lang} /> : null}
+        {loaded && hasPublishedLegalInfo ? <LegalFooter config={config} /> : null}
       </section>
     </main>
   );
 }
 
-function PrivacyContent({ config, lang }: { config: LegalBusinessConfig; lang: Language }) {
-  const name = getBusinessDisplayName(config);
+function LegalIncomplete() {
+  return (
+    <>
+      <h2>Legal information not completed</h2>
+      <p>This business has not published its legal settings yet. Please contact the business directly before relying on these legal pages for commercial use.</p>
+      <p><Link to="/contact">Contact page</Link></p>
+    </>
+  );
+}
+
+function PrivacyContent({ config, lang }: { config: LegalSettings; lang: Language }) {
   return (
     <>
       <h2>{text(lang, 'Privacy Policy', 'Πολιτική Απορρήτου')}</h2>
-      <p>{text(
-        lang,
-        `This basic legal pages template explains how ${name} handles website, ordering and customer service information.`,
-        `Αυτό το βασικό πρότυπο νομικών σελίδων εξηγεί πώς το ${name} χειρίζεται πληροφορίες ιστοσελίδας, παραγγελιών και εξυπηρέτησης πελατών.`,
-      )}</p>
+      <p>{text(lang, `${displayName(config)} uses this website and ordering system to display information, receive orders and support customer service.`, `${displayName(config)} χρησιμοποιεί αυτόν τον ιστότοπο και το σύστημα παραγγελιών για πληροφορίες, παραγγελίες και εξυπηρέτηση πελατών.`)}</p>
       <h3>{text(lang, 'Data controller', 'Υπεύθυνος επεξεργασίας')}</h3>
-      <p>{config.dataControllerName || name}</p>
-      <p>{config.dataControllerAddress || getBusinessAddress(config)}</p>
-      <OptionalBusinessFields config={config} />
+      <p>{line(config.data_controller_name, displayName(config))}</p>
+      <p>{line(config.data_controller_address, businessAddress(config))}</p>
+      <BusinessDetails config={config} />
       <h3>{text(lang, 'Information we may process', 'Πληροφορίες που μπορεί να επεξεργαζόμαστε')}</h3>
-      <p>{text(
-        lang,
-        'Order details, table/session information, contact details you provide, device information, service logs and customer support messages may be processed when needed for the service.',
-        'Στοιχεία παραγγελίας, πληροφορίες τραπεζιού/συνεδρίας, στοιχεία επικοινωνίας, τεχνικές πληροφορίες, αρχεία υπηρεσίας και μηνύματα υποστήριξης μπορεί να υποβληθούν σε επεξεργασία όταν χρειάζεται για την υπηρεσία.',
-      )}</p>
-      <h3>{text(lang, 'How information is used', 'Πώς χρησιμοποιούνται οι πληροφορίες')}</h3>
-      <p>{text(
-        lang,
-        'Information is used to display menus, receive orders, support staff operations, answer questions, prevent abuse and keep the website reliable.',
-        'Οι πληροφορίες χρησιμοποιούνται για εμφάνιση μενού, λήψη παραγγελιών, υποστήριξη προσωπικού, απαντήσεις σε ερωτήσεις, αποτροπή κατάχρησης και αξιοπιστία της ιστοσελίδας.',
-      )}</p>
-      <ServiceList title={text(lang, 'Data processors', 'Επεξεργαστές δεδομένων')} items={config.dataProcessors} />
-      <ServiceList title={text(lang, 'Payment providers', 'Πάροχοι πληρωμών')} items={config.paymentProviders} />
-      <ServiceList title={text(lang, 'Analytics providers', 'Πάροχοι analytics')} items={config.analyticsProviders} />
-      <ServiceList title={text(lang, 'AI providers', 'Πάροχοι AI')} items={config.aiProviders} />
+      <p>{text(lang, 'Order details, table/session information, contact details you provide, device information, service logs and support messages may be processed when needed for the service.', 'Στοιχεία παραγγελίας, πληροφορίες τραπεζιού/συνεδρίας, στοιχεία επικοινωνίας, τεχνικές πληροφορίες, αρχεία υπηρεσίας και μηνύματα υποστήριξης μπορεί να επεξεργάζονται όταν χρειάζεται για την υπηρεσία.')}</p>
+      <ServiceList title={text(lang, 'Enabled service providers', 'Ενεργοί πάροχοι υπηρεσιών')} items={enabledServiceNames(config)} />
+      <h3>{text(lang, 'Privacy requests', 'Αιτήματα απορρήτου')}</h3>
+      <p>{config.privacy_request_instructions || 'Customers can contact the business to request privacy information, correction or deletion where legally available.'}</p>
+      {config.privacy_request_email ? <p><a href={`mailto:${config.privacy_request_email}`}>{config.privacy_request_email}</a></p> : null}
       <h3>{text(lang, 'Retention', 'Διατήρηση')}</h3>
-      <p>{config.dataRetention}</p>
-      <ContactBlock config={config} />
+      <p>{config.data_retention}</p>
     </>
   );
 }
 
-function TermsContent({ config, lang }: { config: LegalBusinessConfig; lang: Language }) {
-  const name = getBusinessDisplayName(config);
+function TermsContent({ config, lang }: { config: LegalSettings; lang: Language }) {
   return (
     <>
       <h2>{text(lang, 'Terms of Service', 'Όροι Χρήσης')}</h2>
-      <p>{text(
-        lang,
-        `By using this website or ordering system, you agree to use it only for normal browsing, ordering and customer communication with ${name}.`,
-        `Χρησιμοποιώντας την ιστοσελίδα ή το σύστημα παραγγελιών, συμφωνείτε να το χρησιμοποιείτε μόνο για κανονική περιήγηση, παραγγελίες και επικοινωνία με το ${name}.`,
-      )}</p>
+      <p>{text(lang, `By using this website or ordering system, you agree to use it for normal browsing, ordering and customer communication with ${displayName(config)}.`, `Χρησιμοποιώντας αυτόν τον ιστότοπο ή το σύστημα παραγγελιών, συμφωνείτε να το χρησιμοποιείτε για κανονική περιήγηση, παραγγελίες και επικοινωνία με το ${displayName(config)}.`)}</p>
       <h3>{text(lang, 'Order Terms', 'Όροι παραγγελίας')}</h3>
-      <p>{text(
-        lang,
-        'Submitted orders are sent to the business for handling. If you notice a mistake, contact staff as soon as possible.',
-        'Οι παραγγελίες αποστέλλονται στην επιχείρηση για διαχείριση. Αν δείτε λάθος, ενημερώστε άμεσα το προσωπικό.',
-      )}</p>
+      <p>{config.order_terms || 'Submitted orders are sent to the business for handling. If you notice a mistake, contact staff as soon as possible.'}</p>
       <h3>{text(lang, 'Payment Terms', 'Όροι πληρωμής')}</h3>
-      <p>{text(
-        lang,
-        'Payment options depend on the business setup. Official tax receipts or invoices are issued through the business required POS, cash register or accounting process.',
-        'Οι επιλογές πληρωμής εξαρτώνται από τη ρύθμιση της επιχείρησης. Οι επίσημες φορολογικές αποδείξεις ή τιμολόγια εκδίδονται από το απαιτούμενο POS, ταμειακή ή λογιστική διαδικασία.',
-      )}</p>
-      <ServiceList title={text(lang, 'Enabled payment methods', 'Ενεργοί τρόποι πληρωμής')} items={config.paymentProviders} />
+      <p>{config.payment_terms || 'Payment options depend on the business setup.'}</p>
+      <ServiceList title={text(lang, 'Enabled payment / service methods', 'Ενεργές μέθοδοι πληρωμής / υπηρεσίες')} items={enabledServiceNames(config).filter((item) => ['Cash', 'Card terminal / POS', 'Stripe', 'Viva'].includes(item))} />
       <h3>{text(lang, 'Allergy and availability disclaimer', 'Αλλεργίες και διαθεσιμότητα')}</h3>
-      <p>{text(
-        lang,
-        'Menu photos, descriptions, prices, ingredients and availability may change. Customers with allergies or dietary requirements should confirm details with staff before ordering.',
-        'Φωτογραφίες, περιγραφές, τιμές, συστατικά και διαθεσιμότητα μπορεί να αλλάξουν. Πελάτες με αλλεργίες ή διατροφικές ανάγκες πρέπει να επιβεβαιώνουν τις λεπτομέρειες με το προσωπικό πριν την παραγγελία.',
-      )}</p>
-      <h3>{text(lang, 'Limitations', 'Περιορισμοί')}</h3>
-      <p>{text(
-        lang,
-        'This website is a practical information and ordering tool. It is not a tax, legal, medical or accounting platform.',
-        'Η ιστοσελίδα είναι πρακτικό εργαλείο πληροφοριών και παραγγελιών. Δεν είναι φορολογική, νομική, ιατρική ή λογιστική πλατφόρμα.',
-      )}</p>
-      <ContactBlock config={config} />
+      <p>{config.allergen_disclaimer || 'Menu photos, descriptions, prices, ingredients and availability may change. Customers with allergies or dietary requirements should confirm details with staff before ordering.'}</p>
+      <h3>{text(lang, 'Receipts', 'Αποδείξεις')}</h3>
+      <p>{config.kitchen_receipt_disclaimer}</p>
+      <p>{config.official_receipt_disclaimer}</p>
     </>
   );
 }
 
-function CookieContent({ config, lang }: { config: LegalBusinessConfig; lang: Language }) {
+function CookieContent({ config, lang }: { config: LegalSettings; lang: Language }) {
+  const optional: string[] = [];
+  if (config.analytics_cookies_enabled) optional.push('Analytics cookies');
+  if (config.error_monitoring_enabled) optional.push('Error monitoring storage');
+  if (config.advertising_cookies_enabled) optional.push('Advertising or tracking cookies');
   return (
     <>
       <h2>{text(lang, 'Cookie Policy', 'Πολιτική Cookies')}</h2>
-      <p>{text(
-        lang,
-        'Essential cookies or local storage may be used to keep the website working, such as language choice, cookie preferences and basic security.',
-        'Απαραίτητα cookies ή τοπική αποθήκευση μπορεί να χρησιμοποιούνται για τη λειτουργία της ιστοσελίδας, όπως επιλογή γλώσσας, προτιμήσεις cookies και βασική ασφάλεια.',
-      )}</p>
-      <h3>{text(lang, 'Essential cookies', 'Απαραίτητα cookies')}</h3>
-      <p>{text(lang, 'These are required for basic website functions.', 'Απαιτούνται για τις βασικές λειτουργίες της ιστοσελίδας.')}</p>
+      <h3>{text(lang, 'Essential cookies / storage', 'Απαραίτητα cookies / αποθήκευση')}</h3>
+      <p>{config.essential_cookie_note}</p>
       <h3>{text(lang, 'Optional cookies', 'Προαιρετικά cookies')}</h3>
-      <p>{text(
-        lang,
-        'Analytics or marketing cookies are only loaded after consent. If no analytics or marketing providers are configured, no such optional cookies are loaded.',
-        'Analytics ή marketing cookies φορτώνονται μόνο μετά από συγκατάθεση. Αν δεν έχουν ρυθμιστεί αντίστοιχοι πάροχοι, δεν φορτώνονται τέτοια προαιρετικά cookies.',
-      )}</p>
-      <ServiceList title={text(lang, 'Analytics providers', 'Πάροχοι analytics')} items={config.analyticsProviders} />
-      <ContactBlock config={config} />
+      {optional.length > 0 ? <ServiceList title={text(lang, 'Optional categories', 'Προαιρετικές κατηγορίες')} items={optional} /> : <p>No non-essential cookies are configured.</p>}
+      <p>{text(lang, 'Non-essential analytics, monitoring or tracking tools must only load after consent.', 'Μη απαραίτητα εργαλεία analytics, παρακολούθησης ή διαφήμισης φορτώνονται μόνο μετά από συγκατάθεση.')}</p>
+      <p>Cookie last updated: {config.cookie_last_updated}</p>
     </>
   );
 }
 
-function ContactContent({ config, lang }: { config: LegalBusinessConfig; lang: Language }) {
+function ContactContent({ config, lang }: { config: LegalSettings; lang: Language }) {
   return (
     <>
       <h2>{text(lang, 'Contact', 'Επικοινωνία')}</h2>
-      <p>{text(
-        lang,
-        'For questions about orders, website use, privacy or legal pages, contact the business directly.',
-        'Για ερωτήσεις σχετικά με παραγγελίες, χρήση ιστοσελίδας, απόρρητο ή νομικές σελίδες, επικοινωνήστε απευθείας με την επιχείρηση.',
-      )}</p>
+      <p>{text(lang, 'For questions about orders, website use, privacy or legal pages, contact the business directly.', 'Για ερωτήσεις σχετικά με παραγγελίες, χρήση ιστότοπου, απόρρητο ή νομικές σελίδες, επικοινωνήστε απευθείας με την επιχείρηση.')}</p>
       <ContactBlock config={config} />
       <p><Link to="/menu">{text(lang, 'View menu', 'Δείτε το μενού')}</Link></p>
     </>
   );
 }
 
-function CancellationContent({ config, lang }: { config: LegalBusinessConfig; lang: Language }) {
-  const name = getBusinessDisplayName(config);
+function CancellationContent({ config, lang }: { config: LegalSettings; lang: Language }) {
   return (
     <>
       <h2>{text(lang, 'Cancellation Policy', 'Πολιτική Ακύρωσης')}</h2>
-      <p>{text(
-        lang,
-        'Restaurant and takeaway orders are often prepared quickly. If you need to change or cancel an order, contact staff immediately.',
-        'Οι παραγγελίες εστιατορίου και take-away συχνά προετοιμάζονται γρήγορα. Αν χρειάζεστε αλλαγή ή ακύρωση, ενημερώστε άμεσα το προσωπικό.',
-      )}</p>
-      <h3>{text(lang, 'Before preparation', 'Πριν την προετοιμασία')}</h3>
-      <p>{text(lang, 'Staff may be able to adjust or cancel an order before preparation starts.', 'Το προσωπικό μπορεί να προσαρμόσει ή να ακυρώσει την παραγγελία πριν ξεκινήσει η προετοιμασία.')}</p>
-      <h3>{text(lang, 'After preparation', 'Μετά την προετοιμασία')}</h3>
-      <p>{text(lang, 'Prepared or served orders may not be cancellable. Refunds, if any, are handled by the business according to the actual situation.', 'Παραγγελίες που έχουν ετοιμαστεί ή σερβιριστεί μπορεί να μην ακυρώνονται. Τυχόν επιστροφές χειρίζονται από την επιχείρηση ανά περίπτωση.')}</p>
-      <h3>{text(lang, 'Business responsibility', 'Ευθύνη επιχείρησης')}</h3>
-      <p>{text(lang, `Final payment, cancellation and receipt handling remain with ${name}.`, `Η τελική πληρωμή, ακύρωση και απόδειξη παραμένουν στην ευθύνη του ${name}.`)}</p>
+      <p>{config.cancellation_policy || 'Restaurant and takeaway orders are often prepared quickly. If you need to change or cancel an order, contact staff immediately.'}</p>
+      <h3>{text(lang, 'Payment and receipt handling', 'Πληρωμή και αποδείξεις')}</h3>
+      <p>{config.payment_terms || 'Final payment and cancellation handling remain with the business.'}</p>
+      <p>{config.kitchen_receipt_disclaimer}</p>
+      <p>{config.official_receipt_disclaimer}</p>
       <ContactBlock config={config} />
     </>
   );
 }
 
-function RefundContent({ config, lang }: { config: LegalBusinessConfig; lang: Language }) {
+function RefundContent({ config, lang }: { config: LegalSettings; lang: Language }) {
   return (
     <>
       <h2>{text(lang, 'Refund Policy', 'Πολιτική Επιστροφής Χρημάτων')}</h2>
-      <p>{text(
-        lang,
-        'This section is reserved for retail, clothing, shoes, accessories and other online shop projects. Configure it according to the client business before launch.',
-        'Αυτή η ενότητα προορίζεται για καταστήματα λιανικής, ρούχων, παπουτσιών, αξεσουάρ και άλλα online shop projects. Πρέπει να ρυθμιστεί σύμφωνα με την επιχείρηση πριν την έναρξη λειτουργίας.',
-      )}</p>
+      <p>{config.refund_policy || 'Refund rules must be confirmed by the business before launch.'}</p>
       <h3>{text(lang, '14-day withdrawal right', 'Δικαίωμα υπαναχώρησης 14 ημερών')}</h3>
-      <p>{text(
-        lang,
-        'For eligible consumer purchases, the client should confirm whether the 14-day withdrawal right applies and describe the process, exceptions and return shipping responsibility.',
-        'Για επιλέξιμες αγορές καταναλωτών, ο πελάτης πρέπει να επιβεβαιώσει αν εφαρμόζεται το δικαίωμα υπαναχώρησης 14 ημερών και να περιγράψει τη διαδικασία, εξαιρέσεις και ευθύνη εξόδων επιστροφής.',
-      )}</p>
+      <p>{config.withdrawal_right || 'For eligible consumer purchases, the business should confirm whether the 14-day withdrawal right applies and describe the process, exceptions and return shipping responsibility.'}</p>
       <ContactBlock config={config} />
     </>
   );
 }
 
-function ShippingContent({ config, lang }: { config: LegalBusinessConfig; lang: Language }) {
+function ShippingContent({ config, lang }: { config: LegalSettings; lang: Language }) {
   return (
     <>
       <h2>{text(lang, 'Shipping Policy', 'Πολιτική Αποστολών')}</h2>
-      <p>{text(
-        lang,
-        'Reserved for online shop projects. Add shipping areas, courier partners, delivery times, shipping fees and pickup options before launch.',
-        'Προορίζεται για online shop projects. Συμπληρώστε περιοχές αποστολής, συνεργάτες courier, χρόνους παράδοσης, έξοδα αποστολής και επιλογές παραλαβής πριν την έναρξη λειτουργίας.',
-      )}</p>
+      <p>{config.shipping_policy || 'Shipping areas, delivery times, fees and pickup options must be confirmed by the business before launch.'}</p>
       <ContactBlock config={config} />
     </>
   );
 }
 
-function ReturnContent({ config, lang }: { config: LegalBusinessConfig; lang: Language }) {
+function ReturnContent({ config, lang }: { config: LegalSettings; lang: Language }) {
   return (
     <>
       <h2>{text(lang, 'Return Policy', 'Πολιτική Επιστροφών')}</h2>
-      <p>{text(
-        lang,
-        'Reserved for retail projects. Add return windows, item condition rules, excluded products, return address and approval process before launch.',
-        'Προορίζεται για retail projects. Συμπληρώστε προθεσμία επιστροφών, κανόνες κατάστασης προϊόντων, εξαιρούμενα προϊόντα, διεύθυνση επιστροφής και διαδικασία έγκρισης πριν την έναρξη λειτουργίας.',
-      )}</p>
+      <p>{config.return_policy || 'Return windows, item condition rules and approval process must be confirmed by the business before launch.'}</p>
+      {config.return_address ? <p>Return address: {config.return_address}</p> : null}
+      {config.return_shipping_responsibility ? <p>{config.return_shipping_responsibility}</p> : null}
+      {config.excluded_return_items ? <p>{config.excluded_return_items}</p> : null}
       <ContactBlock config={config} />
     </>
   );
 }
 
-function OptionalBusinessFields({ config }: { config: LegalBusinessConfig }) {
+function BusinessDetails({ config }: { config: LegalSettings }) {
   const fields = [
-    config.legalName ? ['Legal name', config.legalName] : null,
-    config.vatNumber ? ['VAT number', config.vatNumber] : null,
-    config.gemiNumber ? ['GEMI number', config.gemiNumber] : null,
+    config.legal_name ? ['Legal name', config.legal_name] : null,
+    config.vat_number ? ['VAT / AFM', config.vat_number] : null,
+    config.gemi_number ? ['GEMI', config.gemi_number] : null,
   ].filter(Boolean) as [string, string][];
   if (fields.length === 0) return null;
   return (
@@ -300,14 +264,22 @@ function ServiceList({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-function ContactBlock({ config }: { config: LegalBusinessConfig }) {
-  const name = getBusinessDisplayName(config);
+function ContactBlock({ config }: { config: LegalSettings }) {
   return (
     <div className="legal-contact-block">
-      <strong>{name}</strong>
-      <span>{getBusinessAddress(config)}</span>
-      {config.contactEmail ? <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a> : null}
+      <strong>{displayName(config)}</strong>
+      <span>{businessAddress(config)}</span>
+      {config.contact_email ? <a href={`mailto:${config.contact_email}`}>{config.contact_email}</a> : null}
       {config.phone ? <a href={`tel:${config.phone}`}>{config.phone}</a> : null}
     </div>
   );
 }
+
+function LegalFooter({ config }: { config: LegalSettings }) {
+  return (
+    <p className="legal-version-footer">
+      Legal version: {config.current_version || 'published snapshot'} · Last updated: {config.last_updated}
+    </p>
+  );
+}
+

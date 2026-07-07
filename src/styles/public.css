@@ -2336,3 +2336,25 @@
     flex: 1 1 100%;
   }
 }
+/* Legal pages and footer preference polish */
+.legal-version-footer {
+  border-top: 1px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 13px;
+  margin-top: 28px;
+  padding-top: 16px;
+}
+
+.footer-link-button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.footer-link-button:hover {
+  text-decoration: underline;
+}
