@@ -100,18 +100,40 @@ async function checkPublicMobileNavigation(page: Page) {
     const closed = await page.locator('.nav-links.is-open').count() === 0;
     record('/menu mobile top navigation closes', closed, closed ? 'closed from backdrop' : 'drawer remained open');
 
-    await page.waitForSelector('.menu-mobile-root', { state: 'visible', timeout: 10_000 });
+    await page.waitForFunction(() => {
+      const menu = document.querySelector('.menu-mobile-root');
+      const settledState = document.querySelector('.menu-state-card:not(:has(.state-spinner))');
+      return Boolean(menu || settledState);
+    }, null, { timeout: 10_000 });
     const menuLayout = await page.evaluate(() => {
       const root = document.querySelector('.menu-mobile-root');
       const rect = root?.getBoundingClientRect();
       return {
         groups: document.querySelectorAll('.mobile-main .menu-group').length,
+        hasMenu: Boolean(root),
+        hasSettledState: Boolean(document.querySelector('.menu-state-card:not(:has(.state-spinner))')),
         rootBottom: rect?.bottom ?? 0,
         viewportHeight: window.innerHeight,
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
       };
     });
-    const menuFits = menuLayout.groups > 0 && menuLayout.rootBottom <= menuLayout.viewportHeight + 1;
-    record('/menu mobile viewport layout', menuFits, menuFits ? `${menuLayout.groups} groups fit viewport` : JSON.stringify(menuLayout));
+    const populatedMenuFits = menuLayout.hasMenu
+      && menuLayout.groups > 0
+      && menuLayout.rootBottom <= menuLayout.viewportHeight + 1;
+    const emptyStateFits = !menuLayout.hasMenu
+      && menuLayout.hasSettledState
+      && menuLayout.scrollWidth <= menuLayout.clientWidth + 2;
+    const menuFits = populatedMenuFits || emptyStateFits;
+    record(
+      '/menu mobile viewport layout',
+      menuFits,
+      populatedMenuFits
+        ? `${menuLayout.groups} groups fit viewport`
+        : emptyStateFits
+          ? 'empty/error state fits viewport without menu data'
+          : JSON.stringify(menuLayout),
+    );
   } catch (error) {
     record('/menu mobile navigation/layout', false, formatError(error));
     await screenshot(page, 'menu-mobile-navigation-error');

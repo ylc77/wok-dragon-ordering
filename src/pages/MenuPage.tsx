@@ -296,12 +296,12 @@ export function MenuPage() {
       {!loading && visibleGroups.length === 0 ? <p className="app-state-card menu-state-card">{search ? (lang === 'el' ? 'Δεν βρέθηκαν πιάτα' : 'No dishes found') : t('common.empty')}</p> : null}
 
       {/* 移动端 */}
-      {!isDesktop && !loading && !error ? (
+      {!isDesktop && !loading && !error && visibleGroups.length > 0 ? (
         <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} settings={settings} targetCategoryId={targetCategoryId} />
       ) : null}
 
       {/* 桌面端 */}
-      {isDesktop && !loading && !error ? <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} targetCategoryId={targetCategoryId} /> : null}
+      {isDesktop && !loading && !error && visibleGroups.length > 0 ? <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} targetCategoryId={targetCategoryId} /> : null}
 
       {showBackTop ? (
         <button className="menu-back-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title={lang === 'el' ? 'Πίσω στην κορυφή' : 'Back to top'}>
