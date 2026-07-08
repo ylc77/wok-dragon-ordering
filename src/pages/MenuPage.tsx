@@ -268,7 +268,7 @@ export function MenuPage() {
 
   // 移动端锁定 body 滚动
   useEffect(() => {
-    const lock = () => { if (window.innerWidth < 768) document.body.style.overflow = 'hidden'; };
+    const lock = () => { document.body.style.overflow = window.innerWidth < 768 ? 'hidden' : ''; };
     lock();
     window.addEventListener('resize', lock);
     return () => { document.body.style.overflow = ''; window.removeEventListener('resize', lock); };
@@ -296,12 +296,12 @@ export function MenuPage() {
       {!loading && visibleGroups.length === 0 ? <p className="app-state-card menu-state-card">{search ? (lang === 'el' ? 'Δεν βρέθηκαν πιάτα' : 'No dishes found') : t('common.empty')}</p> : null}
 
       {/* 移动端 */}
-      {!isDesktop ? (
+      {!isDesktop && !loading && !error ? (
         <MobileMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} settings={settings} targetCategoryId={targetCategoryId} />
       ) : null}
 
       {/* 桌面端 */}
-      {isDesktop ? <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} targetCategoryId={targetCategoryId} /> : null}
+      {isDesktop && !loading && !error ? <DesktopMenu visibleGroups={visibleGroups} lang={lang} search={search} setSearch={setSearch} targetCategoryId={targetCategoryId} /> : null}
 
       {showBackTop ? (
         <button className="menu-back-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title={lang === 'el' ? 'Πίσω στην κορυφή' : 'Back to top'}>

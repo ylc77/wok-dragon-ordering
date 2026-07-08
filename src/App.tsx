@@ -118,6 +118,14 @@ function PublicShell() {
             <NavLink to="/menu" onClick={() => setMobileNavOpen(false)}>{t('nav.menu')}</NavLink>
             <NavLink to="/contact" onClick={() => setMobileNavOpen(false)}>{t('nav.contact')}</NavLink>
           </nav>
+          {mobileNavOpen ? (
+            <button
+              className="mobile-nav-backdrop"
+              type="button"
+              aria-label={t('nav.close')}
+              onClick={() => setMobileNavOpen(false)}
+            />
+          ) : null}
           <div className="site-header-actions">
           <LanguageSwitch />
           </div>

@@ -64,12 +64,57 @@ async function runBrowserChecks() {
       await page.close();
     }
 
+    const publicMobilePage = await browser.newPage({ viewport: { width: 320, height: 760 } });
+    publicMobilePage.setDefaultTimeout(7_000);
+    await checkPublicMobileNavigation(publicMobilePage);
+    await publicMobilePage.close();
+
     const adminPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     adminPage.setDefaultTimeout(5_000);
     await checkAdminLoginAndTabs(adminPage);
     await adminPage.close();
   } finally {
     await browser.close();
+  }
+}
+
+async function checkPublicMobileNavigation(page: Page) {
+  try {
+    await page.goto(`${baseUrl}/menu`, { waitUntil: 'domcontentloaded', timeout: 12_000 });
+    await page.waitForSelector('.mobile-nav-toggle', { state: 'visible' });
+    await page.locator('.mobile-nav-toggle').click();
+
+    const drawer = page.locator('.nav-links.is-open');
+    const backdrop = page.locator('.mobile-nav-backdrop');
+    const drawerVisible = await drawer.isVisible().catch(() => false);
+    const backdropVisible = await backdrop.isVisible().catch(() => false);
+    const drawerBox = await drawer.boundingBox();
+    const drawerFits = Boolean(drawerBox && drawerBox.x >= 0 && drawerBox.x + drawerBox.width <= 321);
+    record(
+      '/menu mobile top navigation',
+      drawerVisible && backdropVisible && drawerFits,
+      drawerVisible && backdropVisible && drawerFits ? 'drawer and backdrop visible' : 'drawer/backdrop layout invalid',
+    );
+
+    if (backdropVisible) await backdrop.click({ position: { x: 4, y: 4 } });
+    const closed = await page.locator('.nav-links.is-open').count() === 0;
+    record('/menu mobile top navigation closes', closed, closed ? 'closed from backdrop' : 'drawer remained open');
+
+    await page.waitForSelector('.menu-mobile-root', { state: 'visible', timeout: 10_000 });
+    const menuLayout = await page.evaluate(() => {
+      const root = document.querySelector('.menu-mobile-root');
+      const rect = root?.getBoundingClientRect();
+      return {
+        groups: document.querySelectorAll('.mobile-main .menu-group').length,
+        rootBottom: rect?.bottom ?? 0,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    const menuFits = menuLayout.groups > 0 && menuLayout.rootBottom <= menuLayout.viewportHeight + 1;
+    record('/menu mobile viewport layout', menuFits, menuFits ? `${menuLayout.groups} groups fit viewport` : JSON.stringify(menuLayout));
+  } catch (error) {
+    record('/menu mobile navigation/layout', false, formatError(error));
+    await screenshot(page, 'menu-mobile-navigation-error');
   }
 }
 
