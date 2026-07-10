@@ -2,6 +2,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const schema = readFileSync(new URL('../../supabase/schema.sql', import.meta.url), 'utf8');
+const clientInit = readFileSync(new URL('../../supabase/client-init.sql', import.meta.url), 'utf8');
+const tableDeletePatch = readFileSync(
+  new URL('../../supabase/patches/2026-07-10-add-table-delete-rpc.sql', import.meta.url),
+  'utf8',
+);
 
 function latestFunction(name: string) {
   const marker = `create or replace function public.${name}`;
@@ -71,6 +76,17 @@ describe('database ordering contracts', () => {
   it('keeps all operational admin queries behind the staff check', () => {
     for (const name of ['set_restaurant_ordering', 'admin_order_page', 'admin_order_stats', 'admin_dashboard_summary']) {
       expect(latestFunction(name)).toContain('private.is_staff()');
+    }
+  });
+
+  it('keeps the table deletion RPC staff-only and prevents history loss', () => {
+    for (const source of [clientInit, tableDeletePatch]) {
+      expect(source).toContain('create or replace function public.admin_delete_restaurant_table(p_table_id uuid)');
+      expect(source).toContain('security definer\nset search_path = public');
+      expect(source).toContain('private.is_staff()');
+      expect(source).toContain('table has historical sessions or orders; disable it instead of deleting');
+      expect(source).toContain('revoke execute on function public.admin_delete_restaurant_table(uuid) from public, anon');
+      expect(source).toContain('grant execute on function public.admin_delete_restaurant_table(uuid) to authenticated');
     }
   });
 });

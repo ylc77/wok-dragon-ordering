@@ -475,7 +475,26 @@ export async function fetchPrintAgentStatus(): Promise<PrintAgentStatus | null> 
 export async function deleteRestaurantTable(tableId: string) {
   const client = requireClient();
   const { error } = await client.rpc('admin_delete_restaurant_table', { p_table_id: tableId });
-  if (error) throw error;
+  if (!error) return;
+
+  const message = error.message || '';
+  if (message.includes('admin_delete_restaurant_table')) {
+    throw new Error('数据库尚未应用“删除桌台”更新。请在 Supabase SQL Editor 执行 supabase/patches/2026-07-10-add-table-delete-rpc.sql 后刷新页面。');
+  }
+  if (message.includes('active guest session')) {
+    throw new Error('该桌台当前有顾客会话，请先清桌或结账后再删除。');
+  }
+  if (message.includes('historical sessions or orders')) {
+    throw new Error('该桌台已有历史会话或订单，为保留历史记录只能停用，不能删除。');
+  }
+  if (message.includes('admin or staff role is required')) {
+    throw new Error('只有管理员或员工账号可以删除桌台。');
+  }
+  if (message.includes('table not found')) {
+    throw new Error('该桌台不存在或已被删除，请刷新后重试。');
+  }
+
+  throw error;
 }
 
 export async function regenerateTableQrToken(tableId: string) {
