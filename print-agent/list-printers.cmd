@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0\.."
-title Wok Dragon Printers
+title Restaurant Print Agent - Printers
 echo.
 echo Reading Windows printer list...
 echo.

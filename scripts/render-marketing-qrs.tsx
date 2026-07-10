@@ -6,6 +6,11 @@ import { QRCodeSVG } from 'qrcode.react';
 
 const root = resolve(import.meta.dirname, '..');
 const outputDir = resolve(root, 'marketing', 'assets');
+const restaurantDemoUrl = process.env.RESTAURANT_DEMO_URL?.trim();
+
+if (!restaurantDemoUrl) {
+  throw new Error('缺少 RESTAURANT_DEMO_URL。请先设置要写入餐馆演示二维码的完整网站地址。');
+}
 
 const qrs = [
   {
@@ -14,7 +19,7 @@ const qrs = [
   },
   {
     filename: 'qr-restaurant-demo.svg',
-    value: 'https://wok-dragon-ordering.vercel.app/',
+    value: restaurantDemoUrl,
   },
 ] as const;
 

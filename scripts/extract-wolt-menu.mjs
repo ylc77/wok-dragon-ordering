@@ -1,9 +1,15 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 
-const WOLT_URL = 'https://wolt.com/en/grc/athens/restaurant/wok-dragon-express';
-const EFOOD_URL = 'https://www.e-food.gr/delivery/athina/wok-dragon-express';
-const MAP_URL =
-  'https://www.google.com/maps/place/Wok+Dragon+EXPRESS+%E9%BE%99%E5%9F%8E%E9%85%92%E6%A5%BC/@37.9759663,23.7252156,17z/data=!3m1!4b1!4m6!3m5!1s0x14a1bd2d5db29b63:0xfdd04aeb588d0ebe!8m2!3d37.9759663!4d23.7277905!16s%2Fg%2F11gmfjf3t7';
+const WOLT_URL = process.env.WOLT_URL?.trim();
+const EFOOD_URL = process.env.EFOOD_URL?.trim() || null;
+const MAP_URL = process.env.MAP_URL?.trim() || null;
+const RESTAURANT_NAME_ZH = process.env.RESTAURANT_NAME_ZH?.trim() || '\u9910\u9986';
+const RESTAURANT_NAME_EN = process.env.RESTAURANT_NAME_EN?.trim() || 'Restaurant';
+const RESTAURANT_NAME_EL = process.env.RESTAURANT_NAME_EL?.trim() || RESTAURANT_NAME_EN;
+
+if (!WOLT_URL) {
+  throw new Error('Set WOLT_URL to the customer restaurant Wolt page before running this importer.');
+}
 
 // Keep this source file ASCII-only. Unicode text is represented with escapes so
 // seed generation is stable across Windows console encodings.
@@ -213,10 +219,10 @@ async function main() {
     )
     .join(',\n');
 
-  const seedSql = `-- Seed data for Wok Dragon Express / ${ZH.restaurant}.
+  const seedSql = `-- Seed data for ${RESTAURANT_NAME_EN} / ${RESTAURANT_NAME_ZH}.
 -- Menu source: ${WOLT_URL}
--- Google Maps source: ${MAP_URL}
--- efood source checked but not machine-readable in this environment: ${EFOOD_URL}
+-- Google Maps source: ${MAP_URL ?? '(not configured)'}
+-- efood source checked but not machine-readable in this environment: ${EFOOD_URL ?? '(not configured)'}
 -- Prices come from the public Wolt delivery platform and may differ from dine-in prices.
 -- Review and edit final prices in the Chinese admin panel before production use.
 
@@ -242,9 +248,9 @@ insert into public.restaurant_settings (
   efood_url,
   box_url
 ) values (
-  ${sql(ZH.restaurant)},
-  'Wok Dragon Express',
-  'Wok Dragon Express',
+  ${sql(RESTAURANT_NAME_ZH)},
+  ${sql(RESTAURANT_NAME_EN)},
+  ${sql(RESTAURANT_NAME_EL)},
   null,
   'Mitropoleos 51, Monastiraki, 10556 Athens, Greece',
   'Mitropoleos 51, Monastiraki, 10556 Athens, Greece',

@@ -749,6 +749,36 @@
 .home-reservation-cta { background: #aa2d20; border-radius: 0; box-shadow: none; }
 .home-reservation-cta .primary-button { border-radius: 2px; }
 .home-order-guide { background: #39221c; }
+.home-order-guide h2 { color: #fff8f0; }
+.home-order-guide .order-step {
+  background: #fffdf9;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: none;
+  min-height: 144px;
+  padding: 28px 24px 24px;
+}
+.home-order-guide .order-step > span {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  margin-bottom: 17px;
+  width: 34px;
+}
+.home-order-guide .order-step strong {
+  color: #34231d;
+  display: block;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  line-height: 1.15;
+}
+.home-order-guide .order-step p { color: #6f5e54; font-size: 13px; line-height: 1.55; margin: 9px 0 0; }
 .info-band { background: #39221c; }
 
 .page-shell { background: #fffaf3; }

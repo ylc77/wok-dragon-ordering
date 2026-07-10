@@ -1,4 +1,4 @@
-#define MyAppName "YANLC Print Agent"
+#define MyAppName "Restaurant Print Agent"
 #define MyAppVersion "1.0.0"
 #ifndef SourceDir
   #error SourceDir is required
@@ -13,7 +13,7 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher=YANLC
 DefaultDirName={autopf}\YANLCPrintAgent
-DefaultGroupName=YANLC Print Agent
+DefaultGroupName=Restaurant Print Agent
 DisableProgramGroupPage=yes
 OutputDir={#OutputDir}
 OutputBaseFilename=YANLCPrintAgentSetup
@@ -41,11 +41,11 @@ Name: "{commonappdata}\YANLCPrintAgent"
 Name: "{commonappdata}\YANLCPrintAgent\logs"
 
 [Icons]
-Name: "{autodesktop}\YANLC 打印助手"; Filename: "{app}\YANLCPrintAgent.exe"; WorkingDir: "{app}"
-Name: "{group}\YANLC 打印助手"; Filename: "{app}\YANLCPrintAgent.exe"; WorkingDir: "{app}"
-Name: "{group}\YANLC 打印助手设置"; Filename: "{app}\YANLCPrintAgent.exe"; Parameters: "--setup-ui"; WorkingDir: "{app}"
-Name: "{group}\YANLC 测试打印"; Filename: "{app}\YANLCPrintAgent.exe"; Parameters: "--test-print"; WorkingDir: "{app}"
-Name: "{group}\YANLC 查看打印机"; Filename: "{app}\YANLCPrintAgent.exe"; Parameters: "--list-printers"; WorkingDir: "{app}"
+Name: "{autodesktop}\Restaurant 打印助手"; Filename: "{app}\YANLCPrintAgent.exe"; WorkingDir: "{app}"
+Name: "{group}\Restaurant 打印助手"; Filename: "{app}\YANLCPrintAgent.exe"; WorkingDir: "{app}"
+Name: "{group}\Restaurant 打印助手设置"; Filename: "{app}\YANLCPrintAgent.exe"; Parameters: "--setup-ui"; WorkingDir: "{app}"
+Name: "{group}\Restaurant 测试打印"; Filename: "{app}\YANLCPrintAgent.exe"; Parameters: "--test-print"; WorkingDir: "{app}"
+Name: "{group}\Restaurant 查看打印机"; Filename: "{app}\YANLCPrintAgent.exe"; Parameters: "--list-printers"; WorkingDir: "{app}"
 Name: "{group}\取消开机自启"; Filename: "{app}\YANLCPrintAgent.exe"; Parameters: "--uninstall-startup"; WorkingDir: "{app}"
 
 [Run]

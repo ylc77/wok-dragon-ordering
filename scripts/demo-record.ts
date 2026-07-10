@@ -54,7 +54,7 @@ try {
 
   if (video) {
     const tempPath = await video.path();
-    const finalPath = path.join(env.outputDir, `wok-dragon-demo-${timestamp()}.webm`);
+    const finalPath = path.join(env.outputDir, `restaurant-demo-${timestamp()}.webm`);
     await fs.rename(tempPath, finalPath);
     console.log(`录屏已保存：${finalPath}`);
   }

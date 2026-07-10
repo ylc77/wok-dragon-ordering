@@ -9,6 +9,7 @@ import '../styles/admin.css';
 import '../styles/print.css';
 import { LegalSubmissionNotice } from '../components/LegalSubmissionNotice';
 import { formatPrice, getLocalizedField } from '../lib/localized';
+import { getMenuDisplayImage } from '../lib/templateMenuImages';
 import { DEFAULT_FEATURE_FLAGS, getFeatureFlags } from '../lib/featureFlags';
 import { getPublicMenu, getRestaurantSettings, adminHardDeleteMenuCategory, adminHardDeleteMenuItem, uploadMenuItemImage, uploadRestaurantImage, validateImageFile } from '../lib/menuApi';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
@@ -4059,6 +4060,7 @@ function ItemRow({
   const [value, setValue] = useState<Partial<MenuItem>>(item);
   const [editing, setEditing] = useState(false);
   const category = categories.find((entry) => entry.id === item.category_id);
+  const displayImage = getMenuDisplayImage(item.image_url, item.name_en);
 
   async function saveAndClose() {
     const saved = await onSave(value);
@@ -4070,7 +4072,7 @@ function ItemRow({
       <div className="item-row-summary">
         <input aria-label="选择菜品" checked={selected} type="checkbox" onChange={(event) => onSelect(event.target.checked)} />
         <div className="item-summary-name">
-          {item.image_url ? <img src={item.image_url} alt="" width="44" height="44" loading="lazy" /> : <span className="item-image-placeholder">龙</span>}
+          {displayImage ? <img src={displayImage} alt="" width="44" height="44" loading="lazy" /> : <span className="item-image-placeholder">龙</span>}
           <span>
             <strong>{item.name_zh || item.name_en || item.name_el || '未填写'}</strong>
             {item.name_en ? <small>{item.name_en}</small> : <small className="item-name-el">未填写英文名</small>}
@@ -4165,6 +4167,7 @@ function ItemForm({
   const [aiImageLoading, setAiImageLoading] = useState(false);
   const selectedCategory = categories.find((category) => category.id === value.category_id);
   const selectedCategoryName = selectedCategory?.name_zh || selectedCategory?.name_en || selectedCategory?.name_el || '';
+  const displayImage = getMenuDisplayImage(value.image_url, value.name_en);
 
   async function handleAiCompleteDescriptions() {
     try {
@@ -4245,7 +4248,7 @@ function ItemForm({
           <div className="item-image-field item-basic-image">
             <TextField label="图片 URL" value={value.image_url} onChange={(v) => onChange({ ...value, image_url: v })} />
             <div className="item-image-tools">
-              {value.image_url ? <img src={value.image_url} alt="" className="item-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
+              {displayImage ? <img src={displayImage} alt="" className="item-image-preview" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
               <label className="item-upload-btn">
                 <Upload size={14} />{uploading ? '上传中…' : '上传图片'}
                 <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => {

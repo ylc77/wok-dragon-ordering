@@ -1,10 +1,10 @@
 @echo off
 setlocal
 cd /d "%~dp0\.."
-title Wok Dragon Print Agent Client Setup
+title Restaurant Print Agent - Client Setup
 
 echo.
-echo Wok Dragon Print Agent - Client Setup
+echo Restaurant Print Agent - Client Setup
 echo =====================================
 echo.
 echo This wizard will help configure the local print agent.

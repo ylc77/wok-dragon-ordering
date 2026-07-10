@@ -41,4 +41,10 @@
 
 - A client-specific logo and hero photo will replace the generic template visual automatically through the existing settings configuration.
 
+### Iteration 3 - post-handoff visual regression repair
+
+- [P1] The dark table-order guide inherited a later editorial heading color, making its heading blend into the background; the three white cards also lacked explicit copy colors.
+- Fix: scoped the guide heading to ivory and gave each step card an explicit dark title and muted supporting text.
+- Post-fix evidence: `C:\Users\77\AppData\Local\Temp\order-guide-fixed.png`; all three ordering steps are readable against the dark section.
+
 final result: passed

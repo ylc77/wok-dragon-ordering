@@ -1,4 +1,4 @@
-# Wok Dragon Ordering 中文宣传演示视频脚本
+# Restaurant 中文宣传演示视频脚本
 
 目标时长：60-90 秒  
 视频形式：Playwright 自动录屏 + 中文字幕浮层  
@@ -106,7 +106,7 @@ demo-videos/debug/
 ## 转成 MP4
 
 ```powershell
-ffmpeg -i demo-videos\wok-dragon-demo-你的文件名.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart -an demo-videos\wok-dragon-demo.mp4
+ffmpeg -i demo-videos\restaurant-demo-你的文件名.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart -an demo-videos\restaurant-demo.mp4
 ```
 
 如果想保留浏览器声音，可以去掉 `-an`。当前脚本本身不生成音频。
@@ -119,4 +119,3 @@ ffmpeg -i demo-videos\wok-dragon-demo-你的文件名.webm -c:v libx264 -pix_fmt
 4. 添加轻快背景音乐，音量保持较低。
 5. 对后台账号、订单号、桌码或客户数据做必要打码。
 6. 导出建议：1080p、30fps、H.264 MP4。
-

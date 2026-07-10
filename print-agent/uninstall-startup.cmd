@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set "SHORTCUT=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Wok Dragon Print Agent.lnk"
+set "SHORTCUT=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Restaurant Print Agent.lnk"
 
 echo.
 echo Removing Windows startup shortcut...

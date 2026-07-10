@@ -114,7 +114,7 @@ async function checkPortableHelp(failures: string[]) {
       windowsHide: true,
       timeout: 15000,
     });
-    if (!stdout.includes('YANLC Print Agent portable package')) {
+    if (!stdout.includes('Restaurant Print Agent portable package')) {
       failures.push('Portable agent help output does not identify the portable package.');
     }
   } catch (error) {

@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0\.."
-title Wok Dragon Install Startup
+title Restaurant Print Agent - Install Startup
 echo.
 echo Installing Windows startup shortcut...
 echo.

@@ -22,10 +22,10 @@
 
 | 页面 | 链接 |
 |------|------|
-| 首页 | https://wok-dragon-ordering.vercel.app |
-| 菜单页 | https://wok-dragon-ordering.vercel.app/menu |
-| 扫码点餐 | https://wok-dragon-ordering.vercel.app/table/table-01-demo-token |
-| 后台 | https://wok-dragon-ordering.vercel.app/admin |
+| 首页 | `${BASE_URL}` |
+| 菜单页 | `${BASE_URL}/menu` |
+| 扫码点餐 | `${BASE_URL}/table/${DEMO_QR_TOKEN}` |
+| 后台 | `${BASE_URL}/admin` |
 
 > 后台账号密码：演示时填写。不在这里写真实账号。
 
@@ -50,7 +50,7 @@
 
 ### 第 1 步：打开首页（1 分钟）
 
-**操作：** 打开 https://wok-dragon-ordering.vercel.app
+**操作：** 打开 `${BASE_URL}`
 
 **展示：**
 - 餐馆官网首页：Hero 大图、餐馆名称、导航栏

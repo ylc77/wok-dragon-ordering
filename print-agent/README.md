@@ -1,6 +1,6 @@
-# Wok Dragon 本地自动打印助手
+# Restaurant 本地自动打印助手
 
-这是 Wok Dragon 餐馆系统的 Windows 本地打印助手。它安装在前台电脑或 Windows 平板上，用来监听新订单并自动打印厨房小票。
+这是 Restaurant 模板系统的 Windows 本地打印助手。它安装在前台电脑或 Windows 平板上，用来监听新订单并自动打印厨房小票。
 
 ## 一、客户推荐安装流程
 

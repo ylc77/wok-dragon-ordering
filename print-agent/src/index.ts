@@ -280,7 +280,7 @@ function normalizeJsonConfig(inputConfig: Record<string, unknown>) {
 }
 
 async function runSetup() {
-  console.log('Wok Dragon local print agent setup');
+  console.log('Restaurant local print agent setup');
   console.log('----------------------------------');
   console.log('Windows printers:');
   await listPrinters();
@@ -823,11 +823,11 @@ function buildSampleTicket(paperWidth: PaperWidth) {
         line_total: 4.9,
       },
     ],
-  }, { name_en: 'Wok Dragon Express' }, paperWidth);
+  }, { name_en: 'Restaurant' }, paperWidth);
 }
 
 async function printText(content: string, printerName: string | null) {
-  const file = resolve(tmpdir(), `wok-dragon-ticket-${Date.now()}.txt`);
+  const file = resolve(tmpdir(), `restaurant-ticket-${Date.now()}.txt`);
   await writeFile(file, content, 'utf16le');
   const escapedFile = escapePowerShellSingleQuoted(file);
   const command = printerName
@@ -850,7 +850,7 @@ async function listPrinters() {
 }
 
 async function installStartup() {
-  const shortcutName = 'YANLC Print Agent.lnk';
+  const shortcutName = 'Restaurant Print Agent.lnk';
   const startupCommand = [
     "$startup=[Environment]::GetFolderPath('Startup')",
     `$shortcut=Join-Path $startup '${escapePowerShellSingleQuoted(shortcutName)}'`,
@@ -860,7 +860,7 @@ async function installStartup() {
     `$s.Arguments='${escapePowerShellSingleQuoted(getStartupArguments())}'`,
     `$s.WorkingDirectory='${escapePowerShellSingleQuoted(dirname(getStartupTargetPath()))}'`,
     '$s.WindowStyle=7',
-    "$s.Description='YANLC Print Agent'",
+    "$s.Description='Restaurant Print Agent'",
     '$s.Save()',
     'Write-Output $shortcut',
   ].join('; ');
@@ -873,7 +873,7 @@ async function installStartup() {
 }
 
 async function uninstallStartup() {
-  const shortcutName = 'YANLC Print Agent.lnk';
+  const shortcutName = 'Restaurant Print Agent.lnk';
   const removeCommand = [
     "$startup=[Environment]::GetFolderPath('Startup')",
     `$shortcut=Join-Path $startup '${escapePowerShellSingleQuoted(shortcutName)}'`,
@@ -976,7 +976,7 @@ async function logError(message: string, error: unknown) {
 
 function printHelp() {
   if (isPortablePackage()) {
-    console.log(`YANLC Print Agent portable package
+    console.log(`Restaurant Print Agent portable package
 
 Usage:
   start.cmd                       Start automatic printing
@@ -995,7 +995,7 @@ Configuration:
     return;
   }
 
-  console.log(`Wok Dragon local print agent
+  console.log(`Restaurant local print agent
 
 Usage:
   pnpm print-agent

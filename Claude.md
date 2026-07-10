@@ -106,7 +106,7 @@ Production URL:
 
 ```text
 
-https://wok-dragon-ordering.vercel.app
+https://restaurant.example.com
 
 ```
 
@@ -1181,7 +1181,7 @@ Do not prioritize visual redesign over business correctness.
 - `restaurant_settings.meta_title` — 浏览器标题
 - `restaurant_settings.favicon_url` — 浏览器图标
 - App.tsx 自动应用品牌设置
-- localStorage 前缀 `wok-dragon:` → `restaurant:`（含旧 key 迁移）
+- localStorage 使用 `restaurant:` 前缀（含旧 key 迁移）
 
 ### 模块开关系统 (P1)
 

@@ -1,9 +1,9 @@
 @echo off
 setlocal
 cd /d "%~dp0\.."
-title Wok Dragon Print Agent
+title Restaurant Print Agent
 echo.
-echo Wok Dragon Print Agent
+echo Restaurant Print Agent
 echo =======================
 echo Keep this window open. Closing it will stop automatic printing.
 echo.

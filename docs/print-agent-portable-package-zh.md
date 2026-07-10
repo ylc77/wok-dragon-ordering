@@ -1,6 +1,6 @@
 # YANLCPrintAgent Windows exe 便携版交付说明
 
-本文档说明如何把本地打印助手打包成客户可交付的 Windows exe 便携包。客户电脑不需要整个 `wok-dragon-ordering` 项目，也不需要安装 Node.js / pnpm，只需要一个 `YANLCPrintAgent` 文件夹。
+本文档说明如何把本地打印助手打包成客户可交付的 Windows exe 便携包。客户电脑不需要整个 `restaurant` 项目，也不需要安装 Node.js / pnpm，只需要一个 `YANLCPrintAgent` 文件夹。
 
 ## 一、适合场景
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { SafeImage } from './SafeImage';
 import { getOptimizedImageUrl } from '../lib/imageUrl';
 import { formatPrice, getLocalizedField } from '../lib/localized';
+import { getMenuDisplayImage } from '../lib/templateMenuImages';
 import type { Language, MenuItem } from '../lib/types';
 
 export function MenuCard({
@@ -36,7 +37,7 @@ export function MenuCard({
 export function DishImage({ item, alt, priority = false }: { item: MenuItem; alt: string; priority?: boolean }) {
   const [shouldLoad, setShouldLoad] = useState(priority);
   const placeholderRef = useRef<HTMLDivElement | null>(null);
-  const imageUrl = item.image_url?.trim();
+  const imageUrl = getMenuDisplayImage(item.image_url, item.name_en);
   const optimizedImageUrl = getOptimizedImageUrl(imageUrl, 'card');
 
   useEffect(() => {
