@@ -923,3 +923,12 @@
   .menu-mobile-body { grid-template-columns: 92px minmax(0, 1fr); }
   .mobile-rail button { font-size: 11px; padding-left: 6px; padding-right: 6px; }
 }
+
+@media (max-width: 767px) {
+  /* The full reservation CTA is present in the hero and navigation drawer.
+     Hiding this squeezed duplicate keeps the mobile header legible. */
+  .site-header .header-reservation-button { display: none; }
+  .site-header-inner { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .site-header-actions { grid-column: 2; }
+  .mobile-nav-toggle { grid-column: 3; }
+}
