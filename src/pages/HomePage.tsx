@@ -4,7 +4,9 @@ import { CalendarDays, Clock3, ExternalLink, Flame, Instagram, MapPin, MessageCi
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from '../components/MenuCard';
 import { SafeImage } from '../components/SafeImage';
-import templateHero from '../assets/ember-wok-hero.webp';
+import editorialHero from '../assets/ember-wok-editorial-hero.webp';
+import featuredVegetables from '../assets/ember-wok-featured-vegetables.webp';
+import prawnIllustration from '../assets/ember-wok-prawn-illustration.webp';
 import { getFeatureFlags } from '../lib/featureFlags';
 import { getOptimizedImageUrl } from '../lib/imageUrl';
 import { getLocalizedField, pickLocalized } from '../lib/localized';
@@ -17,6 +19,12 @@ const reservationCopy = {
   en: { eyebrow: 'ONLINE RESERVATION', title: 'Reserve ahead, arrive with ease', body: 'Choose a date, time, and party size for an instant confirmation.', action: 'Reserve a table' },
   el: { eyebrow: 'ONLINE ΚΡΑΤΗΣΗ', title: 'Κρατήστε τραπέζι, ελάτε με άνεση', body: 'Επιλέξτε ημερομηνία, ώρα και άτομα για άμεση επιβεβαίωση.', action: 'Κράτηση τραπεζιού' },
 } as const;
+
+const heroHeadline: Record<Language, ReactNode> = {
+  zh: <>地中海灵感。<br />WOK 火候。</>,
+  en: <>Mediterranean soul.<br />Asian fire.</>,
+  el: <>Μεσογειακή ψυχή.<br />Ασιατική φωτιά.</>,
+};
 
 export function HomePage() {
   const { t, i18n } = useTranslation();
@@ -48,8 +56,7 @@ export function HomePage() {
   const hours = settings ? pickLocalized(lang, { zh: settings.opening_hours_zh, en: settings.opening_hours_en, el: settings.opening_hours_el }) : '';
   const intro = settings ? pickLocalized(lang, { zh: settings.intro_zh, en: settings.intro_en, el: settings.intro_el }) : '';
   const deliveryLinks = [{ label: t('platforms.wolt'), url: settings?.wolt_url }, { label: t('platforms.efood'), url: settings?.efood_url }, { label: t('platforms.box'), url: settings?.box_url }].filter((link) => Boolean(link.url?.trim()));
-  const heroItem = featuredItems.find((item) => Boolean(item.image_url));
-  const heroImageUrl = settings?.hero_image_url?.trim() || heroItem?.image_url || templateHero;
+  const heroImageUrl = settings?.hero_image_url?.trim() || editorialHero;
   const reservationsEnabled = settings ? getFeatureFlags(settings).reservations : false;
   const reserve = reservationCopy[lang];
 
@@ -59,19 +66,22 @@ export function HomePage() {
     <section className="hero-section">
       <div className="hero-copy">
         <div className="hero-brand-lockup" aria-hidden="true"><SafeImage src={settings?.logo_url} optimizedSrc={getOptimizedImageUrl(settings?.logo_url, 'logo')} className="brand-logo" alt="" fallback={<span className="brand-mark"><UtensilsCrossed size={22} /></span>} /><strong>{name}</strong></div>
-        <p className="home-kicker">{lang === 'zh' ? '新鲜现炒 · 轻松用餐' : lang === 'en' ? 'FRESH WOK · EASY DINING' : 'ΦΡΕΣΚΟ WOK · ΑΠΟΛΑΥΣΤΙΚΟ ΦΑΓΗΤΟ'}</p>
-        <h1>{name || t('home.title')}</h1><p>{intro || t('home.subtitle')}</p>
-        <div className="hero-actions"><Link className="primary-button" to="/menu"><UtensilsCrossed size={18} />{t('home.menuCta')}</Link>{reservationsEnabled ? <Link className="secondary-button" to="/reservations"><CalendarDays size={18} />{reserve.action}</Link> : null}{settings?.map_url ? <a className="secondary-button" href={settings.map_url} target="_blank" rel="noreferrer"><MapPin size={18} />{t('common.viewMap')}</a> : null}</div>
-        <div className="hero-context" aria-label="Restaurant information">
-          {hours ? <span><Clock3 size={15} />{hours}</span> : null}
-          {address ? <span><MapPin size={15} />{address}</span> : null}
-        </div>
+        <p className="home-kicker">{lang === 'zh' ? '地中海餐桌 · WOK 火候' : lang === 'en' ? 'MEDITERRANEAN SOUL · ASIAN FIRE' : 'ΜΕΣΟΓΕΙΑΚΗ ΨΥΧΗ · ΑΣΙΑΤΙΚΗ ΦΩΤΙΑ'}</p>
+        <h1>{heroHeadline[lang]}</h1><p>{intro || t('home.subtitle')}</p>
+        <div className="hero-actions">{reservationsEnabled ? <Link className="primary-button" to="/reservations"><CalendarDays size={18} />{reserve.action}</Link> : null}<Link className="secondary-button" to="/menu"><UtensilsCrossed size={18} />{t('home.menuCta')}</Link></div>
+        {reservationsEnabled ? <div className="hero-availability"><CalendarDays size={17} /><span>{lang === 'zh' ? '在线查看可预订时段' : lang === 'en' ? 'Check live table availability' : 'Δείτε διαθέσιμα τραπέζια online'}</span></div> : null}
         {settings?.enable_qr_ordering !== false ? <p className="muted">{t('home.orderHint')}</p> : null}{error ? <p className="error-text">{error}</p> : null}
       </div>
-      <div className="hero-media"><SafeImage src={heroImageUrl} optimizedSrc={getOptimizedImageUrl(heroImageUrl, 'hero')} alt={name} loading="eager" decoding="async" fetchPriority="high" sizes="(max-width: 768px) 100vw, 52vw" fallback={<div className="hero-image-fallback" aria-hidden="true"><div className="hif-inner"><span className="hif-mark"><UtensilsCrossed size={96} /></span><strong>{name || t('home.title')}</strong><span className="hif-sub">{t('home.subtitle')}</span></div></div>} /></div>
+      <div className="hero-media"><SafeImage src={heroImageUrl} optimizedSrc={getOptimizedImageUrl(heroImageUrl, 'hero')} alt={name} loading="eager" decoding="async" fetchPriority="high" sizes="(max-width: 767px) 100vw, 58vw" fallback={<div className="hero-image-fallback" aria-hidden="true"><div className="hif-inner"><span className="hif-mark"><UtensilsCrossed size={96} /></span><strong>{name || t('home.title')}</strong><span className="hif-sub">{t('home.subtitle')}</span></div></div>} /></div>
     </section>
 
     <section className="home-selling-points"><SellingPoint icon={<Flame size={22} />} title={t('home.fastWokTitle')} text={t('home.fastWokText')} /><SellingPoint icon={<Store size={22} />} title={t('home.dineTakeawayTitle')} text={t('home.dineTakeawayText')} /><SellingPoint icon={<QrCode size={22} />} title={t('home.qrOrderingTitle')} text={t('home.qrOrderingText')} /></section>
+
+    <section className="home-editorial-feature">
+      <div className="editorial-feature-image"><img src={featuredVegetables} alt="" loading="lazy" decoding="async" /></div>
+      <div className="editorial-feature-copy"><p className="section-kicker">{lang === 'zh' ? '招牌风味' : lang === 'en' ? 'FROM OUR WOK' : 'ΑΠΟ ΤΟ WOK ΜΑΣ'}</p><h2>{lang === 'zh' ? '一桌好菜，慢慢享用。' : lang === 'en' ? 'Fire, freshness, and a table worth lingering over.' : 'Φωτιά, φρεσκάδα και ένα τραπέζι για να μείνετε λίγο ακόμη.'}</h2><p>{intro || t('home.introText')}</p><Link className="text-link" to="/menu">{t('home.menuCta')} <span aria-hidden="true">→</span></Link></div>
+      <img className="editorial-prawn" src={prawnIllustration} alt="" loading="lazy" decoding="async" />
+    </section>
 
     <section className="home-intro"><div><p className="section-kicker">{lang === 'zh' ? '关于我们' : lang === 'en' ? 'OUR TABLE' : 'ΤΟ ΤΡΑΠΕΖΙ ΜΑΣ'}</p><h2>{t('home.introTitle')}</h2><p>{intro || t('home.introText')}</p></div><div className="home-info-cards">{address ? <div><span><MapPin size={15} /> {t('common.address')}</span><strong>{address}</strong></div> : null}{hours ? <div><span><Clock3 size={15} /> {t('common.openingHours')}</span><strong>{hours}</strong></div> : null}{settings?.phone ? <div><span><Phone size={15} /> {t('common.phone')}</span><a href={`tel:${settings.phone}`}>{settings.phone}</a></div> : null}</div></section>
 
