@@ -6,23 +6,24 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   ai_image: true,
   data_backup: true,
   print_agent: true,
+  reservations: false,
 };
 
 export const PLAN_PRESETS: Record<PlanTier, { enable_pos: boolean; enable_qr_ordering: boolean; features: FeatureFlags }> = {
   basic: {
     enable_pos: false,
     enable_qr_ordering: false,
-    features: { csv_import: false, ai_menu: false, ai_image: false, data_backup: false, print_agent: false },
+    features: { csv_import: false, ai_menu: false, ai_image: false, data_backup: false, print_agent: false, reservations: false },
   },
   standard: {
     enable_pos: false,
     enable_qr_ordering: true,
-    features: { csv_import: true, ai_menu: false, ai_image: false, data_backup: true, print_agent: false },
+    features: { csv_import: true, ai_menu: false, ai_image: false, data_backup: true, print_agent: false, reservations: false },
   },
   professional: {
     enable_pos: true,
     enable_qr_ordering: true,
-    features: { ...DEFAULT_FEATURE_FLAGS },
+    features: { ...DEFAULT_FEATURE_FLAGS, reservations: true },
   },
 };
 

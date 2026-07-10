@@ -8,6 +8,7 @@ export type FeatureFlags = {
   ai_image: boolean;
   data_backup: boolean;
   print_agent: boolean;
+  reservations: boolean;
 };
 
 export type RestaurantSettings = {
@@ -255,6 +256,40 @@ export type PrintAgentStatus = {
   last_error: string | null;
   printer_name: string | null;
   version: string | null;
+  updated_at: string;
+};
+
+export type ReservationStatus = 'confirmed' | 'arrived' | 'completed' | 'cancelled' | 'no_show';
+
+export type ReservationSettings = {
+  id: string;
+  is_enabled: boolean;
+  timezone: string;
+  open_time: string;
+  close_time: string;
+  slot_interval_minutes: number;
+  capacity_per_slot: number;
+  max_party_size: number;
+  max_advance_days: number;
+  minimum_notice_minutes: number;
+};
+
+export type ReservationSlot = {
+  slot_time: string;
+  remaining_capacity: number;
+};
+
+export type Reservation = {
+  id: string;
+  reference_code: string;
+  reservation_date: string;
+  reservation_time: string;
+  party_size: number;
+  guest_name: string;
+  phone: string;
+  note: string | null;
+  status: ReservationStatus;
+  created_at: string;
   updated_at: string;
 };
 

@@ -41,6 +41,13 @@
 .vendor-legal-entry:hover { border-color: #c62026; box-shadow: 0 5px 18px rgba(198,32,38,.09); }
 .vendor-legal-entry span, .vendor-legal-entry strong, .vendor-legal-entry small { display: block; }
 .vendor-legal-entry small { color: #667085; margin-top: 4px; }
+.vendor-readiness-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vendor-readiness-grid > div { border: 1px solid #e0e3e8; border-radius: 7px; display: grid; gap: 5px; padding: 14px 16px; }
+.vendor-readiness-grid .is-ready { background: #f3fbf6; border-color: #9dd4b4; color: #176b45; }
+.vendor-readiness-grid .is-pending { background: #fffaf0; border-color: #efd49c; color: #805b12; }
+.vendor-readiness-grid strong { font-size: 14px; }
+.vendor-readiness-grid span, .vendor-readiness-note { font-size: 12px; line-height: 1.5; }
+.vendor-readiness-note { color: #667085; margin: 14px 0 0; }
 .vendor-back-link { align-items: center; color: #475467; display: inline-flex; font-size: 14px; font-weight: 700; gap: 6px; margin-top: 18px; text-decoration: none; }
 .vendor-legal-shell { padding-top: 24px; }
 .vendor-legal-toolbar { align-items: center; display: flex; justify-content: space-between; margin: 0 auto 14px; max-width: 1200px; }
@@ -52,6 +59,7 @@
   .vendor-secure-badge { display: none; }
   .vendor-section { padding: 22px 18px; }
   .vendor-plan-grid, .vendor-toggle-grid { grid-template-columns: 1fr; }
+  .vendor-readiness-grid { grid-template-columns: 1fr; }
   .vendor-message { margin-left: 18px; margin-right: 18px; }
   .vendor-settings-panel > footer { padding: 18px; }
   .vendor-save-button { width: 100%; }

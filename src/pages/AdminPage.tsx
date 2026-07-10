@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Activity, Ban, Banknote, BarChart3, Building2, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, Minus, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, ShoppingBag, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
+import { Activity, Ban, Banknote, BarChart3, Building2, CalendarDays, CheckCircle2, ChefHat, ChevronDown, Clock3, ClipboardList, Copy, CreditCard, Database, Download, LayoutDashboard, LogOut, Menu, Minus, PauseCircle, Pencil, PlayCircle, Plus, Printer, QrCode, RefreshCw, RotateCcw, Save, Search, Settings2, ShoppingBag, Tags, Trash2, Upload, UserCircle, UtensilsCrossed, WalletCards, Wifi, WifiOff, X } from 'lucide-react';
+import { ReservationManager } from '../components/admin/ReservationManager';
 import '../styles/admin.css';
 import '../styles/print.css';
 import { LegalSubmissionNotice } from '../components/LegalSubmissionNotice';
@@ -61,7 +62,7 @@ import type {
   TableSession,
 } from '../lib/types';
 
-type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'system' | 'pos';
+type AdminTab = 'dashboard' | 'settings' | 'categories' | 'items' | 'orders' | 'tables' | 'system' | 'pos' | 'reservations';
 
 const emptySettings: Partial<RestaurantSettings> = {
   name_zh: '',
@@ -426,6 +427,7 @@ export function AdminPage() {
           {!isKitchenRole ? <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton> : null}
+          {!isKitchenRole && featureFlags.reservations ? <AdminNavButton icon={<CalendarDays size={16} />} active={tab === 'reservations'} onClick={() => onTabChange('reservations')}>预订管理</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton> : null}
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>
@@ -447,6 +449,7 @@ export function AdminPage() {
           {!isKitchenRole ? <AdminNavButton icon={<UtensilsCrossed size={16} />} active={tab === 'items'} onClick={() => onTabChange('items')}>菜品管理</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Tags size={16} />} active={tab === 'categories'} onClick={() => onTabChange('categories')}>菜单分类</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Building2 size={16} />} active={tab === 'settings'} onClick={() => onTabChange('settings')}>餐馆设置</AdminNavButton> : null}
+          {!isKitchenRole && featureFlags.reservations ? <AdminNavButton icon={<CalendarDays size={16} />} active={tab === 'reservations'} onClick={() => onTabChange('reservations')}>预订管理</AdminNavButton> : null}
           {!isKitchenRole ? <AdminNavButton icon={<Settings2 size={16} />} active={tab === 'system'} onClick={() => onTabChange('system')}>系统设置</AdminNavButton> : null}
         </nav>
         <button className="admin-logout" onClick={() => supabase?.auth.signOut().then(() => setLoggedIn(false))}>退出登录</button>
@@ -479,6 +482,7 @@ export function AdminPage() {
           {tab === 'orders' ? (menuOnlyMode ? <AdminSection title="订单管理"><p className="admin-message-muted">当前为纯菜单展示模式，暂未启用点餐功能。</p></AdminSection> : <OrderManager syncVersion={syncVersion} requestSync={requestSync} onMessage={setMessage} toast={showAdminToast} soundEnabled={soundEnabled} onSoundEnabledChange={setSoundEnabled} restaurantName={restaurantName} paperWidth={paperWidth} setPaperWidth={setPaperWidth} readOnly={isKitchenRole} />) : null}
           {tab === 'tables' ? (enableQrOrdering ? <TableManager syncVersion={syncVersion} onMessage={setMessage} toast={showAdminToast} /> : <AdminSection title="桌台管理"><p className="admin-message-muted">当前未启用扫码点餐功能，桌台管理已关闭。</p></AdminSection>) : null}
           {tab === 'settings' ? <SettingsEditor onMessage={setMessage} toast={showAdminToast} requestSync={requestSync} /> : null}
+          {tab === 'reservations' && featureFlags.reservations ? <ReservationManager toast={showAdminToast} /> : null}
           {tab === 'categories' ? <CategoryEditor onMessage={setMessage} toast={showAdminToast} /> : null}
           {tab === 'items' ? <ItemEditor onMessage={setMessage} toast={showAdminToast} features={featureFlags} /> : null}
           {tab === 'system' ? <SystemSettings realtimeStatus={realtimeStatus} adminRole={adminRole} features={featureFlags} /> : null}

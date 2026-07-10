@@ -88,8 +88,7 @@ export function CookieBanner() {
       <div>
         <strong>Cookie preferences</strong>
         <p>
-          We use essential cookies to keep the website working. Analytics or marketing cookies are only enabled
-          after you choose them. Read our <Link to="/cookie-policy">Cookie Policy</Link>.
+          We use essential cookies for the website to work. Optional cookies are only enabled with your choice. Read our <Link to="/cookie-policy">Cookie Policy</Link>.
         </p>
         {managing ? (
           <div className="cookie-preferences">
@@ -120,7 +119,7 @@ export function CookieBanner() {
         <button className="secondary-button" type="button" onClick={() => save(defaultPreferences)}>
           Reject non-essential
         </button>
-        <button className="secondary-button" type="button" onClick={() => setManaging((open) => !open)}>
+        <button className="cookie-manage-button" type="button" onClick={() => setManaging((open) => !open)}>
           Manage preferences
         </button>
         {managing ? (

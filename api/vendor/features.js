@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
-const FEATURE_KEYS = ['csv_import', 'ai_menu', 'ai_image', 'data_backup', 'print_agent'];
+const FEATURE_KEYS = ['csv_import', 'ai_menu', 'ai_image', 'data_backup', 'print_agent', 'reservations'];
 const PLAN_TIERS = new Set(['basic', 'standard', 'professional']);
 const failedAttempts = new Map();
 
@@ -42,7 +42,22 @@ function registerFailure(address) {
 
 function sanitizeFeatures(value) {
   const input = value && typeof value === 'object' ? value : {};
-  return Object.fromEntries(FEATURE_KEYS.map((key) => [key, input[key] !== false]));
+  return Object.fromEntries(FEATURE_KEYS.map((key) => [key, key === 'reservations' ? input[key] === true : input[key] !== false]));
+}
+
+async function getReservationReadiness(supabase) {
+  const { data, error } = await supabase.from('reservation_settings').select('id').limit(1).maybeSingle();
+  return {
+    reservation_schema_ready: !error && Boolean(data),
+  };
+}
+
+async function serializeSettings(supabase, settings) {
+  return {
+    ...settings,
+    feature_flags: sanitizeFeatures(settings.feature_flags),
+    ...(await getReservationReadiness(supabase)),
+  };
 }
 
 export default async function handler(request, response) {
@@ -90,7 +105,7 @@ export default async function handler(request, response) {
     }
 
     if (body.action === 'read') {
-      sendJson(response, 200, { settings: { ...current, feature_flags: sanitizeFeatures(current.feature_flags) } });
+      sendJson(response, 200, { settings: await serializeSettings(supabase, current) });
       return;
     }
 
@@ -119,7 +134,7 @@ export default async function handler(request, response) {
       .single();
     if (updateError) throw updateError;
 
-    sendJson(response, 200, { settings: updated });
+    sendJson(response, 200, { settings: await serializeSettings(supabase, updated) });
   } catch (error) {
     sendJson(response, 500, { error: error instanceof Error ? error.message : '保存失败。' });
   }

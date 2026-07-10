@@ -14,6 +14,7 @@ type VendorSettings = {
   enable_pos: boolean;
   enable_qr_ordering: boolean;
   feature_flags: FeatureFlags;
+  reservation_schema_ready: boolean;
 };
 
 const VENDOR_SESSION_KEY = 'yanlc:vendor-settings-password';
@@ -24,6 +25,7 @@ const FEATURE_LABELS: Record<keyof FeatureFlags, { title: string; description: s
   ai_image: { title: 'AI 菜品图片', description: '根据菜品内容生成图片' },
   data_backup: { title: '数据备份', description: '后台导出业务数据备份' },
   print_agent: { title: '本地打印助手', description: '厨房订单自动打印和状态监控' },
+  reservations: { title: '在线预订', description: '顾客预订餐桌，员工在后台统一管理' },
 };
 
 async function requestSettings(password: string, action: 'read' | 'update', settings?: VendorSettings) {
@@ -123,6 +125,14 @@ export function VendorSettingsPage() {
             ))}
           </div>
         </div>
+
+        {settings.feature_flags.reservations ? <div className="vendor-section">
+          <div className="vendor-section-title"><Settings2 size={19} /><div><h2>预约模块交付检查</h2><p>只显示配置状态，不会显示客户 Token、Chat ID 或预约数据。</p></div></div>
+          <div className="vendor-readiness-grid">
+            <div className={settings.reservation_schema_ready ? 'is-ready' : 'is-pending'}><strong>预约数据库</strong><span>{settings.reservation_schema_ready ? '已初始化' : '待执行 reservations-module.sql'}</span></div>
+          </div>
+          {!settings.reservation_schema_ready ? <p className="vendor-readiness-note">预约功能开启前，请先在客户自己的 Supabase SQL Editor 执行 `supabase/reservations-module.sql`。</p> : null}
+        </div> : null}
 
         <div className="vendor-section">
           <div className="vendor-section-title">

@@ -2058,6 +2058,40 @@
 .admin-language-panels { grid-template-columns: 1fr; }
 }
 
+.reservation-admin-section { display: grid; gap: 18px; }
+.reservation-settings-card { display: grid; gap: 18px; }
+.reservation-settings-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+.reservation-settings-head h2 { margin: 0; font-size: 1.05rem; }
+.reservation-settings-head p { margin: 6px 0 0; color: var(--muted); }
+.reservation-settings-card label { display: grid; gap: 7px; color: #49403d; font-size: .83rem; font-weight: 700; }
+.reservation-settings-card input { min-height: 42px; border: 1px solid #ddd5cf; border-radius: 6px; background: #fff; color: #24201d; padding: 8px 10px; font: inherit; font-size: 16px; }
+.reservation-settings-card .settings-payment-label { display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 0 10px; }
+.reservation-settings-card .settings-payment-label input { min-height: auto; }
+.admin-filter-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-filter-row button { min-height: 36px; padding: 0 12px; border: 1px solid #ddd5cf; border-radius: 6px; background: #fff; color: #4c423e; font: inherit; cursor: pointer; }
+.admin-filter-row button.active { color: #fff; border-color: var(--accent); background: var(--accent); }
+.reservation-admin-list { display: grid; gap: 10px; }
+.reservation-admin-row { display: grid; grid-template-columns: 160px minmax(190px, 1fr) 130px auto; gap: 18px; align-items: center; padding: 16px 18px; border: 1px solid #e7dfd9; border-radius: 8px; background: #fff; }
+.reservation-admin-time { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; color: #302a27; }
+.reservation-admin-time svg { grid-row: span 2; color: var(--accent); }
+.reservation-admin-time span { color: #746a64; font-size: .88rem; }
+.reservation-admin-row > div:nth-child(2) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.reservation-admin-row > div:nth-child(2) strong, .reservation-admin-row > div:nth-child(2) span, .reservation-admin-row > div:nth-child(2) a { display: inline-flex; align-items: center; gap: 5px; }
+.reservation-admin-row > div:nth-child(2) small { width: 100%; color: #736965; }
+.reservation-status { display: grid; justify-items: start; gap: 4px; color: #237a44; font-weight: 800; }
+.reservation-status small { color: #81766f; font-size: .7rem; font-weight: 600; }
+.reservation-status.status-cancelled, .reservation-status.status-no_show { color: #b42318; }
+.reservation-status.status-completed { color: #315d9c; }
+.reservation-admin-actions { display: flex; gap: 7px; justify-content: flex-end; }
+.reservation-admin-actions button { align-items: center; display: inline-flex; gap: 4px; min-height: 34px; border: 1px solid #ded6d0; border-radius: 5px; background: #fff; color: #463d38; padding: 0 9px; cursor: pointer; font: inherit; font-size: .8rem; }
+.reservation-admin-actions button.danger { color: #b42318; border-color: #efb5b0; }
+
+@media (max-width: 820px) {
+  .reservation-settings-head { display: grid; }
+  .reservation-admin-row { grid-template-columns: 1fr; gap: 10px; }
+  .reservation-admin-actions { justify-content: flex-start; flex-wrap: wrap; }
+}
+
 .admin-shell {
   background:
     linear-gradient(180deg, #f6f7f8 0%, #eef0f2 100%);

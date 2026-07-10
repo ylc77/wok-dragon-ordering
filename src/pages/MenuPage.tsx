@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Search, ChevronUp } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Search, ChevronUp, CalendarDays } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SafeImage } from '../components/SafeImage';
 import { MenuCard } from '../components/MenuCard';
@@ -9,6 +9,7 @@ import { getPublicMenu } from '../lib/publicMenuApi';
 import { getPublicRestaurantSettings } from '../lib/publicRestaurantApi';
 import { getOptimizedImageUrl } from '../lib/imageUrl';
 import { getLocalizedField } from '../lib/localized';
+import { getFeatureFlags } from '../lib/featureFlags';
 import type { Language, MenuGroup, RestaurantSettings } from '../lib/types';
 
 /* ── 共享逻辑 ── */
@@ -45,7 +46,10 @@ function useFilteredGroups(groups: MenuGroup[], search: string, lang: Language) 
 /* ── 共享组件 ── */
 
 function MenuIntro({ settings, tag = '菜' }: { settings: RestaurantSettings | null; tag?: string }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language?.startsWith('zh') ? 'zh' : i18n.language?.startsWith('en') ? 'en' : 'el';
+  const reservationLabel = lang === 'zh' ? '预订餐桌' : lang === 'en' ? 'Reserve a table' : 'Κράτηση τραπεζιού';
+  const reservationsEnabled = settings ? getFeatureFlags(settings).reservations : false;
   return (
     <section className="page-heading">
       <div>
@@ -54,6 +58,7 @@ function MenuIntro({ settings, tag = '菜' }: { settings: RestaurantSettings | n
           <h1>{t('nav.menu')}</h1>
           <p>{t('common.priceNote')}</p>
         </div>
+        {reservationsEnabled ? <Link className="menu-reservation-link" to="/reservations"><CalendarDays size={16} />{reservationLabel}</Link> : null}
       </div>
     </section>
   );

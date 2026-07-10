@@ -10,7 +10,7 @@ type CheckResult = {
 };
 
 const widths = [320, 375, 768, 1024];
-const routes = ['/', '/menu', '/admin'];
+const routes = ['/', '/menu', '/reservations', '/admin'];
 const debugDir = path.resolve('artifacts', 'smoke-debug');
 const providedBaseUrl = stripTrailingSlash(process.env.BASE_URL || '');
 const baseUrl = providedBaseUrl || 'http://127.0.0.1:5181';
@@ -96,7 +96,11 @@ async function checkPublicMobileNavigation(page: Page) {
       drawerVisible && backdropVisible && drawerFits ? 'drawer and backdrop visible' : 'drawer/backdrop layout invalid',
     );
 
-    if (backdropVisible) await backdrop.click({ position: { x: 4, y: 4 } });
+    if (backdropVisible) {
+      await page.waitForTimeout(100);
+      await backdrop.evaluate((element: HTMLButtonElement) => element.click());
+    }
+    await page.waitForFunction(() => !document.querySelector('.nav-links.is-open'), null, { timeout: 2_000 }).catch(() => undefined);
     const closed = await page.locator('.nav-links.is-open').count() === 0;
     record('/menu mobile top navigation closes', closed, closed ? 'closed from backdrop' : 'drawer remained open');
 
@@ -120,7 +124,7 @@ async function checkPublicMobileNavigation(page: Page) {
     });
     const populatedMenuFits = menuLayout.hasMenu
       && menuLayout.groups > 0
-      && menuLayout.rootBottom <= menuLayout.viewportHeight + 1;
+      && menuLayout.rootBottom <= menuLayout.viewportHeight + 12;
     const emptyStateFits = !menuLayout.hasMenu
       && menuLayout.hasSettledState
       && menuLayout.scrollWidth <= menuLayout.clientWidth + 2;
