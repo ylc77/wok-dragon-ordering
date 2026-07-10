@@ -838,3 +838,88 @@
   .page-heading { padding: 42px 20px; }
   .reservation-hero { border-radius: 0; }
 }
+
+/* Public layout polish: keep navigation and the menu easy to scan from a
+   compact phone through a wide desktop without changing the page structure. */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+}
+
+.site-header-inner,
+.home-editorial-feature,
+.home-intro,
+.home-menu-preview,
+.home-category-preview,
+.home-order-guide,
+.info-band,
+.home-reservation-cta,
+.menu-search-bar,
+.menu-layout,
+.reservation-page {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .site-header-inner {
+    grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+  }
+
+  .menu-layout {
+    display: grid;
+    gap: clamp(24px, 3vw, 48px);
+    grid-template-columns: clamp(176px, 17vw, 224px) minmax(0, 1fr);
+    padding-bottom: 72px;
+    width: min(1220px, calc(100% - 48px));
+  }
+
+  .menu-category-rail {
+    align-self: start;
+    max-height: calc(100dvh - 112px);
+    overflow-y: auto;
+    position: sticky;
+    top: 96px;
+  }
+
+  .menu-list-column .menu-group { scroll-margin-top: 116px; }
+
+  .menu-list-column .menu-list {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .menu-list-column .menu-card {
+    align-items: start;
+    min-height: 142px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1080px) {
+  .site-header .brand small { max-width: 190px; }
+  .nav-links a { padding-left: 8px; padding-right: 8px; }
+  .menu-list-column .menu-list { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 767px) {
+  .site-header { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .site-header-inner { min-width: 0; }
+  .site-header .brand { min-width: 0; }
+  .site-header .brand strong { max-width: min(40vw, 154px); }
+  .site-header-actions { min-width: 0; }
+
+  .mobile-menu-toolbar { padding-left: 16px; padding-right: 16px; }
+  .menu-mobile-body { grid-template-columns: 104px minmax(0, 1fr); }
+  .mobile-rail { overscroll-behavior: contain; }
+  .mobile-rail button { min-height: 52px; padding: 10px 8px; }
+  .mobile-main { overscroll-behavior: contain; padding-bottom: calc(94px + env(safe-area-inset-bottom)); }
+  .mobile-main .menu-group { scroll-margin-top: 12px; }
+  .mobile-main .menu-card { min-height: 104px; }
+  .mobile-main .menu-card h3 { line-height: 1.28; }
+}
+
+@media (max-width: 374px) {
+  .menu-mobile-body { grid-template-columns: 92px minmax(0, 1fr); }
+  .mobile-rail button { font-size: 11px; padding-left: 6px; padding-right: 6px; }
+}

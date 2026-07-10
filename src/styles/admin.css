@@ -4335,6 +4335,105 @@
   }
 }
 
+/* Operational layout polish: denser desktop work areas, deliberate tablet
+   columns and mobile controls that remain readable and easy to tap. */
+.admin-shell { grid-template-columns: 238px minmax(0, 1fr); }
+.admin-workspace { min-width: 0; }
+
+@media (min-width: 901px) {
+  .admin-sidebar {
+    height: 100dvh;
+    overflow-y: auto;
+    padding: 22px 16px;
+    position: sticky;
+    top: 0;
+    width: auto;
+  }
+
+  .admin-topbar {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .admin-content {
+    margin: 0 auto;
+    max-width: 1640px;
+    padding: clamp(24px, 3vw, 42px);
+  }
+
+  .admin-section-header { gap: 20px; }
+  .item-toolbar { align-items: end; gap: 12px; }
+
+  .table-admin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .table-card {
+    grid-template-columns: 184px minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  .table-maintenance-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-save-bar {
+    bottom: 16px;
+    position: sticky;
+    z-index: 12;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1280px) {
+  .admin-shell { grid-template-columns: 218px minmax(0, 1fr); }
+  .admin-sidebar { padding-left: 12px; padding-right: 12px; }
+  .admin-sidebar button,
+  .admin-sidebar a { font-size: 15px; padding-left: 12px; padding-right: 12px; }
+  .admin-content { padding: 24px 20px; }
+  .table-admin-grid { grid-template-columns: 1fr; }
+  .pos-shell { grid-template-columns: minmax(0, 1fr) minmax(310px, 360px); }
+}
+
+@media (max-width: 900px) {
+  .admin-shell { display: block; }
+  .admin-content { max-width: none; padding: 18px 16px calc(28px + env(safe-area-inset-bottom)); }
+  .admin-mobile-topbar { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .admin-section-header { align-items: stretch; flex-direction: column; gap: 12px; }
+  .admin-section-header > .secondary-button,
+  .admin-section-header > .primary-button { justify-content: center; width: 100%; }
+  .item-toolbar { align-items: stretch; }
+  .table-admin-grid { grid-template-columns: 1fr; }
+  .pos-shell { grid-template-columns: minmax(0, 1fr) minmax(300px, 350px); }
+}
+
+@media (max-width: 767px) {
+  .admin-content { padding: 14px 12px calc(24px + env(safe-area-inset-bottom)); }
+  .admin-panel-card,
+  .settings-card,
+  .item-new-form,
+  .table-card { border-radius: 14px; }
+  .item-toolbar { display: grid; grid-template-columns: 1fr; }
+  .item-toolbar > * { min-width: 0; }
+  .item-toolbar button { justify-content: center; min-height: 44px; }
+  .table-card { gap: 14px; }
+  .qr-box { min-height: 210px; }
+  .table-maintenance-actions { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  .table-maintenance-actions button { justify-content: center; min-height: 42px; }
+  .pos-shell { grid-template-columns: 1fr; }
+  .pos-cart { position: static; }
+  .settings-save-bar { bottom: 0; padding-bottom: calc(14px + env(safe-area-inset-bottom)); position: sticky; z-index: 18; }
+}
+
+@media (max-width: 390px) {
+  .table-maintenance-actions { grid-template-columns: 1fr; }
+  .dash-stat-grid { gap: 10px; }
+  .admin-topbar > div { gap: 8px; }
+  .admin-user { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+}
+
 .csv-preview-summary {
   display: grid;
   gap: 10px;
