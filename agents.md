@@ -31,3 +31,7 @@ If you ever encounter something in the project that surprises you, please alert 
 ## 3. Text encoding rule
 
 This repository contains Chinese, Greek, and English source text. Always preserve files as UTF-8 when editing locale files or visible UI copy. PowerShell output encoding can make valid UTF-8 Greek look damaged, so verify suspected corruption from the file bytes before rewriting a locale. If a visible character is actually damaged in source, repair it and record the finding here.
+
+## 4. Demo data reset rule
+
+Demo or template data scripts must never update or delete `public.orders` or `public.order_items`. Order history and paid orders are protected by database triggers. Refresh demo content by closing active table sessions and archiving menu rows while preserving all order history.

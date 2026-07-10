@@ -4,7 +4,7 @@ import { getPublishedLegalSettings } from '../lib/publicLegalApi';
 
 type CookieConsent = 'accepted' | 'rejected' | 'custom';
 
-const STORAGE_KEY = 'wok-dragon-cookie-consent';
+const STORAGE_KEY = 'restaurant-cookie-consent';
 
 interface CookiePreferences {
   consent: CookieConsent;
@@ -71,8 +71,8 @@ export function CookieBanner() {
       setVisible(true);
       setManaging(true);
     };
-    window.addEventListener('wok-dragon:open-cookie-preferences', openPreferences);
-    return () => window.removeEventListener('wok-dragon:open-cookie-preferences', openPreferences);
+    window.addEventListener('restaurant:open-cookie-preferences', openPreferences);
+    return () => window.removeEventListener('restaurant:open-cookie-preferences', openPreferences);
   }, []);
 
   if (!visible) return null;

@@ -6,7 +6,7 @@
 
 1. 打开 [Supabase](https://supabase.com)，登录账号。
 2. 点击 **New project**。
-3. 填写项目名称，例如 `wok-dragon-client-xxx`。
+3. 填写项目名称，例如 `restaurant-client-xxx`。
 4. 设置数据库密码，并妥善保存。
 5. 选择离希腊较近的区域，例如 Frankfurt 或 London。
 6. 等待项目创建完成。
@@ -82,7 +82,7 @@ on conflict (key) do update set value = excluded.value;
 ## 五、部署到 Vercel
 
 1. 打开 [Vercel](https://vercel.com)。
-2. 导入 GitHub 仓库 `ylc77/wok-dragon-ordering`。
+2. 导入你自己的项目仓库或交付副本。
 3. 配置环境变量。
 
 必填：

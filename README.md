@@ -1,10 +1,10 @@
-# Wok Dragon Ordering 餐馆官网 + 扫码点餐系统
+# 餐馆官网 + 扫码点餐系统模板
 
 这是一个面向餐馆、奶茶店、咖啡店、小吃店和快餐店的线上点餐系统模板，包含餐馆官网、公开菜单、顾客扫码点餐、中文后台、前台 POS 点单、菜单管理、桌台二维码管理、多语言菜单、厨房小票打印助手和客户交付文档。
 
 线上演示：
 
-- Production: https://wok-dragon-ordering.vercel.app/
+- Production: deploy this template to the customer's own Vercel domain before sharing it.
 
 ## 一、系统包含什么
 
@@ -577,4 +577,3 @@ scripts/         smoke test、录屏、打包、检查脚本
 12. 如需要，安装 Windows 打印助手。
 13. 绑定客户域名。
 14. 完成客户验收。
-

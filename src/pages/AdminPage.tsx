@@ -1189,17 +1189,17 @@ const menuCsvHeaderDescriptions: Record<MenuCsvHeader, string> = {
 };
 
 const menuCsvExampleRow: MenuCsvRow = {
-  category_zh: '精选套餐',
-  category_en: 'Special Menu',
-  category_el: 'Ειδικό Μενού',
-  name_zh: '套餐 A',
-  name_en: 'Set A',
-  name_el: 'Σετ A',
-  description_zh: '鸡肉玉米汤、蔬菜春卷、鸡蛋炒饭',
-  description_en: 'Chicken corn soup, vegetable spring rolls, egg fried rice',
-  description_el: 'Σούπα κοτόπουλου με καλαμπόκι, λαχανικά spring rolls, τηγανητό ρύζι με αυγό',
-  price: '18.90',
-  image_url: 'https://example.com/menu/set-a.jpg',
+  category_zh: '招牌饭碗',
+  category_en: 'Signature Bowls',
+  category_el: 'Signature Bowls',
+  name_zh: '炽火照烧鸡饭',
+  name_en: 'Ember Teriyaki Chicken Bowl',
+  name_el: 'Bowl Κοτόπουλο Teriyaki',
+  description_zh: '照烧鸡、时蔬和香米',
+  description_en: 'Glazed chicken, seasonal vegetables, and fragrant rice',
+  description_el: 'Κοτόπουλο με teriyaki, λαχανικά εποχής και αρωματικό ρύζι',
+  price: '11.90',
+  image_url: '',
   is_available: 'true',
   is_sold_out: 'false',
   options: JSON.stringify([

@@ -236,7 +236,7 @@ button:disabled {
 
 .photo-one {
   aspect-ratio: 1.35 / 1;
-  background-image: url("https://imageproxy.wolt.com/assets/6732084d9eaa2e574dd75281");
+  background-image: linear-gradient(135deg, #5f161a 0%, #bf262d 48%, #f29b55 100%);
   border-radius: var(--radius);
   grid-row: span 2;
 }
@@ -248,11 +248,11 @@ button:disabled {
 }
 
 .photo-two {
-  background-image: url("https://wolt-menu-images-cdn.wolt.com/menu-images/613a080471a7ebf726042884/42dfe9c0-1b70-11ec-bf9b-622ab477fd83_wok2.jpeg");
+  background-image: linear-gradient(135deg, #2d2522 0%, #6b3930 54%, #d78b52 100%);
 }
 
 .photo-three {
-  background-image: url("https://wolt-menu-images-cdn.wolt.com/menu-images/613a080471a7ebf726042884/bf1b928c-1b70-11ec-b9c7-42d0deb10ffb_wok7.jpeg");
+  background-image: linear-gradient(135deg, #f3d7b4 0%, #d56f4c 48%, #6b1d23 100%);
 }
 
 .info-band {

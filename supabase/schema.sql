@@ -4,7 +4,7 @@
 -- New customer setup must run supabase/client-init.sql only.
 -- Current 1.0 delivery has no active customer upgrade patches.
 
--- Wok Dragon Express / 龙城酒楼 legacy schema snapshot.
+-- Legacy schema snapshot for the restaurant ordering template.
 
 create extension if not exists pgcrypto;
 create schema if not exists private;

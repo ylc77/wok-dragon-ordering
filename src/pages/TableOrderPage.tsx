@@ -73,8 +73,6 @@ export function TableOrderPage() {
       const v = localStorage.getItem('restaurant:cart-sound');
       if (v !== null) return v !== '0';
       // 迁移旧 key
-      const old = localStorage.getItem('wok-dragon:cart-sound');
-      if (old !== null) { localStorage.setItem('restaurant:cart-sound', old); localStorage.removeItem('wok-dragon:cart-sound'); return old !== '0'; }
       return true;
     } catch { return true; }
   });
@@ -1165,11 +1163,6 @@ function readSavedTableSession(qrToken: string): SavedTableSession | null {
     const key = tableSessionStorageKey(qrToken);
     let raw = window.localStorage.getItem(key);
     // 迁移旧 key
-    if (!raw) {
-      const oldKey = `wok-dragon:table-session:${qrToken}`;
-      const oldRaw = window.localStorage.getItem(oldKey);
-      if (oldRaw) { window.localStorage.setItem(key, oldRaw); window.localStorage.removeItem(oldKey); raw = oldRaw; }
-    }
     if (!raw) return null;
     const value = JSON.parse(raw) as Partial<SavedTableSession>;
     if (typeof value.session_id !== 'string' || typeof value.table_id !== 'string' || typeof value.table_number !== 'number') {
