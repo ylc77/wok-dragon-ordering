@@ -80,6 +80,9 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings, targetCa
   const manualRef = useRef(false);
   const handledTargetRef = useRef<string | null>(null);
   const itemCount = visibleGroups.reduce((sum, group) => sum + group.items.length, 0);
+  const reservationsEnabled = settings ? getFeatureFlags(settings).reservations : false;
+  const menuTitle = lang === 'zh' ? '公开菜单' : lang === 'en' ? 'Menu' : 'Μενού';
+  const reservationLabel = lang === 'zh' ? '预订餐桌' : lang === 'en' ? 'Reserve a table' : 'Κράτηση τραπεζιού';
 
   // 滚动联动：监听右侧 main 容器
   useEffect(() => {
@@ -151,6 +154,10 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings, targetCa
 
   return (
     <div className="menu-mobile-root">
+      <div className="mobile-menu-toolbar">
+        <div><span>{itemCount} {lang === 'zh' ? '道菜品' : lang === 'en' ? 'dishes' : 'πιάτα'}</span><strong>{menuTitle}</strong></div>
+        {reservationsEnabled ? <Link className="mobile-menu-reservation" to="/reservations"><CalendarDays size={16} />{reservationLabel}</Link> : null}
+      </div>
       <SearchBar search={search} setSearch={setSearch} count={itemCount} lang={lang} />
       <div className="menu-mobile-body">
         {visibleGroups.length > 1 ? (
@@ -163,7 +170,6 @@ function MobileMenu({ visibleGroups, lang, search, setSearch, settings, targetCa
           </aside>
         ) : null}
         <main ref={mainRef} className="mobile-main">
-          <SafeImage src={settings?.logo_url} optimizedSrc={getOptimizedImageUrl(settings?.logo_url, 'logo')} className="mobile-head-logo" alt="" fallback={null} />
           {visibleGroups.map((g) => (
             <section className="menu-group" id={`mcat-${g.id}`} key={g.id}>
               <h2>{getLocalizedField(lang, { zh: g.name_zh, en: g.name_en, el: g.name_el })}</h2>

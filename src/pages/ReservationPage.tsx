@@ -128,6 +128,7 @@ export function ReservationPage() {
   return <main className="reservation-page">
     <section className="reservation-hero">
       <p className="reservation-eyebrow">{copy.eyebrow}</p><h1>{copy.title}</h1><p>{copy.intro}</p>
+      <div className="reservation-hero-points"><span><CalendarDays size={16} />{copy.date}</span><span><Clock3 size={16} />{copy.time}</span><span><Users size={16} />{copy.party}</span></div>
     </section>
     <section className="reservation-layout">
       <form className="reservation-form" onSubmit={submit}>

@@ -6,7 +6,7 @@ const PUBLIC_SETTINGS_CACHE_MS = 5 * 60 * 1000;
 const PUBLIC_MENU_CACHE_MS = 60 * 1000;
 const HOME_MENU_PREVIEW_CACHE_MS = 5 * 60 * 1000;
 
-const RESTAURANT_SETTINGS_FIELDS = 'id,name_zh,name_en,name_el,logo_url,hero_image_url,intro_zh,intro_en,intro_el,phone,whatsapp_url,instagram_url,address_zh,address_en,address_el,map_url,opening_hours_zh,opening_hours_en,opening_hours_el,wolt_url,efood_url,box_url,accept_pos_payment,accept_cash_payment,ordering_enabled,ordering_paused_at,brand_color,favicon_url,meta_title,footer_text_zh,footer_text_en,footer_text_el,enable_pos,enable_qr_ordering,created_at,updated_at';
+const RESTAURANT_SETTINGS_FIELDS = 'id,name_zh,name_en,name_el,logo_url,hero_image_url,intro_zh,intro_en,intro_el,phone,whatsapp_url,instagram_url,address_zh,address_en,address_el,map_url,opening_hours_zh,opening_hours_en,opening_hours_el,wolt_url,efood_url,box_url,accept_pos_payment,accept_cash_payment,ordering_enabled,ordering_paused_at,brand_color,favicon_url,meta_title,footer_text_zh,footer_text_en,footer_text_el,enable_pos,enable_qr_ordering,plan_tier,feature_flags,created_at,updated_at';
 const PUBLIC_CATEGORY_FIELDS = 'id,name_zh,name_en,name_el,sort_order,is_active';
 const PUBLIC_MENU_ITEM_FIELDS = 'id,category_id,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,is_sold_out,sort_order,options';
 const HOME_MENU_ITEM_FIELDS = 'id,category_id,name_zh,name_en,name_el,description_zh,description_en,description_el,price,image_url,is_available,is_sold_out,sort_order';

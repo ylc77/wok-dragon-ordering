@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './styles/base.css';
 import './styles/public.css';
+import './styles/restaurant-refresh.css';
 import { App } from './App';
 import { initI18n } from './i18n';
 

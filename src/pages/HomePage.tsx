@@ -4,6 +4,7 @@ import { CalendarDays, Clock3, ExternalLink, Flame, Instagram, MapPin, MessageCi
 import { useTranslation } from 'react-i18next';
 import { MenuCard } from '../components/MenuCard';
 import { SafeImage } from '../components/SafeImage';
+import templateHero from '../assets/ember-wok-hero.webp';
 import { getFeatureFlags } from '../lib/featureFlags';
 import { getOptimizedImageUrl } from '../lib/imageUrl';
 import { getLocalizedField, pickLocalized } from '../lib/localized';
@@ -48,7 +49,7 @@ export function HomePage() {
   const intro = settings ? pickLocalized(lang, { zh: settings.intro_zh, en: settings.intro_en, el: settings.intro_el }) : '';
   const deliveryLinks = [{ label: t('platforms.wolt'), url: settings?.wolt_url }, { label: t('platforms.efood'), url: settings?.efood_url }, { label: t('platforms.box'), url: settings?.box_url }].filter((link) => Boolean(link.url?.trim()));
   const heroItem = featuredItems.find((item) => Boolean(item.image_url));
-  const heroImageUrl = settings?.hero_image_url?.trim() || heroItem?.image_url;
+  const heroImageUrl = settings?.hero_image_url?.trim() || heroItem?.image_url || templateHero;
   const reservationsEnabled = settings ? getFeatureFlags(settings).reservations : false;
   const reserve = reservationCopy[lang];
 
@@ -61,6 +62,10 @@ export function HomePage() {
         <p className="home-kicker">{lang === 'zh' ? '新鲜现炒 · 轻松用餐' : lang === 'en' ? 'FRESH WOK · EASY DINING' : 'ΦΡΕΣΚΟ WOK · ΑΠΟΛΑΥΣΤΙΚΟ ΦΑΓΗΤΟ'}</p>
         <h1>{name || t('home.title')}</h1><p>{intro || t('home.subtitle')}</p>
         <div className="hero-actions"><Link className="primary-button" to="/menu"><UtensilsCrossed size={18} />{t('home.menuCta')}</Link>{reservationsEnabled ? <Link className="secondary-button" to="/reservations"><CalendarDays size={18} />{reserve.action}</Link> : null}{settings?.map_url ? <a className="secondary-button" href={settings.map_url} target="_blank" rel="noreferrer"><MapPin size={18} />{t('common.viewMap')}</a> : null}</div>
+        <div className="hero-context" aria-label="Restaurant information">
+          {hours ? <span><Clock3 size={15} />{hours}</span> : null}
+          {address ? <span><MapPin size={15} />{address}</span> : null}
+        </div>
         {settings?.enable_qr_ordering !== false ? <p className="muted">{t('home.orderHint')}</p> : null}{error ? <p className="error-text">{error}</p> : null}
       </div>
       <div className="hero-media"><SafeImage src={heroImageUrl} optimizedSrc={getOptimizedImageUrl(heroImageUrl, 'hero')} alt={name} loading="eager" decoding="async" fetchPriority="high" sizes="(max-width: 768px) 100vw, 52vw" fallback={<div className="hero-image-fallback" aria-hidden="true"><div className="hif-inner"><span className="hif-mark"><UtensilsCrossed size={96} /></span><strong>{name || t('home.title')}</strong><span className="hif-sub">{t('home.subtitle')}</span></div></div>} /></div>
