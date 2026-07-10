@@ -4434,6 +4434,59 @@
   .admin-user { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 }
 
+/* Keep order metrics compact even when the reminder controls have more rows. */
+.order-stats-row {
+  align-items: start;
+  grid-template-columns: repeat(4, minmax(132px, 1fr)) minmax(206px, 0.95fr);
+}
+
+.order-stats-row > .stat-card {
+  min-height: 104px;
+}
+
+.order-stats-row > .stat-card.tool-card {
+  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+}
+
+.order-stats-row > .tool-card > span {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.order-stats-row > .tool-card .tool-row {
+  font-size: 12px;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.order-stats-row > .tool-card .tool-row:last-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1180px) and (min-width: 768px) {
+  .order-stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .order-stats-row > .stat-card.tool-card {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .order-stats-row > .tool-card > span,
+  .order-stats-row > .tool-card .tool-row:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .order-stats-row > .stat-card { min-height: 82px; }
+  .order-stats-row > .stat-card.tool-card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .order-stats-row > .tool-card > span { grid-column: 1 / -1; }
+}
+
 .csv-preview-summary {
   display: grid;
   gap: 10px;
